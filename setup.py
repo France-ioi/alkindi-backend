@@ -28,7 +28,7 @@ packages = find_packages()
 
 setup(
     name='alkindi-r2-back',
-    version='0.0.1',
+    version='1',
     description='Backend for Alkindi competition rounds 2 to 4',
     long_description=README + '\n\n' + CHANGES,
     classifiers=[
