@@ -21,14 +21,15 @@ requires = [
     'gunicorn >= 19.4',
     'PyJWT >= 1.4',
     'oauthlib >= 1.0',
-    'requests >= 2.9'
+    'requests >= 2.9',
+    'alkindi-r2-front'
 ]
 
 packages = find_packages()
 
 setup(
     name='alkindi-r2-back',
-    version='1',
+    version='2',
     description='Backend for Alkindi competition rounds 2 to 4',
     long_description=README + '\n\n' + CHANGES,
     classifiers=[

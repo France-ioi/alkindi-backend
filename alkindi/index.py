@@ -34,9 +34,11 @@ def oauth_callback_view(request):
 
 def index_view(request):
     ensure_authenticated(request)
+    csrf_token = request.session.get_csrf_token()
     return {
         'user_id': unauthenticated_userid(request),
-        'username': request.session.get('username')
+        'username': request.session.get('username'),
+        'csrf_token': csrf_token
     }
 
 

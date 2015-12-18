@@ -1,16 +1,14 @@
-<!doctype html>
+<%inherit file="layout.mako"/>
 
-<head lang="fr">
-  <meta charset="utf-8">
-  <title>Index</title>
-  <link href="${g.asset_url('main.css')}" rel="stylesheet">
-</head>
-
-<body>
-  <p>Welcome, ${username}.</p>
+<%block name="body">
+  <div id="main" class="container">
+    <p>Chargement en cours, merci de patienter...</p>
+  </div>
+  <script type="text/javascript" src="${request.static_url('alkindi_r2_front:assets/main.js')}"></script>
+  <!--
   <form action="${request.route_url('logout')}" method="POST">
     <button type='submit'>déconnexion</button>
   </form>
-</body>
-
-<tt>${h.to_json(dict(request.session.items()))}</tt>
+  -->
+  <!-- ${h.to_json(dict(request.session.items()))} -->
+</%block>

@@ -32,11 +32,12 @@ redis-cli set session_settings '{"cookie_max_age":604800}'
 # Configure oauth here.
 redis-cli set oauth_client_id       'alkindi'
 redis-cli set oauth_client_secret   'BpabOSwEwQ4O2+FjUg7YdrcheCXDEdquxAOV9GasLLqewpx9f0M1KpQELmvQ+A6R'
-redis-cli set oauth_authorise_uri   'http://127.0.0.1:3000/oauth/authorise'
-redis-cli set oauth_token_uri       'http://127.0.0.1:3000/oauth/token'
-redis-cli set oauth_refresh_uri     'http://127.0.0.1:3000/oauth/token'
+redis-cli set oauth_authorise_uri   'https://oauth.epixode.fr/oauth/authorise'
+redis-cli set oauth_token_uri       'https://oauth.epixode.fr/oauth/token'
+redis-cli set oauth_refresh_uri     'https://oauth.epixode.fr/oauth/token'
 
 # Configure the identity provider endpoint here.
 # This endpoint should accept an access token and return the authenticated
 # user's profile.
-redis-cli set identity_provider_uri 'http://127.0.0.1:3000/profile'
+redis-cli set identity_provider_uri 'https://oauth.epixode.fr/profile'
+

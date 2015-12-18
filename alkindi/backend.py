@@ -23,6 +23,8 @@ def application(_global_config, **settings):
     config.add_static_view(name='assets', path=app['assets_path'])
     config.include('pyramid_mako')
     config.add_subscriber(set_renderer_context, BeforeRender)
+    config.add_static_view(name='front', path='alkindi_r2_front:')
+    config.include('.contexts')
     config.include('.index')
     config.include('.misc')
     return app.wrap_middleware(config.make_wsgi_app())
