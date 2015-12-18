@@ -11,7 +11,7 @@ with open(os.path.join(here, 'CHANGES.md')) as f:
     CHANGES = f.read()
 
 requires = [
-    'pyramid >= 1.5',
+    'pyramid >= 1.6b3',
     'pyramid_debugtoolbar',
     'pyramid_redis_sessions >= 1.0a3',
     'PyYAML >= 3.11',

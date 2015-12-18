@@ -82,15 +82,6 @@ class Globals:
             raise KeyError('missing redis key {}'.format(key))
         return value
 
-    def url(self, path):
-        base = self['assets_base']
-        return '{}/{}'.format(base, path)
-
-    def asset_url(self, path):
-        base = self['assets_base']
-        timestamp = self['assets_timestamp']
-        return '{}/{}?t={}'.format(base, path, timestamp)
-
 
 class GlobalsResetMiddleware:
     """ Reset the global state at the end of each request
@@ -105,5 +96,6 @@ class GlobalsResetMiddleware:
         result = self.app(environ, start_response)
         self.globals.after_request()
         return result
+
 
 app = Globals()

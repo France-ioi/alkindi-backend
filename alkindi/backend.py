@@ -8,9 +8,11 @@ from pyramid.config import Configurator
 from pyramid.events import BeforeRender
 from pyramid.authorization import ACLAuthorizationPolicy
 from pyramid.authentication import SessionAuthenticationPolicy
+from pyramid.static import QueryStringConstantCacheBuster
 
 from alkindi import helpers
 from alkindi.globals import app
+from alkindi_r2_front import version as front_version
 
 
 def application(_global_config, **settings):
@@ -22,11 +24,18 @@ def application(_global_config, **settings):
     config.include(set_authorization_policy)
     config.include(set_authentication_policy)
     config.include('pyramid_mako')
+
     config.add_subscriber(set_renderer_context, BeforeRender)
+
+    # Serve versioned static assets from alkindi-r2-front at /front
     config.add_static_view(name='front', path='alkindi_r2_front:')
+    config.add_cache_buster(
+        'alkindi_r2_front:', QueryStringConstantCacheBuster(front_version))
+
     config.include('.contexts')
     config.include('.index')
     config.include('.misc')
+
     return app.wrap_middleware(config.make_wsgi_app())
 
 

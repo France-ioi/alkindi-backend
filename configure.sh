@@ -4,19 +4,6 @@
 # pointing to this configuration script.
 redis-cli set configured yes
 
-# app_base should point to the URL at which the application is published.
-# Do not add a trailing slash.
-redis-cli set app_base http://127.0.0.1:8001
-
-# app_assets should point to a URL where (a copy of) the assets are published.
-# In a production environment, this will typically be a CDN.
-# Do not add a trailing slash.
-redis-cli set assets_base http://127.0.0.1:8001/assets
-
-# XXX This is a temporary setting (directory containing the source
-#     assets).  Ultimately we want to use built assets.
-redis-cli set assets_path $(pwd)/assets
-
 # Regenerate the assets_timestamp whenever the assets are changed, to
 # ensure that all clients get an up-to-date version.
 redis-cli set assets_timestamp $(date +%s)
