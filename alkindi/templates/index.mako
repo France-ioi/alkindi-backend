@@ -1,7 +1,7 @@
 <%inherit file="layout.mako"/>
 
 <%block name="body">
-  <div id="main" class="container">
+  <div id="main">
     <p>Chargement en cours, merci de patienter...</p>
   </div>
   <script type="text/javascript" src="${request.static_url('alkindi_r2_front:assets/main.js')}"></script>
