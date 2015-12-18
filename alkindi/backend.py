@@ -17,10 +17,10 @@ def application(_global_config, **settings):
     """ Returns the Pyramid WSGI application.
     """
     config = Configurator(settings=settings)
+    config.include('pyramid_debugtoolbar')
     config.include(set_session_factory)
     config.include(set_authorization_policy)
     config.include(set_authentication_policy)
-    config.add_static_view(name='assets', path=app['assets_path'])
     config.include('pyramid_mako')
     config.add_subscriber(set_renderer_context, BeforeRender)
     config.add_static_view(name='front', path='alkindi_r2_front:')
