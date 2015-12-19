@@ -6,6 +6,9 @@
   </div>
   <script type="text/javascript" src="${request.static_url('alkindi_r2_front:assets/main.js')}"></script>
   <script type="text/javascript">
+    Alkindi.configureAssets({
+      template: '${request.static_url('alkindi_r2_front:assets/{}').replace('%7B%7D', '{}')}'
+    });
     Alkindi.install(document.getElementById('main'));
   </script>
   <!--
