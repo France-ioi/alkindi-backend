@@ -48,6 +48,10 @@ def index_view(request):
         'username': request.session.get('username'),
         'csrf_token': csrf_token,
         'frontend_config': {
+            'user': {
+                'username': request.session.get('username'),
+                'isSelected': False
+            },
             'assets_template': assets_template,
             'logout_url': request.route_url('logout')
         }
