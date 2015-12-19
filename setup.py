@@ -11,17 +11,25 @@ with open(os.path.join(here, 'CHANGES.md')) as f:
     CHANGES = f.read()
 
 requires = [
+    # These packages have binary extensions, it is easier to use a venv
+    # with --system-site-packages:
+    'psycopg2 >= 2.5',             # apt-get install python3-psycopg2
+    'zope.interface >= 4.1.1',     # apt-get install python3-zope.interface
+    'MarkupSafe >= 0.23',          # apt-get install python3-markupsafe
+    'PyYAML >= 3.11',              # apt-get install python3-yaml
+    # These packages can be installed from source, and it is better to use
+    # recent versions:
+    'Babel >= 2.1.1',
+    'gunicorn >= 19.4.1',
+    'iso8601 >= 0.1.11',
+    'Mako >= 1.0.3',
+    'oauthlib >= 1.0.3',
+    'PyJWT >= 1.4.0',
     'pyramid >= 1.6b3',
-    'pyramid_debugtoolbar',
-    'pyramid_redis_sessions >= 1.0a3',
-    'PyYAML >= 3.11',
-    'iso8601 >= 0.1',
-    'Babel >= 1.3',
-    'psycopg2 >= 2.5',
-    'gunicorn >= 19.4',
-    'PyJWT >= 1.4',
-    'oauthlib >= 1.0',
-    'requests >= 2.9',
+    'pyramid_debugtoolbar >= 2.4.2',
+    'pyramid-mako >= 1.0.2',
+    'pyramid_redis_sessions >= 1.0.1',
+    'requests >= 2.9.0',
     'alkindi-r2-front'
 ]
 
