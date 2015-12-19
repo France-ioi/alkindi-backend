@@ -3,14 +3,18 @@ from pyramid.httpexceptions import HTTPFound
 from pyramid.security import unauthenticated_userid, forget
 
 from alkindi.auth import (
-    redirect_to_oauth2_provider, accept_oauth2_code,
+    oauth2_provider_uri, accept_oauth2_code,
     maybe_refresh_oauth2_token)
+from alkindi_r2_front import version as front_version
 
 
 def includeme(config):
     config.add_route('index', '/', request_method='GET')
     config.add_view(
         index_view, route_name='index', renderer='templates/index.mako')
+    config.add_route('login', '/login', request_method='GET')
+    config.add_view(
+        login_view, route_name='login', renderer='templates/login.mako')
     config.add_route('logout', '/logout', request_method='POST')
     config.add_view(logout_view, route_name='logout')
     config.add_route('oauth_callback', '/oauth/callback', request_method='GET')
@@ -24,7 +28,9 @@ def ensure_authenticated(request):
     user_id = unauthenticated_userid(request)
     if user_id is not None:
         return
-    redirect_to_oauth2_provider(request, redirect=request.url)
+    raise HTTPFound(request.route_url('login', _query={
+        'redirect': request.url
+    }))
 
 
 def oauth_callback_view(request):
@@ -39,6 +45,16 @@ def index_view(request):
         'user_id': unauthenticated_userid(request),
         'username': request.session.get('username'),
         'csrf_token': csrf_token
+    }
+
+
+def login_view(request):
+    redirect = request.params.get('redirect')
+    return {
+        'authenticate_uri': oauth2_provider_uri(request, redirect=redirect),
+        'error': request.params.get('error'),
+        'error_code': request.params.get('code'),
+        'error_description': request.params.get('error_description'),
     }
 
 

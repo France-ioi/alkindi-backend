@@ -14,15 +14,11 @@ from alkindi.globals import app
 # Public functions
 #
 
-def redirect_to_oauth2_provider(request, redirect=None):
+def oauth2_provider_uri(request, redirect=None):
     """ Redirect the user to the OAuth2 provider.
-        A redirect URL, if given, is stored in the user's session and
-        the user will be redirected to that URL once authenticated.
+        A final redirect URI, if given, is encoded in the returned URI
+        so that the OAuth2 callback can redirect the user once authenticated.
     """
-    if redirect is not None:
-        request.session['redirect'] = redirect
-    else:
-        del request.session['redirect']
     authorise_uri = app['oauth_authorise_uri']
     callback_uri = request.route_url('oauth_callback')
     oauth_params = {
@@ -30,15 +26,18 @@ def redirect_to_oauth2_provider(request, redirect=None):
         'approval_prompt': 'force',
         'redirect_uri': callback_uri
     }
-    oauth_uri = get_oauth_client().prepare_request_uri(
+    if redirect is not None:
+        oauth_params['redirect'] = redirect
+    return get_oauth_client().prepare_request_uri(
         authorise_uri, **oauth_params)
-    raise HTTPFound(location=oauth_uri)
 
 
 def accept_oauth2_code(request, code):
     """ Use an OAuth2 code to complete the authentication process.
     """
     token = exchange_code_for_token(request, code)
+    if 'error' in token:
+        raise HTTPFound(request.route_url('login', _query=token))
     accept_oauth2_token(request, token)
     redirect_user_after_authentication(request)
 
@@ -91,7 +90,7 @@ def maybe_refresh_oauth2_token(request):
     if refresh_token is None:
         # Make the user go through authentication again if we do
         # not have a refresh token.
-        redirect_to_oauth2_provider(request, redirect=request.url)
+        raise HTTPFound(location=oauth2_provider_uri(request, request.url))
     # Refresh the token.
     refresh_uri = app['oauth_refresh_uri']
     headers = {
