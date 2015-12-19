@@ -1,6 +1,11 @@
 <%inherit file="layout.mako"/>
 
 <%block name="body">
+  <div id="logout">
+    <form action="${request.route_url('logout')}" method="POST">
+      <button type='submit'>déconnexion</button>
+    </form>
+  </div>
   <div id="main">
     <p>Chargement en cours, merci de patienter...</p>
   </div>
@@ -11,10 +16,5 @@
     });
     Alkindi.install(document.getElementById('main'));
   </script>
-  <!--
-  <form action="${request.route_url('logout')}" method="POST">
-    <button type='submit'>déconnexion</button>
-  </form>
-  -->
   <!-- ${h.to_json(dict(request.session.items()))} -->
 </%block>
