@@ -1,11 +1,11 @@
 
-from pyramid.httpexceptions import HTTPFound
+from pyramid.httpexceptions import HTTPFound, HTTPSeeOther
 from pyramid.security import unauthenticated_userid, forget
 
 from alkindi.auth import (
     oauth2_provider_uri, accept_oauth2_code,
     maybe_refresh_oauth2_token)
-from alkindi_r2_front import version as front_version
+from alkindi.contexts import ApiContext
 
 
 def includeme(config):
@@ -13,12 +13,14 @@ def includeme(config):
     config.add_view(
         index_view, route_name='index', renderer='templates/index.mako')
     config.add_route('login', '/login', request_method='GET')
+    config.add_view(login_view, route_name='login')
     config.add_view(
-        login_view, route_name='login', renderer='templates/login.mako')
-    config.add_route('logout', '/logout', request_method='POST')
-    config.add_view(logout_view, route_name='logout')
+        logout_view, context=ApiContext, name='logout',
+        request_method='POST', renderer='json', check_csrf=True)
     config.add_route('oauth_callback', '/oauth/callback', request_method='GET')
-    config.add_view(oauth_callback_view, route_name='oauth_callback')
+    config.add_view(
+        oauth_callback_view, route_name='oauth_callback',
+        renderer='templates/after_login.mako')
 
 
 def ensure_authenticated(request):
@@ -33,43 +35,60 @@ def ensure_authenticated(request):
     }))
 
 
-def oauth_callback_view(request):
-    code = request.params.get('code')
-    accept_oauth2_code(request, code=code)
-
-
 def index_view(request):
-    ensure_authenticated(request)
-    csrf_token = request.session.get_csrf_token()
+    # Prepare the frontend's config for injection as JSON in a script tag.
     assets_template = request.static_url('alkindi_r2_front:assets/{}') \
         .replace('%7B%7D', '{}')
-    return {
-        'user_id': unauthenticated_userid(request),
-        'username': request.session.get('username'),
+    csrf_token = request.session.get_csrf_token()
+    frontend_config = {
+        'assets_template': assets_template,
         'csrf_token': csrf_token,
-        'frontend_config': {
-            'user': {
-                'username': request.session.get('username'),
-                'isSelected': False
-            },
-            'assets_template': assets_template,
-            'logout_url': request.route_url('logout')
-        }
+        'api_url': request.resource_url(get_api(request)),
+        'login_url': request.route_url('login')
+    }
+    # Add info about the logged-in user to the frontend config.
+    if unauthenticated_userid(request) is not None:
+        user = maybe_refresh_oauth2_token(request)
+        if user is not None:
+            frontend_config['user'] = {
+                'username': user.get('sLogin'),
+                'isSelected': False  # XXX
+            }
+    return {
+        'frontend_config': frontend_config
     }
 
 
 def login_view(request):
-    redirect = request.params.get('redirect')
+    # This view is displayed to the user in an iframe by the frontend.
+    # We immediately redirect to the OAuth2 provider, and the callback
+    # (below) will handle things post-authentication.
+    raise HTTPSeeOther(oauth2_provider_uri(request))
+
+
+def oauth_callback_view(request):
+    error = request.params.get('error')
+    if error is not None:
+        return {
+            'error': error,
+            'error_description': request.params.get('error_description')
+        }
+    code = request.params.get('code')
+    user = accept_oauth2_code(request, code=code)
+    print("OAuth2 callback called! user={}".format(user))
+    # The template will post the user object (encoded as JSON) to the
+    # parent window, causing the frontend to update its state.
     return {
-        'authenticate_uri': oauth2_provider_uri(request, redirect=redirect),
-        'error': request.params.get('error'),
-        'error_code': request.params.get('code'),
-        'error_description': request.params.get('error_description'),
+        'user': user,
+        'origin': request.headers.get('Origin')
     }
 
 
 def logout_view(request):
     forget(request)
     request.session.clear()
-    url = request.route_url('index')
-    return HTTPFound(location=url)
+    return {}
+
+
+def get_api(request):
+    return ApiContext(request.root)

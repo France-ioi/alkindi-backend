@@ -1,10 +1,11 @@
 
 from datetime import datetime
 import time
+import uuid
 
 from oauthlib import oauth2
 import requests
-from pyramid.httpexceptions import HTTPFound, HTTPForbidden
+from pyramid.httpexceptions import HTTPForbidden
 from pyramid.security import remember
 
 from alkindi.globals import app
@@ -14,36 +15,39 @@ from alkindi.globals import app
 # Public functions
 #
 
-def oauth2_provider_uri(request, redirect=None):
-    """ Redirect the user to the OAuth2 provider.
-        A final redirect URI, if given, is encoded in the returned URI
-        so that the OAuth2 callback can redirect the user once authenticated.
+def oauth2_provider_uri(request):
+    """ Generate an authorization URL.
     """
     authorise_uri = app['oauth_authorise_uri']
     callback_uri = request.route_url('oauth_callback')
+    # XXX store the state in a database rather than in the session
+    request.session['oauth_state'] = state = uuid.uuid4()
     oauth_params = {
-        'access_type': 'offline',
-        'approval_prompt': 'force',
-        'redirect_uri': callback_uri
+        'state': state,
+        'redirect_uri': callback_uri,
+        'access_type': 'offline'
+        # 'approval_prompt': 'force'
     }
-    if redirect is not None:
-        oauth_params['redirect'] = redirect
     return get_oauth_client().prepare_request_uri(
         authorise_uri, **oauth_params)
 
 
 def accept_oauth2_code(request, code):
-    """ Use an OAuth2 code to complete the authentication process.
+    """ Use an OAuth2 code to complete the authentication process
+        and return the authenticated user's identity, or a dict
+        containing an 'error' key.
     """
+    # XXX get code from request.params.get('code')
+    # XXX verify request.params.get('state')
     token = exchange_code_for_token(request, code)
     if 'error' in token:
-        raise HTTPFound(request.route_url('login', _query=token))
-    accept_oauth2_token(request, token)
-    redirect_user_after_authentication(request)
+        return token
+    return accept_oauth2_token(request, token)
 
 
 def accept_oauth2_token(request, token):
-    """ Store an OAuth2 token and user details in the session.
+    """ Store an OAuth2 token and user details in the session,
+        and return the authenticated user's identity.
     """
     session = request.session
     store_access_token(session, token.get('access_token'))
@@ -51,6 +55,7 @@ def accept_oauth2_token(request, token):
     remember_authenticated_user(request, user)
     store_token_expiry(session, token['expires_in'])
     store_refresh_token(session, token.get('refresh_token'))
+    return user
 
 
 def get_oauth_client():
@@ -64,14 +69,18 @@ def exchange_code_for_token(request, code, **kwargs):
     token_uri = app['oauth_token_uri']
     callback_uri = request.route_url('oauth_callback')
     client_secret = app['oauth_client_secret']
+    state = request.session['oauth_state']
     body = get_oauth_client().prepare_request_body(
-        code=code, redirect_uri=callback_uri,
+        state=state, code=code, redirect_uri=callback_uri,
         client_secret=client_secret, **kwargs)
     headers = {
         'Accept': 'application/json',
         'Content-Type': 'application/x-www-form-urlencoded'
     }
-    req = requests.post(token_uri, data=body, headers=headers)
+    # XXX path to CA bundle should be pulled from configuration
+    req = requests.post(
+        token_uri, data=body, headers=headers,
+        verify='/etc/ssl/certs/ca-certificates.crt')
     return req.json()
 
 
@@ -80,17 +89,17 @@ def maybe_refresh_oauth2_token(request):
     expires_ts = session.get('access_token_expires')
     if expires_ts is None:
         # Do nothing if we do not have token expiry information.
-        return
+        return None
     expires = datetime.fromtimestamp(expires_ts)
     now = datetime.utcnow()
     if (expires > now):
-        # Do nothing if the access token is still valid.
-        return
+        # If the access token is still valid, return the user identity.
+        return request_user_identity(session)
     refresh_token = session.get('refresh_token')
     if refresh_token is None:
         # Make the user go through authentication again if we do
         # not have a refresh token.
-        raise HTTPFound(location=oauth2_provider_uri(request, request.url))
+        return None
     # Refresh the token.
     refresh_uri = app['oauth_refresh_uri']
     headers = {
@@ -98,10 +107,11 @@ def maybe_refresh_oauth2_token(request):
         'Content-Type': 'application/x-www-form-urlencoded'
     }
     body = get_oauth_client().prepare_refresh_body(
-        refresh_token=refresh_token)
+        refresh_token=refresh_token,
+        verify='/etc/ssl/certs/ca-certificates.crt')
     req = requests.post(refresh_uri, headers=headers, data=body)
     token = req.json()
-    accept_oauth2_token(request, token)
+    return accept_oauth2_token(request, token)
 
 
 def store_access_token(session, access_token):
@@ -122,9 +132,15 @@ def request_user_identity(session):
         'Accept': 'application/json',
         'Authorization': 'Bearer {}'.format(access_token)
     }
-    req = requests.get(idp_uri, headers=headers)
+    req = requests.get(
+        idp_uri, headers=headers, verify='/etc/ssl/certs/ca-certificates.crt')
     try:
+        req.raise_for_status()
         return req.json()
+    except requests.exceptions.HTTPError:
+        message = 'failed to get user identity: {} {}'.format(
+            req.status_code, req.text)
+        raise HTTPForbidden(message)
     except ValueError:
         del session['access_token']
         raise HTTPForbidden('bad access_token')
@@ -134,7 +150,7 @@ def remember_authenticated_user(request, user):
     # Make pyramid remember the user's id.
     remember(request, user['id'])
     # Temporarily? store the username in the session.
-    request.session['username'] = user.get('username')
+    request.session['username'] = user.get('sLogin')
 
 
 def store_token_expiry(session, expires_in):
@@ -149,14 +165,3 @@ def store_refresh_token(session, refresh_token):
         del session['refresh_token']
     else:
         session['refresh_token'] = refresh_token
-
-
-def redirect_user_after_authentication(request):
-    """ Redirect the authenticated user to their final location.
-    """
-    target_url = request.session.get('redirect')
-    if target_url is not None:
-        del request.session['redirect']
-        raise HTTPFound(target_url)
-    # If there is no redirect URL, send the user to the index page.
-    raise HTTPFound(request.application_url)
