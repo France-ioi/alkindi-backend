@@ -9,5 +9,4 @@
     Alkindi.configure(${h.to_json(frontend_config)});
     Alkindi.install(document.getElementById('main'));
   </script>
-  <!-- ${h.to_json(dict(request.session.items()))} -->
 </%block>
