@@ -234,4 +234,5 @@ def exchange_code_for_token(request, code, **kwargs):
     req = requests.post(
         token_uri, data=body, headers=headers,
         verify='/etc/ssl/certs/ca-certificates.crt')
+    req.raise_for_status()
     return req.json()
