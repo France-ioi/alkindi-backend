@@ -33,6 +33,7 @@ def application(_global_config, **settings):
         'alkindi_r2_front:', QueryStringConstantCacheBuster(front_version))
 
     config.include('.contexts')
+    config.include('.auth')
     config.include('.index')
     config.include('.misc')
 

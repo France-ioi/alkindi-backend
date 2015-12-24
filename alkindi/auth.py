@@ -5,15 +5,152 @@ import uuid
 
 from oauthlib import oauth2
 import requests
-from pyramid.httpexceptions import HTTPForbidden
-from pyramid.security import remember
+from pyramid.httpexceptions import HTTPSeeOther
+from pyramid.security import remember, forget
 
 from alkindi.globals import app
 
 
 #
-# Public functions
+# Pyramid routes and views
 #
+
+def includeme(config):
+    config.add_route('login', '/login', request_method='GET')
+    config.add_view(login_view, route_name='login')
+    config.add_route('logout', '/logout', request_method='GET')
+    config.add_view(
+        logout_view, route_name='logout',
+        renderer='templates/after_logout.mako')
+    config.add_route('oauth_callback', '/oauth/callback', request_method='GET')
+    config.add_view(
+        oauth_callback_view, route_name='oauth_callback',
+        renderer='templates/after_login.mako')
+
+
+def login_view(request):
+    # Opening this view in a new window will take the user to the
+    # identity provider (IdP) for authentication.  The IdP will
+    # eventually redirect the user to the OAuth2 callback view below.
+    raise HTTPSeeOther(oauth2_provider_uri(request))
+
+
+def oauth_callback_view(request):
+    # This view handles the outcome of authentication performed by the
+    # identity provider.
+    error = request.params.get('error')
+    if error is not None:
+        message = format_error_value(request.params)
+        return {'error': message}
+    try:
+        accept_oauth2_code(request)
+    except AuthenticationError as ex:
+        return {'error': str(ex)}
+    # Get the user identity (refreshing the token should not be needed).
+    user = get_user_identity(request, refresh=False)
+    # Make pyramid remember the user's id.
+    remember(request, user['id'])
+    # The template posts the user object (encoded as JSON) to the parent
+    # window, causing the frontend to update its state.
+    return {
+        'user': user,
+        'origin': request.headers.get('Origin')
+    }
+
+
+def logout_view(request):
+    # Opening this view in a new window will post an 'afterLogout'
+    # message to the application then redirect to the logout page
+    # of the identity provider.
+    # Do not open this view in an iframe, as it would prevent the
+    # identity provider from receiving the user's cookies (look up
+    # Third-party cookies).
+    forget(request)
+    request.session.clear()
+    return {
+        'identity_provider_logout_uri': app['logout_uri']
+    }
+
+
+#
+# Public definitions
+#
+
+class AuthenticationError(RuntimeError):
+
+    def __init__(self, message):
+        super().__init__(message)
+
+
+def get_oauth2_token(request, refresh=True):
+    """ Return the logged-in user's access token.
+        If refresh is True and the access token has expired, an attempt
+        to refresh the token is made.
+        If no access token can be obtained, AuthenticationError is raised.
+    """
+    session = request.session
+    expires_ts = session.get('access_token_expires')
+    if expires_ts is None:
+        # If we do not have token expiry information, assume that we do
+        # not have a token.
+        raise AuthenticationError('no access token (expiry)')
+    expires = datetime.fromtimestamp(expires_ts)
+    now = datetime.utcnow()
+    if (expires > now):
+        # If the access token is still valid, return it.
+        return session['access_token']
+    # Do we attempt to refresh the token?
+    refresh_token = session.get('refresh_token')
+    if not refresh or refresh_token is None:
+        # Clear the expired access token and bail out.
+        del session['access_token_expires']
+        del session['access_token']
+        return AuthenticationError('access token has expired')
+    # Refresh the token.
+    refresh_uri = app['oauth_refresh_uri']
+    headers = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded'
+    }
+    body = get_oauth_client().prepare_refresh_body(
+        refresh_token=refresh_token,
+        verify='/etc/ssl/certs/ca-certificates.crt')
+    req = requests.post(refresh_uri, headers=headers, data=body)
+    token = req.json()
+    return accept_oauth2_token(request, token)
+
+
+def get_user_identity(request, refresh=True):
+    """ Query the identity provider for the authenticated user's
+        identity, using the access token found in the user's session.
+        If the query fails (or if the access token has expired and
+        cannot be refreshed), None is returned.
+    """
+    try:
+        access_token = get_oauth2_token(request, refresh)
+    except AuthenticationError:
+        return None
+    idp_uri = app['identity_provider_uri']
+    headers = {
+        'Accept': 'application/json',
+        'Authorization': 'Bearer {}'.format(access_token)
+    }
+    req = requests.get(
+        idp_uri, headers=headers, verify='/etc/ssl/certs/ca-certificates.crt')
+    try:
+        req.raise_for_status()
+        user = req.json()
+        if 'id' not in user:
+            raise RuntimeError('user object has no id key')
+        return user
+    except requests.exceptions.HTTPError:
+        return None
+
+
+#
+# Private definitions
+#
+
 
 def oauth2_provider_uri(request):
     """ Generate an authorization URL.
@@ -32,35 +169,51 @@ def oauth2_provider_uri(request):
         authorise_uri, **oauth_params)
 
 
-def accept_oauth2_code(request, code):
+def accept_oauth2_code(request):
     """ Use an OAuth2 code to complete the authentication process
-        and return the authenticated user's identity, or a dict
-        containing an 'error' key.
+        and return an access token.
+        AuthenticationError is raised if no token can be obtained.
     """
-    # XXX get code from request.params.get('code')
-    # XXX verify request.params.get('state')
+    code = request.params.get('code')
+    state = request.params.get('state')
+    # XXX verify state
     token = exchange_code_for_token(request, code)
-    if 'error' in token:
-        return token
     return accept_oauth2_token(request, token)
 
 
 def accept_oauth2_token(request, token):
-    """ Store an OAuth2 token and user details in the session,
-        and return the authenticated user's identity.
+    """ Store an OAuth2 token in the session, and return the access token.
+        AuthenticationError is raised if the token is invalid.
     """
+    if 'error' in token:
+        raise AuthenticationError(format_error_value(token))
+    access_token = token.get('access_token')
+    if access_token is None:
+        raise AuthenticationError('missing access token')
+    token_expiry = token.get('expires_in')
+    if token_expiry is None:
+        raise AuthenticationError('missing access token expiry')
+    refresh_token = token.get('refresh_token')
+    # Store the token data in the (redis) session.
+    # The expiry time is stored as a UTC timestamp.
     session = request.session
-    store_access_token(session, token.get('access_token'))
-    user = request_user_identity(session)
-    remember_authenticated_user(request, user)
-    store_token_expiry(session, token['expires_in'])
-    store_refresh_token(session, token.get('refresh_token'))
-    return user
+    session['access_token'] = access_token
+    session['access_token_expires'] = time.time() + int(token_expiry)
+    if refresh_token is None:
+        del session['refresh_token']
+    else:
+        session['refresh_token'] = refresh_token
+    return access_token
 
 
 def get_oauth_client():
     client_id = app['oauth_client_id']
     return oauth2.WebApplicationClient(client_id)
+
+
+def format_error_value(value):
+    message = "{}: {}".format(value['error'], value['error_description'])
+    return message
 
 
 def exchange_code_for_token(request, code, **kwargs):
@@ -82,86 +235,3 @@ def exchange_code_for_token(request, code, **kwargs):
         token_uri, data=body, headers=headers,
         verify='/etc/ssl/certs/ca-certificates.crt')
     return req.json()
-
-
-def maybe_refresh_oauth2_token(request):
-    session = request.session
-    expires_ts = session.get('access_token_expires')
-    if expires_ts is None:
-        # Do nothing if we do not have token expiry information.
-        return None
-    expires = datetime.fromtimestamp(expires_ts)
-    now = datetime.utcnow()
-    if (expires > now):
-        # If the access token is still valid, return the user identity.
-        return request_user_identity(session)
-    refresh_token = session.get('refresh_token')
-    if refresh_token is None:
-        # Make the user go through authentication again if we do
-        # not have a refresh token.
-        return None
-    # Refresh the token.
-    refresh_uri = app['oauth_refresh_uri']
-    headers = {
-        'Accept': 'application/json',
-        'Content-Type': 'application/x-www-form-urlencoded'
-    }
-    body = get_oauth_client().prepare_refresh_body(
-        refresh_token=refresh_token,
-        verify='/etc/ssl/certs/ca-certificates.crt')
-    req = requests.post(refresh_uri, headers=headers, data=body)
-    token = req.json()
-    return accept_oauth2_token(request, token)
-
-
-def store_access_token(session, access_token):
-    if access_token is None:
-        raise HTTPForbidden('missing access_token')
-    session['access_token'] = access_token
-
-
-def request_user_identity(session):
-    """ Query the identity provider for the authenticated user's
-        identity, using the access token found in the user's session.
-        If the query fails the access token is cleared and an
-        HTTPForbidden exception is raised.
-    """
-    idp_uri = app['identity_provider_uri']
-    access_token = session['access_token']
-    headers = {
-        'Accept': 'application/json',
-        'Authorization': 'Bearer {}'.format(access_token)
-    }
-    req = requests.get(
-        idp_uri, headers=headers, verify='/etc/ssl/certs/ca-certificates.crt')
-    try:
-        req.raise_for_status()
-        return req.json()
-    except requests.exceptions.HTTPError:
-        message = 'failed to get user identity: {} {}'.format(
-            req.status_code, req.text)
-        raise HTTPForbidden(message)
-    except ValueError:
-        del session['access_token']
-        raise HTTPForbidden('bad access_token')
-
-
-def remember_authenticated_user(request, user):
-    # Make pyramid remember the user's id.
-    remember(request, user['id'])
-    # Temporarily? store the username in the session.
-    request.session['username'] = user.get('sLogin')
-
-
-def store_token_expiry(session, expires_in):
-    """ Store access token expiry in the session as a UTC timestamp.
-    """
-    session['access_token_expires'] = time.time() + int(expires_in)
-
-
-def store_refresh_token(session, refresh_token):
-    # Store a refresh token if available.
-    if refresh_token is None:
-        del session['refresh_token']
-    else:
-        session['refresh_token'] = refresh_token

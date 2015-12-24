@@ -1,43 +1,15 @@
 
-from pyramid.httpexceptions import HTTPFound, HTTPSeeOther
-from pyramid.security import unauthenticated_userid, forget
-
-from alkindi.auth import (
-    oauth2_provider_uri, accept_oauth2_code,
-    maybe_refresh_oauth2_token)
+from alkindi.auth import get_user_identity
 from alkindi.contexts import ApiContext
-from alkindi.globals import app
 
 
 def includeme(config):
     config.add_route('index', '/', request_method='GET')
     config.add_view(
         index_view, route_name='index', renderer='templates/index.mako')
-    config.add_route('login', '/login', request_method='GET')
-    config.add_view(login_view, route_name='login')
-    config.add_route('logout', '/logout', request_method='GET')
-    config.add_view(
-        logout_view, route_name='logout',
-        renderer='templates/after_logout.mako')
     # config.add_view(
-    #     logout_view, context=ApiContext, name='logout',
+    #     endpoint_view, context=ApiContext, name='endpoint',
     #     request_method='POST', renderer='json', check_csrf=True)
-    config.add_route('oauth_callback', '/oauth/callback', request_method='GET')
-    config.add_view(
-        oauth_callback_view, route_name='oauth_callback',
-        renderer='templates/after_login.mako')
-
-
-def ensure_authenticated(request):
-    # Refresh the access token if we have an expired one.
-    maybe_refresh_oauth2_token(request)
-    # Get the user id from the redis session.
-    user_id = unauthenticated_userid(request)
-    if user_id is not None:
-        return
-    raise HTTPFound(request.route_url('login', _query={
-        'redirect': request.url
-    }))
 
 
 def index_view(request):
@@ -52,56 +24,15 @@ def index_view(request):
         'login_url': request.route_url('login'),
         'logout_url': request.route_url('logout')
     }
-    # Add info about the logged-in user to the frontend config.
-    if unauthenticated_userid(request) is not None:
-        user = maybe_refresh_oauth2_token(request)
-        if user is not None:
-            frontend_config['user'] = {
-                'username': user.get('sLogin'),
-                'isSelected': False  # XXX
-            }
+    # Add info about the logged-in user (if any) to the frontend config.
+    user = get_user_identity(request)
+    if user is not None:
+        frontend_config['user'] = {
+            'username': user.get('sLogin'),
+            'isSelected': False  # XXX
+        }
     return {
         'frontend_config': frontend_config
-    }
-
-
-def login_view(request):
-    # Opening this view in a new window will take the user to the
-    # identity provider (IdP) for authentication.  The IdP will
-    # eventually redirect the user to the OAuth2 callback view below.
-    raise HTTPSeeOther(oauth2_provider_uri(request))
-
-
-def oauth_callback_view(request):
-    # This view handles the outcome of authentication performed by the
-    # identity provider.
-    error = request.params.get('error')
-    if error is not None:
-        return {
-            'error': error,
-            'error_description': request.params.get('error_description')
-        }
-    code = request.params.get('code')
-    user = accept_oauth2_code(request, code=code)
-    # The template posts the user object (encoded as JSON) to the parent
-    # window, causing the frontend to update its state.
-    return {
-        'user': user,
-        'origin': request.headers.get('Origin')
-    }
-
-
-def logout_view(request):
-    # Opening this view in a new window will post an 'afterLogout'
-    # message to the application then redirect to the logout page
-    # of the identity provider.
-    # Do not open this view in an iframe, as it would prevent the
-    # identity provider from receiving the user's cookies (look up
-    # Third-party cookies).
-    forget(request)
-    request.session.clear()
-    return {
-        'identity_provider_logout_uri': app['logout_uri']
     }
 
 
