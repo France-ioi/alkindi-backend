@@ -60,13 +60,15 @@ def index_view(request):
 
 
 def login_view(request):
-    # This view is displayed to the user in an iframe by the frontend.
-    # We immediately redirect to the OAuth2 provider, and the callback
-    # (below) will handle things post-authentication.
+    # Opening this view in a new window will take the user to the
+    # identity provider (IdP) for authentication.  The IdP will
+    # eventually redirect the user to the OAuth2 callback view below.
     raise HTTPSeeOther(oauth2_provider_uri(request))
 
 
 def oauth_callback_view(request):
+    # This view handles the outcome of authentication performed by the
+    # identity provider.
     error = request.params.get('error')
     if error is not None:
         return {
@@ -75,9 +77,8 @@ def oauth_callback_view(request):
         }
     code = request.params.get('code')
     user = accept_oauth2_code(request, code=code)
-    print("OAuth2 callback called! user={}".format(user))
-    # The template will post the user object (encoded as JSON) to the
-    # parent window, causing the frontend to update its state.
+    # The template posts the user object (encoded as JSON) to the parent
+    # window, causing the frontend to update its state.
     return {
         'user': user,
         'origin': request.headers.get('Origin')

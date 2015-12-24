@@ -14,7 +14,7 @@
 window.opener.postMessage(JSON.stringify({
   'action': 'afterLogin',
   'user': ${h.to_json(user)}
-}), '*');
+}), window.location.origin);
 window.close();
 </script>;
 %endif
