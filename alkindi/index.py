@@ -6,6 +6,7 @@ from alkindi.auth import (
     oauth2_provider_uri, accept_oauth2_code,
     maybe_refresh_oauth2_token)
 from alkindi.contexts import ApiContext
+from alkindi.globals import app
 
 
 def includeme(config):
@@ -14,9 +15,13 @@ def includeme(config):
         index_view, route_name='index', renderer='templates/index.mako')
     config.add_route('login', '/login', request_method='GET')
     config.add_view(login_view, route_name='login')
+    config.add_route('logout', '/logout', request_method='GET')
     config.add_view(
-        logout_view, context=ApiContext, name='logout',
-        request_method='POST', renderer='json', check_csrf=True)
+        logout_view, route_name='logout',
+        renderer='templates/after_logout.mako')
+    # config.add_view(
+    #     logout_view, context=ApiContext, name='logout',
+    #     request_method='POST', renderer='json', check_csrf=True)
     config.add_route('oauth_callback', '/oauth/callback', request_method='GET')
     config.add_view(
         oauth_callback_view, route_name='oauth_callback',
@@ -44,7 +49,8 @@ def index_view(request):
         'assets_template': assets_template,
         'csrf_token': csrf_token,
         'api_url': request.resource_url(get_api(request)),
-        'login_url': request.route_url('login')
+        'login_url': request.route_url('login'),
+        'logout_url': request.route_url('logout')
     }
     # Add info about the logged-in user to the frontend config.
     if unauthenticated_userid(request) is not None:
@@ -86,9 +92,17 @@ def oauth_callback_view(request):
 
 
 def logout_view(request):
+    # Opening this view in a new window will post an 'afterLogout'
+    # message to the application then redirect to the logout page
+    # of the identity provider.
+    # Do not open this view in an iframe, as it would prevent the
+    # identity provider from receiving the user's cookies (look up
+    # Third-party cookies).
     forget(request)
     request.session.clear()
-    return {}
+    return {
+        'identity_provider_logout_uri': app['logout_uri']
+    }
 
 
 def get_api(request):
