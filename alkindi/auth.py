@@ -94,7 +94,7 @@ def get_oauth2_token(request, refresh=True):
         # If we do not have token expiry information, assume that we do
         # not have a token.
         raise AuthenticationError('no access token (expiry)')
-    expires = datetime.fromtimestamp(expires_ts)
+    expires = datetime.utcfromtimestamp(expires_ts)
     now = datetime.utcnow()
     if (expires > now):
         # If the access token is still valid, return it.
