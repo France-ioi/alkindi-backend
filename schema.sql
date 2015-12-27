@@ -17,11 +17,10 @@ CREATE TABLE users (
     foreign_id TEXT NOT NULL,
     username TEXT NOT NULL,
     created_at DATETIME NOT NULL,
-    is_selected BOOLEAN NOT NULL,
     team_id BIGINT NULL,
+    draft_state TEXT NULL,
     draft_source_id BIGINT NULL,
     draft_backup_id BIGINT NULL,
-    draft_state TEXT NULL,
     draft_saved_at DATETIME NOT NULL,
     PRIMARY KEY (id)
 ) CHARACTER SET utf8 ENGINE=InnoDB;
@@ -45,6 +44,7 @@ CREATE TABLE team_members (
     team_id BIGINT NOT NULL,
     user_id BIGINT NOT NULL,
     joined_at DATETIME NOT NULL,
+    is_selected BOOLEAN NOT NULL,
     is_creator BOOLEAN NOT NULL,
     PRIMARY KEY (team_id, user_id)
 ) CHARACTER SET utf8 ENGINE=InnoDB;
