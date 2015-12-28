@@ -4,6 +4,10 @@ from datetime import datetime
 from .utils import generate_access_code
 
 
+class InputError(RuntimeError):
+    pass
+
+
 class Model:
 
     def __init__(self, db):
@@ -32,7 +36,7 @@ class Model:
             .where(users.foreign_id == foreign_id)
         row = self.db.first(query)
         if row is None:
-            return None
+            raise InputError('no such user')
         (user_id, username, team_id) = row
         result = {
             'username': username,
@@ -100,35 +104,13 @@ class Model:
             be valid.
             Return a boolean indicating if the team was created.
         """
-        # Verify that the user does not already belong to a team.
-        users = self.db.tables.users
-        query = self.db.query().tables(users) \
-            .fields(users.team_id) \
-            .where(users.id == user_id)
-        row = self.db.first(query)
-        if row is None:
-            # User does not exist.
-            return False
-        (team_id,) = row
+        # Verify that the user exists and does not already belong to a team.
+        team_id = self.get_user_team_id(user_id)
         if team_id is not None:
             # User is already in a team.
             return False
-        rounds = self.db.tables.rounds
-        badges_table = self.db.tables.badges
         # Select a round based on the user's badges.
-        row = self.db.first(
-            self.db.query().tables(rounds & badges_table)
-                .fields(rounds.id)
-                .where(
-                    badges_table.round_id == rounds.id &
-                    badges_table.symbol.in_(badges) &
-                    badges_table.is_active &
-                    rounds.allow_register))
-        if row is None:
-            # If no round was found, the user does not have a badge that
-            # grants them access to a round and we cannot create a team.
-            return False
-        (round_id,) = row
+        round_id = self.select_round_with_badges(badges)
         # Generate an unused code.
         code = generate_access_code()
         while self.get_team_with_code(code) is not None:
@@ -154,10 +136,41 @@ class Model:
         })
         self.db.execute(query)
         # Update the user's team_id.
+        users = self.db.tables.users
         query = self.db.query(users).where(users.id == user_id) \
             .update({users.team_id: team_id})
         self.db.execute(query)
         return True
+
+    def get_user_team_id(self, user_id):
+        users = self.db.tables.users
+        query = self.db.query().tables(users) \
+            .fields(users.team_id) \
+            .where(users.id == user_id)
+        row = self.db.first(query)
+        if row is None:
+            # User does not exist.
+            raise InputError('no such user')
+        (team_id,) = row
+        return team_id
+
+    def select_round_with_badges(self, badges):
+        rounds = self.db.tables.rounds
+        badges_table = self.db.tables.badges
+        row = self.db.first(
+            self.db.query().tables(rounds & badges_table)
+                .fields(rounds.id)
+                .where(
+                    badges_table.round_id == rounds.id &
+                    badges_table.symbol.in_(badges) &
+                    badges_table.is_active &
+                    rounds.allow_register))
+        if row is None:
+            # If no round was found, the user does not have a badge that
+            # grants them access to a round and we cannot create a team.
+            return False
+        (round_id,) = row
+        return round_id
 
     def get_team_with_code(self, code):
         teams = self.db.tables.teams
