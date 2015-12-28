@@ -47,8 +47,8 @@ class Model:
             (is_selected,) = self.db.first(
                 self.db.query(team_members)
                     .fields(team_members.is_selected)
-                    .where(team_members.team_id == team_id &
-                           team_members.user_id == user_id))
+                    .where((team_members.team_id == team_id) &
+                           (team_members.user_id == user_id)))
             result['is_selected'] = self.db.view_bool(is_selected)
         return result
 
