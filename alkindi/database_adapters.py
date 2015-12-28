@@ -16,6 +16,7 @@ class MysqlAdapter:
     def __init__(self, **kwargs):
         self.db = MySQLdb.connect(**kwargs)
         self.result = Result(mysql_compile)
+        self.log = True
 
     def query(self, *args):
         return Q(*args, result=self.result)
@@ -28,6 +29,8 @@ class MysqlAdapter:
         else:
             raise "invalid query type: {}".format(query)
         try:
+            if self.log:
+                print("[SQL] {};".format(stmt % tuple(values)))
             cursor = self.db.cursor()
             cursor.execute(stmt, values)
             return cursor
