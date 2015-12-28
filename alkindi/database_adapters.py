@@ -1,7 +1,7 @@
 
 import MySQLdb
 
-from sqlbuilder.smartsql import Q, T, Result
+from sqlbuilder.smartsql import Q, T, Query, Result
 from sqlbuilder.smartsql.compilers.mysql import compile as mysql_compile
 
 
@@ -21,8 +21,13 @@ class MysqlAdapter:
         return Q(*args, result=self.result)
 
     def execute(self, query):
+        if type(query) == Query:
+            (stmt, values) = mysql_compile(query)
+        elif type(query) == tuple:
+            (stmt, values) = query
+        else:
+            raise "invalid query type: {}".format(query)
         try:
-            stmt, values = mysql_compile(query)
             cursor = self.db.cursor()
             cursor.execute(stmt, values)
             return cursor
@@ -33,6 +38,7 @@ class MysqlAdapter:
                 MySQLdb.ProgrammingError,
                 MySQLdb.InternalError,
                 MySQLdb.NotSupportedError) as ex:
+            print("Bad SQL statement: {}".format(stmt))
             raise ModelError(ex)
 
     def first(self, query):
