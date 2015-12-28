@@ -92,6 +92,25 @@ class Model:
         }
 
     def create_team(self, user_id, badges):
+        """ Create a team for the specified user, and associate it with
+            a round based on the given badges.
+            Registration for the round must be open, and the badge must
+            be valid.
+            Return a boolean indicating if the team was created.
+        """
+        # Verify that the user does not already belong to a team.
+        users = self.db.tables.users
+        query = self.db.query().tables(users) \
+            .fields(users.team_id) \
+            .where(users.id == user_id)
+        row = self.db.first(query)
+        if row is None:
+            # User does not exist.
+            return False
+        (team_id,) = row
+        if team_id is not None:
+            # User is already in a team.
+            return False
         rounds = self.db.tables.rounds
         badges_table = self.db.tables.badges
         # Select a round based on the user's badges.
