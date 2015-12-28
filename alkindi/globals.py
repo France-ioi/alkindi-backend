@@ -8,6 +8,8 @@ import logging
 from redis import StrictRedis
 
 from .utils import as_int
+from .database_adapters import MysqlAdapter
+from .model import Model
 
 
 __all__ = ['app']
@@ -29,7 +31,12 @@ class Globals:
         # The redis connection is established at first use.
         self._redis = None
         self._dict = dict()
-        # XXX connect to postgresql (also lazily).
+        self.db = MysqlAdapter(
+            host='localhost',
+            user='alkindi',
+            passwd='woolcorklessjunior',
+            db='alkindi')
+        self.model = Model(self.db)
 
     def wrap_middleware(self, app):
         """ Wrap our middleware around the given WSGI app, so that

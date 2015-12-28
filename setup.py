@@ -14,6 +14,7 @@ requires = [
     # These packages have binary extensions, it is easier to use a venv
     # with --system-site-packages:
     'psycopg2 >= 2.5',             # apt-get install python3-psycopg2
+    'python-mysqldb >= 1.2.3',     # apt-get install python3-mysqldb
     'zope.interface >= 4.1.1',     # apt-get install python3-zope.interface
     'MarkupSafe >= 0.23',          # apt-get install python3-markupsafe
     'PyYAML >= 3.11',              # apt-get install python3-yaml
@@ -30,6 +31,7 @@ requires = [
     'pyramid-mako >= 1.0.2',
     'pyramid_redis_sessions >= 1.0.1',
     'requests >= 2.9.0',
+    'sqlbuilder >= 0.7.9',
     'alkindi-r2-front'
 ]
 
