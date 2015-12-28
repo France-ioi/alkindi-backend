@@ -132,6 +132,10 @@ class Model:
             team_members.is_creator: True
         })
         self.db.execute(query)
+        # Update the user's team_id.
+        query = self.db.query(users).where(users.id == user_id) \
+            .update({users.team_id: team_id})
+        self.db.execute(query)
         return True
 
     def get_team_with_code(self, code):
