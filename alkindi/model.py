@@ -1,6 +1,8 @@
 
 from datetime import datetime
 
+from .utils import generate_access_code
+
 
 class Model:
 
@@ -128,9 +130,9 @@ class Model:
             return False
         (round_id,) = row
         # Generate an unused code.
-        code = 'canard'
+        code = generate_access_code()
         while self.get_team_with_code(code) is not None:
-            code = code + '1'
+            code = generate_access_code()
         # Create the team.
         teams = self.db.tables.teams
         query = self.db.query(teams).insert({
