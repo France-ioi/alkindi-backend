@@ -66,3 +66,6 @@ class MysqlAdapter:
 
     def close(self):
         self.db.close()
+
+    def view_bool(self, value):
+        return value != 0
