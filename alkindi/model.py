@@ -49,7 +49,7 @@ class Model:
                     .fields(team_members.is_selected)
                     .where(team_members.team_id == team_id &
                            team_members.user_id == user_id))
-            result['is_selected'] = is_selected
+            result['is_selected'] = self.db.view_bool(is_selected)
         return result
 
     def view_user_team(self, team_id):
@@ -71,7 +71,7 @@ class Model:
                 .where(rounds.id == round_id))
         return {
             'title': title,
-            'allow_register': allow_register
+            'allow_register': self.db.view_bool(allow_register)
         }
 
     def view_user_question(self, question_id):
