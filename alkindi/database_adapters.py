@@ -58,6 +58,9 @@ class MysqlAdapter:
         cursor.close()
         return None if id is None else id[0]
 
+    def rollback(self):
+        self.db.rollback()
+
     def commit(self):
         self.db.commit()
 
