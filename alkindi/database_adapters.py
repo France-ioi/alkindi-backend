@@ -47,6 +47,14 @@ class MysqlAdapter:
         cursor.close()
         return value
 
+    def insert(self, query):
+        self.execute(query).close()
+        cursor = self.db.cursor()
+        cursor.execute('SELECT last_insert_id();')
+        id = cursor.fetchone()
+        cursor.close()
+        return None if id is None else id[0]
+
     def commit(self):
         self.db.commit()
 
