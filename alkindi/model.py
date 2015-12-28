@@ -28,7 +28,10 @@ class Model:
         query = self.db.query().tables(users) \
             .fields(users.id, users.username, users.team_id) \
             .where(users.foreign_id == foreign_id)
-        user_id, username, team_id = self.db.first(query)
+        row = self.db.first(query)
+        if row is None:
+            return None
+        (user_id, username, team_id) = row
         result = {
             'username': username,
         }
