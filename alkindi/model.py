@@ -31,7 +31,7 @@ class Model:
         """ Return the user-view for the user with the given foreign_id.
         """
         users = self.db.tables.users
-        query = self.db.query().tables(users) \
+        query = self.db.query(users) \
             .fields(users.id, users.username, users.team_id) \
             .where(users.foreign_id == foreign_id)
         row = self.db.first(query)
@@ -74,8 +74,7 @@ class Model:
             return None
         rounds = self.db.tables.rounds
         (title, allow_register) = self.db.first(
-            self.db.query()
-                .tables(rounds)
+            self.db.query(rounds)
                 .fields(rounds.title, rounds.allow_register)
                 .where(rounds.id == round_id))
         return {
@@ -144,12 +143,11 @@ class Model:
 
     def get_user_team_id(self, user_id):
         users = self.db.tables.users
-        query = self.db.query().tables(users) \
-            .fields(users.team_id) \
-            .where(users.id == user_id)
-        row = self.db.first(query)
+        row = self.db.first(
+            self.db.query(users)
+                .fields(users.team_id)
+                .where(users.id == user_id))
         if row is None:
-            # User does not exist.
             raise InputError('no such user')
         (team_id,) = row
         return team_id
@@ -158,7 +156,7 @@ class Model:
         rounds = self.db.tables.rounds
         badges_table = self.db.tables.badges
         row = self.db.first(
-            self.db.query().tables(rounds & badges_table)
+            self.db.query(rounds & badges_table)
                 .fields(rounds.id)
                 .where(
                     badges_table.round_id == rounds.id &
@@ -175,7 +173,7 @@ class Model:
     def get_team_with_code(self, code):
         teams = self.db.tables.teams
         row = self.db.first(
-            self.db.query().tables(teams)
+            self.db.query(teams)
                 .fields(teams.id)
                 .where(teams.code == code))
         if row is None:
