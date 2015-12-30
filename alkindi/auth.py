@@ -49,7 +49,7 @@ def oauth_callback_view(request):
     # Get the user identity (refreshing the token should not be needed).
     user = get_user_identity(request, refresh=False)
     # Make pyramid remember the user's id.
-    remember(request, user['id'])
+    remember(request, str(user['id']))
     # The template posts the user object (encoded as JSON) to the parent
     # window, causing the frontend to update its state.
     return {
