@@ -27,17 +27,30 @@ class Model:
         user_id = self.db.insert(query)
         return user_id
 
-    def view_user(self, foreign_id):
-        """ Return the user-view for the user with the given foreign_id.
+    def find_user(self, foreign_id):
+        """ Find the user with the given foreign_id and return their id,
+            or None if no such user exists.
+        """
+        users = self.db.tables.users
+        row = self.db.first(
+            self.db.query(users)
+                .fields(users.id)
+                .where(users.foreign_id == foreign_id))
+        if row is None:
+            return None
+        return row[0]
+
+    def view_user(self, user_id):
+        """ Return the user-view for the user with the given id.
         """
         users = self.db.tables.users
         query = self.db.query(users) \
-            .fields(users.id, users.username, users.team_id) \
-            .where(users.foreign_id == foreign_id)
+            .fields(users.username, users.team_id) \
+            .where(users.id == user_id)
         row = self.db.first(query)
         if row is None:
             raise InputError('no such user')
-        (user_id, username, team_id) = row
+        (username, team_id) = row
         result = {
             'username': username,
         }
