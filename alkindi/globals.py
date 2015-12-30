@@ -50,9 +50,7 @@ class Globals:
 
     def after_request(self):
         # Perform post-request teardown here.
-        # Clear 'assets_timestamp' after every request so that the
-        # next request reloads it from redis.
-        self._dict.pop('assets_timestamp', None)
+        app.db.rollback()
 
     @property
     def redis_settings(self):
