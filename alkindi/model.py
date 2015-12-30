@@ -56,8 +56,8 @@ class Model:
             (is_selected,) = self.db.first(
                 self.db.query(team_members)
                     .fields(team_members.is_selected)
-                    .where((team_members.team_id == team_id) &
-                           (team_members.user_id == user_id)))
+                    .where(team_members.team_id == team_id)
+                    .where(team_members.user_id == user_id))
             result['is_selected'] = self.db.view_bool(is_selected)
         return result
 
@@ -152,10 +152,11 @@ class Model:
         if len(user_badges) == 0:
             is_selected = False
         else:
-            row = self.db.first(self.db.query(badges).fields(badges.id).where(
-                (badges.round_id == round_id) &
-                (badges.symbol.in_(user_badges)) &
-                badges.is_active))
+            row = self.db.first(
+                self.db.query(badges).fields(badges.id)
+                    .where(badges.round_id == round_id)
+                    .where(badges.symbol.in_(user_badges))
+                    .where(badges.is_active))
             is_selected = row is not None
         # Create the team_members row.
         self.add_team_member(team_id, user_id, is_selected=is_selected)
@@ -183,11 +184,10 @@ class Model:
         row = self.db.first(
             self.db.query(rounds & badges_table)
                 .fields(rounds.id)
-                .where(
-                    badges_table.round_id == rounds.id &
-                    badges_table.symbol.in_(badges) &
-                    badges_table.is_active &
-                    rounds.allow_register))
+                .where(badges_table.round_id == rounds.id)
+                .where(badges_table.symbol.in_(badges))
+                .where(badges_table.is_active)
+                .where(rounds.allow_register))
         if row is None:
             # If no round was found, the user does not have a badge that
             # grants them access to a round and we cannot create a team.
