@@ -59,8 +59,8 @@ class MysqlAdapter:
         cursor.close()
 
     def all(self, query):
-        cursor = self.execute(query[0:1])
-        row = cursor.fetch()
+        cursor = self.execute(query)
+        row = cursor.fetchone()
         while row is not None:
             yield row
             row = cursor.fetchone()
