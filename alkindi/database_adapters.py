@@ -50,6 +50,22 @@ class MysqlAdapter:
         cursor.close()
         return value
 
+    def delete(self, query, **kwargs):
+        cursor = self.execute(query.delete(**kwargs))
+        cursor.close()
+
+    def update(self, query, attrs):
+        cursor = self.execute(query.update(attrs))
+        cursor.close()
+
+    def all(self, query):
+        cursor = self.execute(query[0:1])
+        row = cursor.fetch()
+        while row is not None:
+            yield row
+            row = cursor.fetchone()
+        cursor.close()
+
     def insert(self, query):
         self.execute(query).close()
         cursor = self.db.cursor()
