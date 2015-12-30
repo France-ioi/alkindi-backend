@@ -112,7 +112,7 @@ class Model:
         round_id = self.select_round_with_badges(badges)
         # Generate an unused code.
         code = generate_access_code()
-        while self.get_team_with_code(code) is not None:
+        while self.get_team_id_by_code(code) is not None:
             code = generate_access_code()
         # Create the team.
         teams = self.db.tables.teams
@@ -144,13 +144,7 @@ class Model:
         # Verify that the team exists, and get its round_id.
         round_id = self.get_team_round_id(team_id)
         # Verify that the round is open for registration.
-        rounds = self.db.tables.rounds
-        (allow_register,) = self.db.first(
-            self.db.query(rounds)
-                .fields(rounds.allow_register)
-                .where(rounds.id == round_id))
-        if not self.db.view_bool(allow_register):
-            # Registration is closed.
+        if not self.is_round_registration_open(round_id):
             return False
         # Look up the badges that grant access to the team's round, to
         # figure out whether the user is selected for that round.
@@ -183,34 +177,6 @@ class Model:
         })
         self.db.execute(query)
 
-    def get_user_team_id(self, user_id):
-        users = self.db.tables.users
-        row = self.db.first(
-            self.db.query(users)
-                .fields(users.team_id)
-                .where(users.id == user_id))
-        if row is None:
-            raise InputError('no such user')
-        (team_id,) = row
-        return team_id
-
-    def set_user_team_id(self, user_id, team_id):
-        users = self.db.tables.users
-        query = self.db.query(users).where(users.id == user_id) \
-            .update({users.team_id: team_id})
-        self.db.execute(query)
-
-    def get_team_round_id(self, team_id):
-        teams = self.db.tables.teams
-        row = self.db.first(
-            self.db.query(teams)
-                .fields(teams.round_id)
-                .where(teams.id == team_id))
-        if row is None:
-            raise InputError('no such team')
-        (round_id,) = row
-        return round_id
-
     def select_round_with_badges(self, badges):
         rounds = self.db.tables.rounds
         badges_table = self.db.tables.badges
@@ -229,7 +195,27 @@ class Model:
         (round_id,) = row
         return round_id
 
-    def get_team_with_code(self, code):
+    def is_round_registration_open(self, round_id):
+        rounds = self.db.tables.rounds
+        (allow_register,) = self.db.first(
+            self.db.query(rounds)
+                .fields(rounds.allow_register)
+                .where(rounds.id == round_id))
+        return self.db.view_bool(allow_register)
+
+    def get_user_team_id(self, user_id):
+        users = self.db.tables.users
+        return self.get_field(users, user_id, users.team_id)
+
+    def get_team_round_id(self, team_id):
+        teams = self.db.tables.teams
+        return self.get_field(teams, team_id, teams.round_id)
+
+    def get_team_question_id(self, team_id):
+        teams = self.db.tables.teams
+        return self.get_field(teams, team_id, teams.question_id)
+
+    def get_team_id_by_code(self, code):
         teams = self.db.tables.teams
         row = self.db.first(
             self.db.query(teams)
@@ -239,3 +225,18 @@ class Model:
             return None
         (team_id,) = row
         return team_id
+
+    def set_user_team_id(self, user_id, team_id):
+        users = self.db.tables.users
+        query = self.db.query(users).where(users.id == user_id) \
+            .update({users.team_id: team_id})
+        self.db.execute(query)
+
+    def get_field(self, table, id, field):
+        row = self.db.first(
+            self.db.query(table)
+                .fields(field)
+                .where(table.id == id))
+        if row is None:
+            raise InputError('no such row')
+        return row[0]
