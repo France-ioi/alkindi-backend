@@ -164,6 +164,54 @@ class Model:
         self.set_user_team_id(user_id, team_id)
         return True
 
+    def leave_team(self, user_id):
+        """ Remove a user from their team.
+        """
+        # The user must be member of a team.
+        team_id = self.get_user_team_id(user_id)
+        if team_id is None:
+            return False
+        # The team must not have accessed the question.
+        teams = self.db.tables.teams
+        team_query = self.db.query(teams) \
+            .where(teams.id == team_id)
+        (round_id, question_id) = self.db.first(
+            team_query.fields(teams.round_id, teams.question_id))
+        if question_id is not None:
+            return False
+        # The round must be open  for registration.
+        if not self.is_round_registration_open(round_id):
+            return False
+        # Is the user the team's creator?
+        team_members = self.db.tables.team_members
+        tm_query = self.db.query(team_members) \
+            .where(team_members.team_id == team_id) \
+            .where(team_members.user_id == user_id)
+        (is_creator,) = self.db.first(
+            tm_query.fields(team_members.is_creator))
+        # Clear the user's team_id.
+        self.set_user_team_id(user_id, None)
+        # Delete the team_members row.
+        self.db.delete(tm_query)
+        # If the user was the team creator, select the earliest member
+        # as the new creator.
+        if is_creator:
+            query = self.db.query(team_members) \
+                .where(team_members.team_id == team_id)
+            row = self.db.first(
+                query.fields(team_members.user_id)
+                     .order_by(team_members.joined_at))
+            if row is None:
+                # Team has become empty, delete it.
+                self.db.delete(team_query)
+            else:
+                # Promote the selected user as the creator.
+                new_creator_id = row[0]
+                self.db.update(
+                    query.where(team_members.user_id == new_creator_id),
+                    {team_members.is_creator: True})
+        return True
+
     # --- private methods below ---
 
     def add_team_member(self, team_id, user_id,
