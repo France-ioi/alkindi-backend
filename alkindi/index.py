@@ -1,15 +1,28 @@
 
 from alkindi.auth import get_user_identity
-from alkindi.contexts import ApiContext
+from alkindi.contexts import ApiContext, UserApiContext
+
+
+def api_get(config, context, name, view):
+    config.add_view(
+        view, context=context, name=name,
+        request_method='GET',
+        permission='read', renderer='json')
+
+
+def api_post(config, context, name, view):
+    config.add_view(
+        view, context=context, name=name,
+        request_method='POST', check_csrf=True,
+        permission='change', renderer='json')
 
 
 def includeme(config):
     config.add_route('index', '/', request_method='GET')
     config.add_view(
         index_view, route_name='index', renderer='templates/index.mako')
-    # config.add_view(
-    #     endpoint_view, context=ApiContext, name='endpoint',
-    #     request_method='POST', renderer='json', check_csrf=True)
+    api_get(config, UserApiContext, '', read_user)
+    api_post(config, UserApiContext, 'join_team', join_team)
 
 
 def index_view(request):
@@ -38,3 +51,13 @@ def index_view(request):
 
 def get_api(request):
     return ApiContext(request.root)
+
+
+def read_user(request):
+    user_id = request.context.user_id
+    from pyramid.security import unauthenticated_userid
+    return {'user_id': user_id, 'auth_id': unauthenticated_userid(request)}
+
+
+def join_team(request):
+    return {}
