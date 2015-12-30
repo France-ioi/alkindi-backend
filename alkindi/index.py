@@ -38,7 +38,7 @@ def index_view(request):
         'logout_url': request.route_url('logout')
     }
     # Add info about the logged-in user (if any) to the frontend config.
-    user = get_user_identity(request)
+    user = get_user_profile(request)
     if user is not None:
         frontend_config['user'] = {
             'username': user.get('sLogin'),

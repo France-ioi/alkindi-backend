@@ -47,7 +47,7 @@ def oauth_callback_view(request):
     except AuthenticationError as ex:
         return {'error': str(ex)}
     # Get the user identity (refreshing the token should not be needed).
-    user = get_user_identity(request, refresh=False)
+    user = get_user_profile(request, refresh=False)
     # Make pyramid remember the user's id.
     foreign_id = user['id']
     user_id = app.model.find_user(foreign_id)
@@ -125,7 +125,7 @@ def get_oauth2_token(request, refresh=True):
     return accept_oauth2_token(request, token)
 
 
-def get_user_identity(request, refresh=True):
+def get_user_profile(request, user_id=None, refresh=True):
     """ Query the identity provider for the authenticated user's
         identity, using the access token found in the user's session.
         If the query fails (or if the access token has expired and
@@ -136,6 +136,9 @@ def get_user_identity(request, refresh=True):
     except AuthenticationError:
         return None
     idp_uri = app['identity_provider_uri']
+    params = None
+    if user_id is not None:
+        params['user_id'] = user_id
     headers = {
         'Accept': 'application/json',
         'Authorization': 'Bearer {}'.format(access_token)
