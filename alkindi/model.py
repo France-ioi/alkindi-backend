@@ -61,41 +61,6 @@ class Model:
             result['is_selected'] = self.db.view_bool(is_selected)
         return result
 
-    def view_user_team(self, team_id):
-        """ Return the user-view for a team.
-            Currently empty.
-        """
-        return {}
-
-    def view_user_round(self, round_id):
-        """ Return the user-view for a round.
-        """
-        if round_id is None:
-            return None
-        rounds = self.db.tables.rounds
-        (title, allow_register) = self.db.first(
-            self.db.query(rounds)
-                .fields(rounds.title, rounds.allow_register)
-                .where(rounds.id == round_id))
-        return {
-            'title': title,
-            'allow_register': self.db.view_bool(allow_register)
-        }
-
-    def view_user_question(self, question_id):
-        """ Return the user-view for a question.
-        """
-        if question_id is None:
-            return None
-        questions = self.db.tables.questions
-        (team_data,) = self.db.first(
-            self.db.query(questions)
-                .fields(questions.team_data)
-                .where(questions.id == question_id))
-        return {
-            'team_data': team_data
-        }
-
     def create_team(self, user_id, badges):
         """ Create a team for the specified user, and associate it with
             a round based on the given badges.
@@ -213,6 +178,41 @@ class Model:
         return True
 
     # --- private methods below ---
+
+    def view_user_team(self, team_id):
+        """ Return the user-view for a team.
+            Currently empty.
+        """
+        return {}
+
+    def view_user_round(self, round_id):
+        """ Return the user-view for a round.
+        """
+        if round_id is None:
+            return None
+        rounds = self.db.tables.rounds
+        (title, allow_register) = self.db.first(
+            self.db.query(rounds)
+                .fields(rounds.title, rounds.allow_register)
+                .where(rounds.id == round_id))
+        return {
+            'title': title,
+            'allow_register': self.db.view_bool(allow_register)
+        }
+
+    def view_user_question(self, question_id):
+        """ Return the user-view for a question.
+        """
+        if question_id is None:
+            return None
+        questions = self.db.tables.questions
+        (team_data,) = self.db.first(
+            self.db.query(questions)
+                .fields(questions.team_data)
+                .where(questions.id == question_id))
+        return {
+            'team_data': team_data
+        }
 
     def add_team_member(self, team_id, user_id,
                         is_selected=False, is_creator=False):
