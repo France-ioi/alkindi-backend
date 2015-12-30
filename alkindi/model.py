@@ -196,7 +196,37 @@ class Model:
         """ Return the user-view for a team.
             Currently empty.
         """
-        return {}
+        members = self.view_team_members(team_id)
+        return {
+            'id': team_id,
+            'members': members
+        }
+
+    def view_team_members(self, team_id):
+        team_members = self.db.tables.team_members
+        users = self.db.tables.users
+        query = self.db.query(team_members & users)
+        query = query.where(team_members.user_id == users.id)
+        query = query.where(team_members.team_id == team_id)
+        query = query.fields(
+            team_members.joined_at,
+            team_members.is_selected,
+            team_members.is_creator,
+            users.id,
+            users.username)
+        query = query.order_by(team_members.joined_at)
+        members = []
+        for row in self.db.all(query):
+            members.append({
+                'joined_at': row[0],
+                'is_selected': self.db.view_bool(row[1]),
+                'is_creator': self.db.view_bool(row[2]),
+                'user': {
+                    'id': row[3],
+                    'username': row[4]
+                }
+            })
+        return members
 
     def view_user_round(self, round_id):
         """ Return the user-view for a round.
