@@ -30,7 +30,9 @@ def application(_global_config, **settings):
     config.add_subscriber(set_renderer_context, BeforeRender)
 
     # Serve versioned static assets from alkindi-r2-front at /front
-    config.add_static_view(name='front', path='alkindi_r2_front:')
+    config.add_static_view(
+        name='front', path='alkindi_r2_front:',
+        pregenerator=app.assets_pregenerator())
     config.add_cache_buster(
         'alkindi_r2_front:', QueryStringConstantCacheBuster(front_version))
 

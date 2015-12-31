@@ -32,6 +32,7 @@ class Globals:
         # The redis connection is established at first use.
         self._redis = None
         self._dict = dict()
+        self._assets_pregenerator = None
         mysql_connection = json.loads(self['mysql_connection'])
         self.db = MysqlAdapter(**mysql_connection)
         self.model = Model(self.db)
@@ -84,6 +85,17 @@ class Globals:
         if value is None:
             raise KeyError('missing redis key {}'.format(key))
         return value
+
+    def assets_pregenerator(self):
+        kw_override = json.loads(self.get('assets_pregenerator'), '{}')
+
+        def pregenerator(request, elements, kwargs):
+            kwargs = dict(kwargs)
+            for key, value in kw_override.items():
+                kwargs[key] = value
+            return elements, kwargs
+
+        return pregenerator
 
 
 class GlobalsResetMiddleware:
