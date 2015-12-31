@@ -311,6 +311,17 @@ class Model:
         (round_id,) = row
         return round_id
 
+    def is_team_creator(self, team_id, user_id):
+        team_members = self.db.tables.team_members
+        tm_query = self.db.query(team_members) \
+            .where(team_members.team_id == team_id) \
+            .where(team_members.user_id == user_id)
+        row = self.db.first(
+            tm_query.fields(team_members.is_creator))
+        if row is None:
+            raise InputError('invalid team/user pair')
+        return row[0]
+
     def is_round_registration_open(self, round_id):
         rounds = self.db.tables.rounds
         (allow_register,) = self.db.first(
