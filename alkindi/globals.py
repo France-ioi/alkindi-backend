@@ -2,6 +2,7 @@
 import os
 import sys
 import codecs
+import json
 import locale
 import logging
 
@@ -31,11 +32,8 @@ class Globals:
         # The redis connection is established at first use.
         self._redis = None
         self._dict = dict()
-        self.db = MysqlAdapter(
-            host='localhost',
-            user='alkindi',
-            passwd='woolcorklessjunior',
-            db='alkindi')
+        mysql_connection = json.loads(self['mysql_connection'])
+        self.db = MysqlAdapter(**mysql_connection)
         self.model = Model(self.db)
 
     def wrap_middleware(self, app):
