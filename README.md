@@ -17,7 +17,7 @@ The following software components are required:
 * python 3
 
     # apt-get install python3 python3-venv python3-setuptools
-    # apt-get install python3-psycopg2 python3-zope.interface python3-markupsafe python3-yaml
+    # apt-get install python3-mysql.connector python3-zope.interface python3-markupsafe python3-yaml
     $ pyvenv-3.4 --system-site-packages ~/python
     $ (cd ~/alkindi-r2-front/dist_python; ./setup.py develop)
     $ (cd ~/alkindi-r2-back; ./setup.py develop)

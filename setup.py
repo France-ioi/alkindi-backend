@@ -13,11 +13,11 @@ with open(os.path.join(here, 'CHANGES.md')) as f:
 requires = [
     # These packages have binary extensions, it is easier to use a venv
     # with --system-site-packages:
-    'psycopg2 >= 2.5',             # apt-get install python3-psycopg2
-    'python-mysqldb >= 1.2.3',     # apt-get install python3-mysqldb
-    'zope.interface >= 4.1.1',     # apt-get install python3-zope.interface
-    'MarkupSafe >= 0.23',          # apt-get install python3-markupsafe
-    'PyYAML >= 3.11',              # apt-get install python3-yaml
+    'psycopg2 >= 2.5',                  # apt-get install python3-psycopg2
+    'mysql-connector-pytho n>= 1.2.3',  # apt-get install python3-mysql.connector
+    'zope.interface >= 4.1.1',          # apt-get install python3-zope.interface
+    'MarkupSafe >= 0.23',               # apt-get install python3-markupsafe
+    'PyYAML >= 3.11',                   # apt-get install python3-yaml
     # These packages can be installed from source, and it is better to use
     # recent versions:
     'Babel >= 2.1.1',
