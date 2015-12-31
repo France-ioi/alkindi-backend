@@ -44,10 +44,6 @@ class ApiContextBase:
     def request(self):
         return self.__parent__.request
 
-    def allow_user(self, *actions):
-        userid = unauthenticated_userid(self.request)
-        return (Allow, str(userid), actions)
-
 
 class UserApiContext(ApiContextBase):
 
