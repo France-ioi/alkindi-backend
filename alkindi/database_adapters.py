@@ -1,5 +1,5 @@
 
-import MySQLdb
+import mysql.connector as mysql
 
 from sqlbuilder.smartsql import Q, T, Query, Result
 from sqlbuilder.smartsql.compilers.mysql import compile as mysql_compile
@@ -14,7 +14,7 @@ class MysqlAdapter:
     tables = T
 
     def __init__(self, **kwargs):
-        self.db = MySQLdb.connect(**kwargs)
+        self.db = mysql.connect(**kwargs)
         self.result = Result(mysql_compile)
         self.log = True
 
@@ -34,13 +34,13 @@ class MysqlAdapter:
             cursor = self.db.cursor()
             cursor.execute(stmt, values)
             return cursor
-        except MySQLdb.IntegrityError as ex:
+        except mysql.IntegrityError as ex:
             raise ModelError(ex)
-        except (MySQLdb.OperationalError,
-                MySQLdb.DataError,
-                MySQLdb.ProgrammingError,
-                MySQLdb.InternalError,
-                MySQLdb.NotSupportedError) as ex:
+        except (mysql.OperationalError,
+                mysql.DataError,
+                mysql.ProgrammingError,
+                mysql.InternalError,
+                mysql.NotSupportedError) as ex:
             print("Bad SQL statement: {}".format(stmt))
             raise ModelError(ex)
 
