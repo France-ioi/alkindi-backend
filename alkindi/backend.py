@@ -2,12 +2,14 @@
 The Paster application entry point.
 """
 
+import datetime
 import json
 
-from pyramid.config import Configurator
-from pyramid.events import BeforeRender
 from pyramid.authorization import ACLAuthorizationPolicy
 from pyramid.authentication import SessionAuthenticationPolicy
+from pyramid.events import BeforeRender
+from pyramid.config import Configurator
+from pyramid.renderers import JSON
 from pyramid.static import QueryStringConstantCacheBuster
 
 from alkindi import helpers
@@ -31,6 +33,9 @@ def application(_global_config, **settings):
     config.add_static_view(name='front', path='alkindi_r2_front:')
     config.add_cache_buster(
         'alkindi_r2_front:', QueryStringConstantCacheBuster(front_version))
+
+    # Set up a json renderer that handles datetime objects.
+    config.include(add_json_renderer)
 
     config.include('.contexts')
     config.include('.auth')
@@ -71,3 +76,14 @@ def get_user_principals(userid, request):
 def set_renderer_context(event):
     event['g'] = app
     event['h'] = helpers
+
+
+def add_json_renderer(config):
+    json_renderer = JSON()
+
+    def datetime_adapter(obj, request):
+        return obj.isoformat()
+
+    json_renderer.add_adapter(datetime.datetime, datetime_adapter)
+
+    config.add_renderer('json', json_renderer)
