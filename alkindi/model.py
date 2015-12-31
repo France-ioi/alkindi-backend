@@ -221,6 +221,7 @@ class Model:
         return {
             'id': team['id'],
             'code': team['code'],
+            'is_open': team['is_open'],
             'creator': creator[0]['user'],
             'members': members
         }
