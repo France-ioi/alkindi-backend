@@ -101,7 +101,8 @@ class Model:
             teams.created_at: datetime.utcnow(),
             teams.round_id: round_id,
             teams.question_id: None,
-            teams.code: code
+            teams.code: code,
+            teams.is_open: True
         })
         team_id = self.db.insert(query)
         # Create the team_members row.
