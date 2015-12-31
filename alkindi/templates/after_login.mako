@@ -9,11 +9,11 @@
   </div>
 %endif
 
-%if user:
+%if user_id:
 <script type="text/javascript">
 window.opener.postMessage(JSON.stringify({
   'action': 'afterLogin',
-  'user': ${h.to_json(user)}
+  'user_id': ${h.to_json(user_id)}
 }), window.location.origin);
 window.close();
 </script>;

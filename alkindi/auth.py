@@ -47,18 +47,20 @@ def oauth_callback_view(request):
     except AuthenticationError as ex:
         return {'error': str(ex)}
     # Get the user identity (refreshing the token should not be needed).
-    user = get_user_profile(request, refresh=False)
+    profile = get_user_profile(request, refresh=False)
     # Make pyramid remember the user's id.
-    foreign_id = user['id']
+    foreign_id = profile['id']
     user_id = app.model.find_user(foreign_id)
     if user_id is None:
-        user_id = app.model.import_user(foreign_id, user['sLogin'])
+        username = profile['sLogin']
+        user_id = app.model.import_user(foreign_id, username)
         app.db.commit()
     remember(request, str(user_id))
-    # The template posts the user object (encoded as JSON) to the parent
+    # The view template posts the result (encoded as JSON) to the parent
     # window, causing the frontend to update its state.
+    # The Origin header is passed to the template to limit recipients.
     return {
-        'user': user,
+        'user_id': user_id,
         'origin': request.headers.get('Origin')
     }
 
