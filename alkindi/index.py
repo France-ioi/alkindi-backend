@@ -41,11 +41,12 @@ def index_view(request):
         'logout_url': request.route_url('logout')
     }
     # Add info about the logged-in user (if any) to the frontend config.
-    user = get_user_profile(request)
-    if user is not None:
-        user_id = app.model.find_user(user['id'])
+    profile = get_user_profile(request)
+    if profile is not None:
+        user_id = app.model.find_user(profile['id'])
         if user_id is not None:
-            frontend_config['user'] = app.model.view_user(user_id)
+            badges = profile['badges']
+            frontend_config['user'] = app.model.view_user(user_id, badges)
     return {
         'frontend_config': frontend_config
     }

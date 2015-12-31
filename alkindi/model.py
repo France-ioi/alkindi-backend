@@ -40,7 +40,7 @@ class Model:
             return None
         return row[0]
 
-    def view_user(self, user_id):
+    def view_user(self, user_id, badges):
         """ Return the user-view for the user with the given id.
         """
         users = self.db.tables.users
@@ -52,18 +52,21 @@ class Model:
             raise InputError('no such user')
         (username, team_id) = row
         result = {
+            'id': user_id,
             'username': username,
         }
-        if team_id is not None:
-            result['team'] = self.view_user_team(team_id)
-            teams = self.db.tables.teams
-            # Add 'round' and 'question' info.
-            (round_id, question_id) = self.db.first(
-                self.db.query(teams)
-                    .fields(teams.round_id, teams.question_id)
-                    .where(teams.id == team_id))
-            result['round'] = self.view_user_round(round_id)
-            result['question'] = self.view_user_question(question_id)
+        if team_id is None:
+            # If the user has not team, we look for a round to which a
+            # badge grants access.
+            round_id = self.select_round_with_badges(badges)
+            if round_id is not None:
+                result['accessible_round'] = self.view_user_round(round_id)
+        else:
+            # Add 'team', 'round' and 'question' info.
+            team = self.load_team(team_id)
+            result['team'] = self.view_user_team(team)
+            result['round'] = self.view_user_round(team['round_id'])
+            result['question'] = self.view_user_question(team['question_id'])
             # Add is_selected
             team_members = self.db.tables.team_members
             (is_selected,) = self.db.first(
@@ -96,7 +99,6 @@ class Model:
         teams = self.db.tables.teams
         query = self.db.query(teams).insert({
             teams.created_at: datetime.utcnow(),
-            teams.creator_id: user_id,
             teams.round_id: round_id,
             teams.question_id: None,
             teams.code: code
@@ -119,8 +121,13 @@ class Model:
         if current_team_id is not None:
             # User is already in a team.
             return False
-        # Verify that the team exists, and get its round_id.
-        round_id = self.get_team_round_id(team_id)
+        # Verify that the team exists, is open, and get its round_id.
+        team = self.load_team(
+            self.db.tables.teams, team_id, ['is_open, round_id'])
+        if not team['is_open']:
+            # Team is closed.
+            return False
+        round_id = team['round_id']
         # Verify that the round is open for registration.
         if not self.is_round_registration_open(round_id):
             return False
@@ -150,26 +157,21 @@ class Model:
         if team_id is None:
             return False
         # The team must not have accessed the question.
-        teams = self.db.tables.teams
-        team_query = self.db.query(teams) \
-            .where(teams.id == team_id)
-        (round_id, question_id) = self.db.first(
-            team_query.fields(teams.round_id, teams.question_id))
-        if question_id is not None:
+        team = self.load_team(team_id)
+        if team['question_id'] is not None:
             return False
         # The round must be open  for registration.
-        if not self.is_round_registration_open(round_id):
+        if not self.is_round_registration_open(team['round_id']):
             return False
-        # Is the user the team's creator?
+        # Clear the user's team_id.
+        self.set_user_team_id(user_id, None)
+        # Delete the team_members row.
         team_members = self.db.tables.team_members
         tm_query = self.db.query(team_members) \
             .where(team_members.team_id == team_id) \
             .where(team_members.user_id == user_id)
         (is_creator,) = self.db.first(
             tm_query.fields(team_members.is_creator))
-        # Clear the user's team_id.
-        self.set_user_team_id(user_id, None)
-        # Delete the team_members row.
         self.db.delete(tm_query)
         # If the user was the team creator, select the earliest member
         # as the new creator.
@@ -181,6 +183,9 @@ class Model:
                      .order_by(team_members.joined_at))
             if row is None:
                 # Team has become empty, delete it.
+                teams = self.db.tables.teams
+                team_query = self.db.query(teams) \
+                    .where(teams.id == team_id)
                 self.db.delete(team_query)
             else:
                 # Promote the selected user as the creator.
@@ -192,13 +197,31 @@ class Model:
 
     # --- private methods below ---
 
-    def view_user_team(self, team_id):
+    def load_team(self, team_id):
+        keys = [
+            'id', 'created_at', 'round_id', 'question_id', 'code', 'is_open'
+        ]
+        result = self.load_row(self.db.tables.teams, team_id, keys)
+        result['is_open'] = self.db.view_bool(result['is_open'])
+        return result
+
+    def load_row(self, table, id, keys):
+        query = self.db.query(table)
+        query = query.fields(*[getattr(table, key) for key in keys])
+        query = query.where(table.id == id)
+        row = self.db.first(query)
+        return {key: row[i] for i, key in enumerate(keys)}
+
+    def view_user_team(self, team):
         """ Return the user-view for a team.
             Currently empty.
         """
-        members = self.view_team_members(team_id)
+        members = self.view_team_members(team['id'])
+        creator = [m for m in members if m['is_creator']]
         return {
-            'id': team_id,
+            'id': team['id'],
+            'code': team['code'],
+            'creator': creator[0]['user'],
             'members': members
         }
 
@@ -293,6 +316,10 @@ class Model:
                 .fields(rounds.allow_register)
                 .where(rounds.id == round_id))
         return self.db.view_bool(allow_register)
+
+    def get_user_foreign_id(self, user_id):
+        users = self.db.tables.users
+        return self.get_field(users, user_id, users.foreign_id)
 
     def get_user_team_id(self, user_id):
         users = self.db.tables.users

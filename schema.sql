@@ -29,13 +29,12 @@ CREATE INDEX ix_users__team_id USING btree ON users (team_id);
 CREATE TABLE teams (
     id BIGINT NOT NULL AUTO_INCREMENT,
     created_at DATETIME NOT NULL,
-    creator_id BIGINT NOT NULL,
     round_id BIGINT NOT NULL,
     question_id BIGINT NULL,
     code TEXT NOT NULL,
+    is_open BOOLEAN NOT NULL,
     PRIMARY KEY (id)
 ) CHARACTER SET utf8 ENGINE=InnoDB;
-CREATE INDEX ix_teams__creator_id USING btree ON teams (creator_id);
 CREATE INDEX ix_teams__round_id USING btree ON teams (round_id);
 CREATE INDEX ix_teams__question_id USING btree ON teams (question_id);
 
@@ -104,7 +103,6 @@ CREATE TABLE workspace_revisions (
     title TEXT NULL,
     workspace_id BIGINT NOT NULL,
     created_at DATETIME NOT NULL,
-    creator_id BIGINT NOT NULL,
     parent_id BIGINT NULL,
     is_active BOOLEAN NOT NULL,
     is_precious BOOLEAN NOT NULL,
@@ -112,13 +110,10 @@ CREATE TABLE workspace_revisions (
     PRIMARY KEY (id)
 ) CHARACTER SET utf8 ENGINE=InnoDB;
 CREATE INDEX ix_workspace_revisions__workspace_id USING btree ON workspace_revisions (workspace_id);
-CREATE INDEX ix_workspace_revisions__creator_id USING btree ON workspace_revisions (creator_id);
 CREATE INDEX ix_workspace_revisions__parent_id USING btree ON workspace_revisions (parent_id);
 
 ALTER TABLE users ADD CONSTRAINT fk_users__team_id
     FOREIGN KEY ix_users__team_id (team_id) REFERENCES teams(id) ON DELETE SET NULL;
-ALTER TABLE teams ADD CONSTRAINT fk_teams__creator_id
-    FOREIGN KEY (creator_id) REFERENCES users(id);
 ALTER TABLE teams ADD CONSTRAINT fk_teams__round_id
     FOREIGN KEY (round_id) REFERENCES rounds(id) ON DELETE CASCADE;
 ALTER TABLE teams ADD CONSTRAINT fk_teams__question_id
@@ -135,7 +130,5 @@ ALTER TABLE workspaces ADD CONSTRAINT fk_workspaces__team_id
     FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE;
 ALTER TABLE workspace_revisions ADD CONSTRAINT fk_workspace_revisions__workspace_id
     FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE;
-ALTER TABLE workspace_revisions ADD CONSTRAINT fk_workspace_revisions__creator_id
-    FOREIGN KEY (creator_id) REFERENCES users(id) ON DELETE CASCADE;
 ALTER TABLE workspace_revisions ADD CONSTRAINT fk_workspace_revisions__parent_id
     FOREIGN KEY (parent_id) REFERENCES workspace_revisions(id) ON DELETE SET NULL;
