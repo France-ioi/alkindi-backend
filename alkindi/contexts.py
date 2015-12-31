@@ -51,7 +51,7 @@ class UserApiContext(ApiContextBase):
     def __acl__(self):
         return [
             (Allow, ADMIN_GROUP, ['read', 'change']),
-            (Allow, self.user_id, ['read', 'change'])
+            (Allow, str(self.user_id), ['read', 'change'])
         ]
 
 
@@ -59,7 +59,7 @@ class UsersApiContext(ApiContextBase):
 
     def __getitem__(self, path_element):
         print('users/{}'.format(path_element))
-        return UserApiContext(self, user_id=path_element)
+        return UserApiContext(self, user_id=int(path_element))
 
 
 class ApiContext(ApiContextBase):
