@@ -136,7 +136,7 @@ def get_user_profile(request, user_id=None, refresh=True):
     except AuthenticationError:
         return None
     idp_uri = app['identity_provider_uri']
-    params = None
+    params = {}
     if user_id is not None:
         params['user_id'] = user_id
     headers = {
