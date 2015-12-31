@@ -91,6 +91,9 @@ class Model:
             return False
         # Select a round based on the user's badges.
         round_id = self.select_round_with_badges(badges)
+        if round_id is None:
+            # The user does not have access to any round.
+            return False
         # Generate an unused code.
         code = generate_access_code()
         while self.get_team_id_by_code(code) is not None:
@@ -308,6 +311,8 @@ class Model:
 
     def select_round_with_badges(self, badges):
         rounds = self.db.tables.rounds
+        if len(badges) == 0:
+            return None
         badges_table = self.db.tables.badges
         row = self.db.first(
             self.db.query(rounds & badges_table)
@@ -319,7 +324,7 @@ class Model:
         if row is None:
             # If no round was found, the user does not have a badge that
             # grants them access to a round and we cannot create a team.
-            return False
+            return None
         (round_id,) = row
         return round_id
 
