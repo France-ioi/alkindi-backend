@@ -65,8 +65,15 @@ def get_api(request):
 
 
 def read_user(request):
+    # Get the user's foreign_id to query the profile.
     user_id = request.context.user_id
-    return app.model.view_user(user_id)
+    foreign_id = app.model.get_user_foreign_id(user_id)
+    # Get the user's badges from their profile.
+    profile = get_user_profile(request, user_id=foreign_id)
+    if profile is None:
+        return {'error': 'failed to get profile'}
+    badges = profile['badges']
+    return {'user': app.model.view_user(user_id, badges)}
 
 
 def create_team(request):
