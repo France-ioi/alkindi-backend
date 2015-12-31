@@ -126,8 +126,7 @@ class Model:
             # User is already in a team.
             return False
         # Verify that the team exists, is open, and get its round_id.
-        team = self.load_team(
-            self.db.tables.teams, team_id, ['is_open, round_id'])
+        team = self.load_team(team_id)
         if not team['is_open']:
             # Team is closed.
             return False
