@@ -1,6 +1,7 @@
-import json
+
 import iso8601
 from babel.dates import format_date, format_datetime
+from pyramid.renderers import render
 
 __all__ = [
     'HtmlSafeStr', 'classnames', 'literal', 'to_json',
@@ -24,7 +25,7 @@ def literal(text):
 
 
 def to_json(value):
-    return HtmlSafeStr(json.dumps(value))
+    return HtmlSafeStr(render('json', value))
 
 
 def localize_date(value, locale='fr_FR'):
