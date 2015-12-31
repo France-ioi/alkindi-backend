@@ -196,6 +196,18 @@ class Model:
                     {team_members.is_creator: True})
         return True
 
+    def update_team(self, team_id, options):
+        """ Update a team's options.
+            No checks are performed in this function.
+        """
+        team = self.load_team(team_id)
+        if 'is_open' in options:
+            team['is_open'] = options['is_open']
+        teams = self.db.tables.teams
+        self.db.update(
+            self.db.query(teams).where(teams.id == team_id),
+            {teams.is_open: team['is_open']})
+
     # --- private methods below ---
 
     def load_team(self, team_id):
