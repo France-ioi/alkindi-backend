@@ -28,6 +28,7 @@ def includeme(config):
     api_post(config, UserApiContext, 'create_team', create_team)
     api_post(config, UserApiContext, 'join_team', join_team)
     api_post(config, UserApiContext, 'leave_team', leave_team)
+    api_post(config, UserApiContext, 'update_team', update_team)
 
 
 def input_error_view(error, request):
@@ -121,3 +122,18 @@ def leave_team(request):
     result = app.model.leave_team(user_id)
     app.db.commit()
     return {'success': result}
+
+
+def update_team(request):
+    user_id = request.context.user_id
+    team_id = app.model.get_user_team_id(user_id)
+    # If the user is not an admin, they must be the team's creator,
+    # and the team must not have accessed the question.
+    if ADMIN_GROUP not in request.effective_principals:
+        if not app.model.is_team_creator(team_id, user_id):
+            return {'error': 'permission denied (not team creator)'}
+        if app.model.get_team_question_id(team_id) is not None:
+            return {'error': 'permission denied (question accessed)'}
+    app.model.update_team(team_id, request.json_body)
+    app.db.commit()
+    return {'success': True}
