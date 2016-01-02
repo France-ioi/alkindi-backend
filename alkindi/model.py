@@ -198,8 +198,8 @@ class Model:
         if user_id is None:
             return None
         keys = [
-            'id', 'created_at', 'foreign_id', 'team_id', 'username'
-            # 'firstname', 'lastname'
+            'id', 'created_at', 'foreign_id', 'team_id',
+            'username', 'firstname', 'lastname'
         ]
         result = self.__load_row(self.db.tables.users, user_id, keys)
         return result

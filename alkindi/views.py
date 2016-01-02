@@ -6,11 +6,8 @@ def view_user(user_id, badges):
     """ Return the user-view for the user with the given id.
     """
     user = app.model.load_user(user_id)
-    result = {
-        'id': user['id'],
-        'username': user['username'],
-        # XXX firstname, lastname
-    }
+    keys = ['id', 'username', 'firstname', 'lastname']
+    result = {key: user[key] for key in keys}
     team_id = user['team_id']
     if team_id is None:
         # If the user has not team, we look for a round to which a
@@ -61,7 +58,9 @@ def view_team_members(team_id):
         team_members.is_selected,
         team_members.is_creator,
         users.id,
-        users.username)
+        users.username,
+        users.firstname,
+        users.lastname)
     query = query.order_by(team_members.joined_at)
     members = []
     for row in app.db.all(query):
@@ -71,7 +70,9 @@ def view_team_members(team_id):
             'is_creator': app.db.view_bool(row[2]),
             'user': {
                 'id': row[3],
-                'username': row[4]
+                'username': row[4],
+                'firstname': row[5],
+                'lastname': row[6],
             }
         })
     return members
