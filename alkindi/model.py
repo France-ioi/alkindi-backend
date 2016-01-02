@@ -72,10 +72,10 @@ class Model:
         })
         team_id = self.db.insert(query)
         # Create the team_members row.
-        self.add_team_member(team_id, user_id,
-                             is_selected=True, is_creator=True)
+        self.__add_team_member(
+            team_id, user_id, is_selected=True, is_creator=True)
         # Update the user's team_id.
-        self.set_user_team_id(user_id, team_id)
+        self.__set_user_team_id(user_id, team_id)
         return True
 
     def join_team(self, user_id, team_id, user_badges):
@@ -95,7 +95,7 @@ class Model:
             return False
         round_id = team['round_id']
         # Verify that the round is open for registration.
-        if not self.is_round_registration_open(round_id):
+        if not self.__is_round_registration_open(round_id):
             return False
         # Look up the badges that grant access to the team's round, to
         # figure out whether the user is selected for that round.
@@ -110,9 +110,9 @@ class Model:
                     .where(badges.is_active))
             is_selected = row is not None
         # Create the team_members row.
-        self.add_team_member(team_id, user_id, is_selected=is_selected)
+        self.__add_team_member(team_id, user_id, is_selected=is_selected)
         # Update the user's team_id.
-        self.set_user_team_id(user_id, team_id)
+        self.__set_user_team_id(user_id, team_id)
         return True
 
     def leave_team(self, user_id):
@@ -128,12 +128,12 @@ class Model:
         if team['question_id'] is not None:
             return False
         # The round must be open for registration.
-        if not self.is_round_registration_open(team['round_id']):
+        if not self.__is_round_registration_open(team['round_id']):
             return False
         if not team['is_open']:
             return False
         # Clear the user's team_id.
-        self.set_user_team_id(user_id, None)
+        self.__set_user_team_id(user_id, None)
         # Delete the team_members row.
         team_members = self.db.tables.team_members
         tm_query = self.db.query(team_members) \
@@ -171,7 +171,7 @@ class Model:
         attrs = {}
         if 'is_open' in options:
             attrs['is_open'] = options['is_open']
-        self.update_row(self.db.tables.teams, team_id, attrs)
+        self.__update_row(self.db.tables.teams, team_id, attrs)
 
     def find_team_by_code(self, code):
         teams = self.db.tables.teams
@@ -191,7 +191,7 @@ class Model:
             'id', 'created_at', 'foreign_id', 'team_id', 'username'
             # 'firstname', 'lastname'
         ]
-        result = self.load_row(self.db.tables.users, user_id, keys)
+        result = self.__load_row(self.db.tables.users, user_id, keys)
         return result
 
     def load_team(self, team_id):
@@ -200,7 +200,7 @@ class Model:
         keys = [
             'id', 'created_at', 'round_id', 'question_id', 'code', 'is_open'
         ]
-        result = self.load_row(self.db.tables.teams, team_id, keys)
+        result = self.__load_row(self.db.tables.teams, team_id, keys)
         result['is_open'] = self.db.view_bool(result['is_open'])
         return result
 
@@ -214,7 +214,7 @@ class Model:
             'min_team_size', 'max_team_size', 'min_team_ratio',
             'questions_path'
         ]
-        result = self.load_row(self.db.tables.rounds, round_id, keys)
+        result = self.__load_row(self.db.tables.rounds, round_id, keys)
         for key in ['allow_register', 'allow_access']:
             result[key] = self.db.view_bool(result[key])
         return result
@@ -228,35 +228,6 @@ class Model:
         if row is None:
             raise RuntimeError('team has no creator')
         return row[0]
-
-    # --- private methods below ---
-
-    def load_row(self, table, id, keys):
-        query = self.db.query(table)
-        query = query.fields(*[getattr(table, key) for key in keys])
-        query = query.where(table.id == id)
-        row = self.db.first(query)
-        return {key: row[i] for i, key in enumerate(keys)}
-
-    def update_row(self, table, id, attrs):
-        query = self.db.query(table).where(table.id == id)
-        query = query.update({
-            getattr(table, key): attrs[key] for key in attrs
-        })
-        cursor = self.db.execute(query)
-        cursor.close()
-
-    def add_team_member(self, team_id, user_id,
-                        is_selected=False, is_creator=False):
-        team_members = self.db.tables.team_members
-        query = self.db.query(team_members).insert({
-            team_members.team_id: team_id,
-            team_members.user_id: user_id,
-            team_members.joined_at: datetime.utcnow(),
-            team_members.is_selected: is_selected,
-            team_members.is_creator: is_creator
-        })
-        self.db.execute(query)
 
     def select_round_with_badges(self, badges):
         rounds = self.db.tables.rounds
@@ -277,7 +248,36 @@ class Model:
         (round_id,) = row
         return round_id
 
-    def is_round_registration_open(self, round_id):
+    # --- private methods below ---
+
+    def __load_row(self, table, id, keys):
+        query = self.db.query(table)
+        query = query.fields(*[getattr(table, key) for key in keys])
+        query = query.where(table.id == id)
+        row = self.db.first(query)
+        return {key: row[i] for i, key in enumerate(keys)}
+
+    def __update_row(self, table, id, attrs):
+        query = self.db.query(table).where(table.id == id)
+        query = query.update({
+            getattr(table, key): attrs[key] for key in attrs
+        })
+        cursor = self.db.execute(query)
+        cursor.close()
+
+    def __add_team_member(self, team_id, user_id,
+                          is_selected=False, is_creator=False):
+        team_members = self.db.tables.team_members
+        query = self.db.query(team_members).insert({
+            team_members.team_id: team_id,
+            team_members.user_id: user_id,
+            team_members.joined_at: datetime.utcnow(),
+            team_members.is_selected: is_selected,
+            team_members.is_creator: is_creator
+        })
+        self.db.execute(query)
+
+    def __is_round_registration_open(self, round_id):
         rounds = self.db.tables.rounds
         (allow_register,) = self.db.first(
             self.db.query(rounds)
@@ -285,5 +285,5 @@ class Model:
                 .where(rounds.id == round_id))
         return self.db.view_bool(allow_register)
 
-    def set_user_team_id(self, user_id, team_id):
-        self.update_row(self.db.tables.users, user_id, {'team_id': team_id})
+    def __set_user_team_id(self, user_id, team_id):
+        self.__update_row(self.db.tables.users, user_id, {'team_id': team_id})
