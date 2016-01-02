@@ -49,7 +49,7 @@ def oauth_callback_view(request):
     # Get the user identity (refreshing the token should not be needed).
     profile = get_user_profile(request, refresh=False)
     # Make pyramid remember the user's id.
-    foreign_id = profile['id']
+    foreign_id = profile['idUser']
     user_id = app.model.find_user(foreign_id)
     if user_id is None:
         username = profile['sLogin']
@@ -149,10 +149,11 @@ def get_user_profile(request, user_id=None, refresh=True):
         idp_uri, headers=headers, verify='/etc/ssl/certs/ca-certificates.crt')
     try:
         req.raise_for_status()
-        user = req.json()
-        if 'id' not in user:
-            raise RuntimeError('user object has no id key')
-        return user
+        profile = req.json()
+        print("profile: {}".format(profile))
+        if 'idUser' not in profile:
+            raise RuntimeError('profile object has no idUser key')
+        return profile
     except requests.exceptions.HTTPError:
         return None
 

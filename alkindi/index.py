@@ -51,7 +51,7 @@ def index_view(request):
     # Add info about the logged-in user (if any) to the frontend config.
     profile = get_user_profile(request)
     if profile is not None:
-        user_id = app.model.find_user(profile['id'])
+        user_id = app.model.find_user(profile['idUser'])
         if user_id is not None:
             badges = profile['badges']
             frontend_config['user'] = app.model.view_user(user_id, badges)
