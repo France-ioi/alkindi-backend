@@ -132,3 +132,8 @@ ALTER TABLE workspace_revisions ADD CONSTRAINT fk_workspace_revisions__workspace
     FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE;
 ALTER TABLE workspace_revisions ADD CONSTRAINT fk_workspace_revisions__parent_id
     FOREIGN KEY (parent_id) REFERENCES workspace_revisions(id) ON DELETE SET NULL;
+
+ALTER TABLE users
+  ADD COLUMN firstname TEXT NOT NULL DEFAULT '',
+  ADD COLUMN lastname TEXT NOT NULL DEFAULT '';
+

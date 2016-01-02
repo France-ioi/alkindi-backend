@@ -49,12 +49,12 @@ def oauth_callback_view(request):
     # Get the user identity (refreshing the token should not be needed).
     profile = get_user_profile(request, refresh=False)
     # Make pyramid remember the user's id.
-    foreign_id = profile['idUser']
-    user_id = app.model.find_user(foreign_id)
+    user_id = app.model.find_user(profile['idUser'])
     if user_id is None:
-        username = profile['sLogin']
-        user_id = app.model.import_user(foreign_id, username)
-        app.db.commit()
+        user_id = app.model.import_user(profile)
+    else:
+        app.model.update_user(user_id, profile)
+    app.db.commit()
     remember(request, str(user_id))
     # The view template posts the result (encoded as JSON) to the parent
     # window, causing the frontend to update its state.

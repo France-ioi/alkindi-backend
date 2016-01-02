@@ -16,17 +16,6 @@ class Model:
     def commit(self):
         self.db.commit()
 
-    def import_user(self, foreign_id, username):
-        users = self.db.tables.users
-        query = self.db.query(users).insert({
-            users.created_at: datetime.utcnow(),
-            users.foreign_id: foreign_id,
-            users.team_id: None,
-            users.username: username
-        })
-        user_id = self.db.insert(query)
-        return user_id
-
     def find_user(self, foreign_id):
         """ Find the user with the given foreign_id and return their id,
             or None if no such user exists.
@@ -39,6 +28,27 @@ class Model:
         if row is None:
             return None
         return row[0]
+
+    def import_user(self, profile):
+        foreign_id = profile['idUser']
+        users = self.db.tables.users
+        query = self.db.query(users).insert({
+            users.created_at: datetime.utcnow(),
+            users.foreign_id: foreign_id,
+            users.team_id: None,
+            users.username: profile['sLogin'],
+            users.firstname: profile['sFirstName'],
+            users.lastname: profile['sLastName'],
+        })
+        user_id = self.db.insert(query)
+        return user_id
+
+    def update_user(self, user_id, profile):
+        self.__update_row(self.db.tables.users, user_id, {
+            'username': profile['sLogin'],
+            'firstname': profile['sFirstName'],
+            'lastname': profile['sLastName'],
+        })
 
     def create_team(self, user_id, badges):
         """ Create a team for the specified user, and associate it with
