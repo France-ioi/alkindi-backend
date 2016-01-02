@@ -62,31 +62,25 @@ def view_team_members(team_id):
         team_members.joined_at,    # 0
         team_members.is_selected,  # 1
         team_members.is_creator,   # 2
-        team_members.is_unlocked,  # 3
-        team_members.code,         # 4
-        users.id,                  # 5
-        users.username,            # 6
-        users.firstname,           # 7
-        users.lastname,            # 8
+        users.id,                  # 3
+        users.username,            # 4
+        users.firstname,           # 5
+        users.lastname,            # 6
     )
     query = query.order_by(team_members.joined_at)
     members = []
     for row in app.db.all(query):
-        is_unlocked = app.db.view_bool(row[3])
         view = {
             'joined_at': row[0],
             'is_selected': app.db.view_bool(row[1]),
             'is_creator': app.db.view_bool(row[2]),
-            'is_unlocked': is_unlocked,
             'user': {
-                'id': row[5],
-                'username': row[6],
-                'firstname': row[7],
-                'lastname': row[8],
+                'id': row[3],
+                'username': row[4],
+                'firstname': row[5],
+                'lastname': row[6],
             }
         }
-        if is_unlocked:
-            view['code'] = row[4]
         members.append(view)
     return members
 

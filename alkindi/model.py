@@ -194,18 +194,6 @@ class Model:
         (team_id,) = row
         return team_id
 
-    def find_team_member_by_code(self, team_id, code):
-        team_members = self.db.tables.team_members
-        row = self.db.first(
-            self.db.query(team_members)
-                .fields(team_members.user_id)
-                .where(team_members.team_id == team_id)
-                .where(team_members.code == code))
-        if row is None:
-            return None
-        (user_id,) = row
-        return user_id
-
     def load_user(self, user_id):
         if user_id is None:
             return None
@@ -277,15 +265,13 @@ class Model:
         result = {}
         if not round_['allow_access']:
             result['round_closed'] = True
-        (n_members, n_selected, n_unlocked) = self.__get_team_stats(team['id'])
+        (n_members, n_selected) = self.__get_team_stats(team['id'])
         if n_members < round_['min_team_size']:
             result['team_too_small'] = True
         if n_members > round_['max_team_size']:
             result['team_too_large'] = True
         if n_selected < n_members * round_['min_team_ratio']:
             result['not_enough_selected_users'] = True
-        if n_members < n_unlocked:
-            result['not_unlocked']
         return result
 
     # --- private methods below ---
@@ -307,19 +293,13 @@ class Model:
 
     def __add_team_member(self, team_id, user_id,
                           is_selected=False, is_creator=False):
-        # Generate an access code.
-        code = generate_access_code()
-        while self.find_team_member_by_code(team_id, code) is not None:
-            code = generate_access_code()
         team_members = self.db.tables.team_members
         query = self.db.query(team_members).insert({
             team_members.team_id: team_id,
             team_members.user_id: user_id,
             team_members.joined_at: datetime.utcnow(),
             team_members.is_selected: is_selected,
-            team_members.is_creator: is_creator,
-            team_members.is_unlocked: False,
-            team_members.code: code,
+            team_members.is_creator: is_creator
         })
         self.db.execute(query)
 
@@ -345,7 +325,4 @@ class Model:
         n_selected = self.db.scalar(
             tm_query.where(team_members.is_selected)
                     .fields(team_members.user_id.count()))
-        n_unlocked = self.db.scalar(
-            tm_query.where(team_members.is_unlocked)
-                    .fields(team_members.user_id.count()))
-        return (n_members, n_selected, n_unlocked)
+        return (n_members, n_selected)
