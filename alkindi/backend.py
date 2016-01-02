@@ -5,6 +5,7 @@ The Paster application entry point.
 import datetime
 import decimal
 import json
+import os
 
 from pyramid.authorization import ACLAuthorizationPolicy
 from pyramid.authentication import SessionAuthenticationPolicy
@@ -21,6 +22,11 @@ from alkindi_r2_front import version as front_version
 def application(_global_config, **settings):
     """ Returns the Pyramid WSGI application.
     """
+
+    print(
+        "=== {} worker {} starting".format(
+            datetime.datetime.now().isoformat(), os.getpid()))
+
     config = Configurator(settings=settings)
     config.include('pyramid_debugtoolbar')
     config.include(set_session_factory)
