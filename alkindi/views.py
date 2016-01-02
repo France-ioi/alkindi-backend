@@ -10,7 +10,7 @@ def view_user(user_id, badges):
     result = {key: user[key] for key in keys}
     team_id = user['team_id']
     if team_id is None:
-        # If the user has not team, we look for a round to which a
+        # If the user has no team, we look for a round to which a
         # badge grants access.
         round_id = app.model.select_round_with_badges(badges)
         if round_id is not None:
@@ -20,12 +20,10 @@ def view_user(user_id, badges):
         # Add 'team', 'round' and 'question' info.
         team = app.model.load_team(team_id)
         result['team'] = view_user_team(team)
-        round_id = team['round_id']
-        round = app.model.load_round(round_id)
+        round = app.model.load_round(team['round_id'])
         result['round'] = view_user_round(round)
         if team['question_id'] is None:
-            result['question_blocked'] = \
-                app.model.test_question_blocked(team, round)
+            result['question'] = app.model.test_question_blocked(team, round)
         else:
             result['question'] = view_user_question(team['question_id'])
         # Add is_selected
@@ -61,27 +59,35 @@ def view_team_members(team_id):
     query = query.where(team_members.user_id == users.id)
     query = query.where(team_members.team_id == team_id)
     query = query.fields(
-        team_members.joined_at,
-        team_members.is_selected,
-        team_members.is_creator,
-        users.id,
-        users.username,
-        users.firstname,
-        users.lastname)
+        team_members.joined_at,    # 0
+        team_members.is_selected,  # 1
+        team_members.is_creator,   # 2
+        team_members.is_unlocked,  # 3
+        team_members.code,         # 4
+        users.id,                  # 5
+        users.username,            # 6
+        users.firstname,           # 7
+        users.lastname,            # 8
+    )
     query = query.order_by(team_members.joined_at)
     members = []
     for row in app.db.all(query):
-        members.append({
+        is_unlocked = app.db.view_bool(row[3])
+        view = {
             'joined_at': row[0],
             'is_selected': app.db.view_bool(row[1]),
             'is_creator': app.db.view_bool(row[2]),
+            'is_unlocked': is_unlocked,
             'user': {
-                'id': row[3],
-                'username': row[4],
-                'firstname': row[5],
-                'lastname': row[6],
+                'id': row[5],
+                'username': row[6],
+                'firstname': row[7],
+                'lastname': row[8],
             }
-        })
+        }
+        if is_unlocked:
+            view['code'] = row[4]
+        members.append(view)
     return members
 
 
