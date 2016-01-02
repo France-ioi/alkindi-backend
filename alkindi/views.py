@@ -14,13 +14,20 @@ def view_user(user_id, badges):
         # badge grants access.
         round_id = app.model.select_round_with_badges(badges)
         if round_id is not None:
-            result['accessible_round'] = view_user_round(round_id)
+            round = app.model.load_round(round_id)
+            result['accessible_round'] = view_user_round(round)
     else:
         # Add 'team', 'round' and 'question' info.
         team = app.model.load_team(team_id)
         result['team'] = view_user_team(team)
-        result['round'] = view_user_round(team['round_id'])
-        result['question'] = view_user_question(team['question_id'])
+        round_id = team['round_id']
+        round = app.model.load_round(round_id)
+        result['round'] = view_user_round(round)
+        if team['question_id'] is None:
+            result['question_blocked'] = \
+                app.model.test_question_blocked(team, round)
+        else:
+            result['question'] = view_user_question(team['question_id'])
         # Add is_selected
         team_members = app.db.tables.team_members
         (is_selected,) = app.db.first(
@@ -78,12 +85,9 @@ def view_team_members(team_id):
     return members
 
 
-def view_user_round(round_id):
+def view_user_round(round):
     """ Return the user-view for a round.
     """
-    if round_id is None:
-        return None
-    round = app.model.load_round(round_id)
     keys = [
         'title',
         'allow_register', 'register_from', 'register_until',
