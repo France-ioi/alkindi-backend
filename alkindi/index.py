@@ -2,7 +2,7 @@
 from alkindi.auth import get_user_profile
 from alkindi.contexts import ApiContext, UserApiContext, ADMIN_GROUP
 from alkindi.globals import app
-from alkindi.model import InputError
+from alkindi.model import ModelError
 import alkindi.views as views
 
 
@@ -24,7 +24,7 @@ def includeme(config):
     config.add_route('index', '/', request_method='GET')
     config.add_view(
         index_view, route_name='index', renderer='templates/index.mako')
-    config.add_view(input_error_view, context=InputError, renderer='json')
+    config.add_view(model_error_view, context=ModelError, renderer='json')
     api_get(config, UserApiContext, '', read_user)
     api_post(config, UserApiContext, 'create_team', create_team)
     api_post(config, UserApiContext, 'join_team', join_team)
@@ -32,9 +32,9 @@ def includeme(config):
     api_post(config, UserApiContext, 'update_team', update_team)
 
 
-def input_error_view(error, request):
-    # This view handles alkindi.model.InputError.
-    return {'error': str(error)}
+def model_error_view(error, request):
+    # This view handles alkindi.model.ModelError.
+    return {'error': str(error), 'source': 'model'}
 
 
 def index_view(request):

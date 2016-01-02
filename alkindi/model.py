@@ -4,7 +4,7 @@ from datetime import datetime
 from .utils import generate_access_code
 
 
-class InputError(RuntimeError):
+class ModelError(RuntimeError):
     pass
 
 
@@ -236,7 +236,7 @@ class Model:
             .where(team_members.is_creator)
         row = self.db.first(tm_query.fields(team_members.user_id))
         if row is None:
-            raise RuntimeError('team has no creator')
+            raise ModelError('team has no creator')
         return row[0]
 
     def select_round_with_badges(self, badges):
