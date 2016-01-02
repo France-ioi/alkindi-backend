@@ -258,6 +258,22 @@ class Model:
         (round_id,) = row
         return round_id
 
+    def test_question_blocked(self, team, round_):
+        """ Return a list of strings indicating reasons why the given
+            team cannot access the question associated with the given round.
+        """
+        errors = []
+        if not round_['allow_access']:
+            errors.append('round_closed')
+        (n_members, n_selected) = self.__get_team_stats(team['id'])
+        if n_members < round_['min_team_size']:
+            errors.append('team_too_small')
+        if n_members > round_['max_team_size']:
+            errors.append('team_too_large')
+        if n_selected < n_members * round_['min_team_ratio']:
+            errors.append('not_enough_selected_users')
+        return errors
+
     # --- private methods below ---
 
     def __load_row(self, table, id, keys):
@@ -297,3 +313,16 @@ class Model:
 
     def __set_user_team_id(self, user_id, team_id):
         self.__update_row(self.db.tables.users, user_id, {'team_id': team_id})
+
+    def __get_team_stats(self, team_id):
+        """ Return (n_members, n_selected) for the given team.
+        """
+        team_members = self.db.tables.team_members
+        tm_query = self.db.query(team_members) \
+            .where(team_members.team_id == team_id)
+        n_members = self.db.scalar(
+            tm_query.fields(team_members.user_id.count()))
+        n_selected = self.db.scalar(
+            tm_query.where(team_members.is_selected)
+                    .fields(team_members.user_id.count()))
+        return (n_members, n_selected)
