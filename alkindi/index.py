@@ -3,6 +3,7 @@ from alkindi.auth import get_user_profile
 from alkindi.contexts import ApiContext, UserApiContext, ADMIN_GROUP
 from alkindi.globals import app
 from alkindi.model import InputError
+import alkindi.views as views
 
 
 def api_get(config, context, name, view):
@@ -54,7 +55,7 @@ def index_view(request):
         user_id = app.model.find_user(profile['idUser'])
         if user_id is not None:
             badges = profile['badges']
-            frontend_config['user'] = app.model.view_user(user_id, badges)
+            frontend_config['user'] = views.view_user(user_id, badges)
     return {
         'frontend_config': frontend_config
     }
@@ -73,7 +74,7 @@ def read_user(request):
     if profile is None:
         return {'error': 'failed to get profile'}
     badges = profile['badges']
-    return {'user': app.model.view_user(user_id, badges)}
+    return {'user': views.view_user(user_id, badges)}
 
 
 def create_team(request):
