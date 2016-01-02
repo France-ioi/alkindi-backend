@@ -139,3 +139,38 @@ ALTER TABLE users
 
 ALTER TABLE team_members ADD COLUMN code TEXT NULL;
 ALTER TABLE team_members ADD COLUMN is_unlocked BOOLEAN DEFAULT FALSE;
+
+ALTER TABLE workspaces ADD COLUMN round_id BIGINT NOT NULL;
+CREATE INDEX ix_workspaces__round_id USING btree ON workspaces (round_id);
+ALTER TABLE workspaces ADD CONSTRAINT fk_workspaces__round_id
+    FOREIGN KEY (round_id) REFERENCES rounds(id) ON DELETE CASCADE;
+
+#---
+
+ALTER TABLE questions DROP FOREIGN KEY fk_questions__round_id;
+ALTER TABLE questions DROP COLUMN round_id;
+
+CREATE TABLE attempts (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    team_id BIGINT NOT NULL,
+    round_id BIGINT NOT NULL,
+    question_id BIGINT NULL,
+    created_at DATETIME NOT NULL,
+    closes_at DATETIME NULL,
+    is_current BOOLEAN NOT NULL,
+    is_training BOOLEAN NOT NULL,
+    PRIMARY KEY (id)
+) CHARACTER SET utf8 ENGINE=InnoDB;
+CREATE INDEX ix_attempts__team_id USING btree ON attempts (team_id);
+CREATE INDEX ix_attempts__round_id USING btree ON attempts (round_id);
+CREATE INDEX ix_attempts__question_id USING btree ON attempts (question_id);
+ALTER TABLE attempts ADD CONSTRAINT fk_attempts__team_id
+  FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE;
+ALTER TABLE attempts ADD CONSTRAINT fk_attempts__round_id
+  FOREIGN KEY (round_id) REFERENCES rounds(id) ON DELETE CASCADE;
+ALTER TABLE attempts ADD CONSTRAINT fk_attempts__question_id
+  FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE SET NULL;
+
+ALTER TABLE team_members DROP COLUMN code;
+ALTER TABLE team_members DROP COLUMN is_unlocked;
+
