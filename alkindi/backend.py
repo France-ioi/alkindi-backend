@@ -57,7 +57,6 @@ def set_session_factory(config):
     settings = json.loads(app.get('session_settings', '{}'))
     settings['secret'] = app['session_secret']
     settings['client_callable'] = get_redis
-    print("Redis session settings: {}".format(settings))
     session_factory = RedisSessionFactory(**settings)
     config.set_session_factory(session_factory)
 
