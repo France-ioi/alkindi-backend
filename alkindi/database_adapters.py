@@ -44,11 +44,17 @@ class MysqlAdapter:
             print("Bad SQL statement: {}".format(stmt))
             raise ModelError(ex)
 
+    def scalar(self, query):
+        cursor = self.execute(query)
+        row = cursor.fetchone()
+        cursor.close()
+        return row[0]
+
     def first(self, query):
         cursor = self.execute(query[0:1])
-        value = cursor.fetchone()
+        row = cursor.fetchone()
         cursor.close()
-        return value
+        return row
 
     def delete(self, query, **kwargs):
         cursor = self.execute(query.delete(**kwargs))
