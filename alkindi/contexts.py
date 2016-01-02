@@ -1,8 +1,6 @@
 
 from pyramid.security import unauthenticated_userid, DENY_ALL, Allow
 
-from alkindi.globals import app
-
 
 ADMIN_GROUP = 'g:admin'
 
