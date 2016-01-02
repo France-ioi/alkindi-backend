@@ -3,6 +3,7 @@ The Paster application entry point.
 """
 
 import datetime
+import decimal
 import json
 
 from pyramid.authorization import ACLAuthorizationPolicy
@@ -56,6 +57,7 @@ def set_session_factory(config):
     settings = json.loads(app.get('session_settings', '{}'))
     settings['secret'] = app['session_secret']
     settings['client_callable'] = get_redis
+    print("Redis session settings: {}".format(settings))
     session_factory = RedisSessionFactory(**settings)
     config.set_session_factory(session_factory)
 
@@ -72,6 +74,7 @@ def set_authentication_policy(config):
 
 
 def get_user_principals(userid, request):
+    # TODO: return ['g:admin'] for admins.
     return []
 
 
@@ -86,6 +89,14 @@ def add_json_renderer(config):
     def datetime_adapter(obj, request):
         return obj.isoformat()
 
+    def date_adapter(obj, request):
+        return obj.isoformat()
+
+    def decimal_adapter(obj, request):
+        return str(obj)
+
     json_renderer.add_adapter(datetime.datetime, datetime_adapter)
+    json_renderer.add_adapter(datetime.date, date_adapter)
+    json_renderer.add_adapter(decimal.Decimal, decimal_adapter)
 
     config.add_renderer('json', json_renderer)

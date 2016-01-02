@@ -67,9 +67,9 @@ def get_api(request):
 def read_user(request):
     # Get the user's foreign_id to query the profile.
     user_id = request.context.user_id
-    foreign_id = app.model.get_user_foreign_id(user_id)
+    user = app.model.load_user(user_id)
     # Get the user's badges from their profile.
-    profile = get_user_profile(request, user_id=foreign_id)
+    profile = get_user_profile(request, user_id=user['foreign_id'])
     if profile is None:
         return {'error': 'failed to get profile'}
     badges = profile['badges']
@@ -82,9 +82,9 @@ def create_team(request):
     """
     # Get the user's foreign_id to query the profile.
     user_id = request.context.user_id
-    foreign_id = app.model.get_user_foreign_id(user_id)
+    user = app.model.load_user(user_id)
     # Get the user's badges from their profile.
-    profile = get_user_profile(request, user_id=foreign_id)
+    profile = get_user_profile(request, user_id=user['foreign_id'])
     if profile is None:
         return {'error': 'failed to get profile'}
     badges = profile['badges']
@@ -107,14 +107,14 @@ def join_team(request):
             team_id = data['team_id']
     if team_id is None:
         code = data['code']
-        team_id = app.model.get_team_id_by_code(code)
+        team_id = app.model.find_team_by_code(code)
     if team_id is None:
         return False
     # Get the user's foreign_id to query the profile.
     user_id = request.context.user_id
-    foreign_id = app.model.get_user_foreign_id(user_id)
+    user = app.model.load_user(user_id)
     # Get the user's badges from their profile.
-    profile = get_user_profile(request, user_id=foreign_id)
+    profile = get_user_profile(request, user_id=user['foreign_id'])
     if profile is None:
         return {'error': 'failed to get profile'}
     badges = profile['badges']
@@ -133,13 +133,17 @@ def leave_team(request):
 
 def update_team(request):
     user_id = request.context.user_id
-    team_id = app.model.get_user_team_id(user_id)
+    user = app.model.load_user(user_id)
+    team_id = user['team_id']
+    if team_id is None:
+        return {'error': 'no team'}
     # If the user is not an admin, they must be the team's creator,
     # and the team must not have accessed the question.
     if ADMIN_GROUP not in request.effective_principals:
-        if not app.model.is_team_creator(team_id, user_id):
+        if user_id != app.model.get_team_creator(team_id):
             return {'error': 'permission denied (not team creator)'}
-        if app.model.get_team_question_id(team_id) is not None:
+        team = app.model.load_team(team_id)
+        if team['question_id'] is not None:
             return {'error': 'permission denied (question accessed)'}
     app.model.update_team(team_id, request.json_body)
     app.db.commit()
