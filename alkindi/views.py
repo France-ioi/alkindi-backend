@@ -2,44 +2,47 @@
 from alkindi.globals import app
 
 
-def view_user(user_id, badges):
-    """ Return the user-view for the user with the given id.
-    """
+def view_user_seed(user_id):
+    init = {}
     user = app.model.load_user(user_id)
-    keys = ['id', 'username', 'firstname', 'lastname']
-    result = {key: user[key] for key in keys}
+    init['user'] = view_user(user)
     team_id = user['team_id']
     if team_id is None:
         # If the user has no team, we look for a round to which a
         # badge grants access.
+        badges = user['badges']
         round_id = app.model.select_round_with_badges(badges)
         if round_id is not None:
             round = app.model.load_round(round_id)
-            result['accessible_round'] = view_user_round(round)
-    else:
-        # Add 'team', 'round' and 'question' info.
-        team = app.model.load_team(team_id)
-        result['team'] = view_user_team(team)
-        round = app.model.load_round(team['round_id'])
-        result['round'] = view_user_round(round)
-        if team['question_id'] is None:
-            result['question'] = app.model.test_question_blocked(team, round)
-        else:
-            result['question'] = view_user_question(team['question_id'])
-        # Add is_selected
-        team_members = app.db.tables.team_members
-        (is_selected,) = app.db.first(
-            app.db.query(team_members)
-                  .fields(team_members.is_selected)
-                  .where(team_members.team_id == team_id)
-                  .where(team_members.user_id == user_id))
-        result['is_selected'] = app.db.view_bool(is_selected)
-    return result
+            init['round'] = view_user_round(round)
+        return init
+    # Add team data.
+    team = app.model.load_team(team_id)
+    init['team'] = view_user_team(team)
+    # Add round data.
+    round = app.model.load_round(team['round_id'])
+    init['round'] = view_user_round(round)
+    # Find the team's current attempt.
+    attempt = app.model.load_team_current_attempt(team_id)
+    if attempt is None:
+        return init
+    init['attempt'] = view_user_attempt(attempt)
+    # Add question data, if available.
+    question_id = attempt['question_id']
+    if question_id is not None:
+        init['question'] = view_user_question(question_id)
+    return init
+
+
+def view_user(user):
+    """ Return the user-view for a user.
+    """
+    keys = ['id', 'username', 'firstname', 'lastname']
+    return {key: user[key] for key in keys}
 
 
 def view_user_team(team):
     """ Return the user-view for a team.
-        Currently empty.
     """
     members = view_team_members(team['id'])
     creator = [m for m in members if m['is_creator']]
@@ -47,6 +50,7 @@ def view_user_team(team):
         'id': team['id'],
         'code': team['code'],
         'is_open': team['is_open'],
+        'is_locked': team['is_locked'],
         'creator': creator[0]['user'],
         'members': members
     }
@@ -85,11 +89,17 @@ def view_team_members(team_id):
     return members
 
 
+def view_user_attempt(attempt):
+    keys = ['id', 'created_at', 'closes_at', 'is_current', 'is_training']
+    # TODO: add info on which user has submitted their code.
+    return {key: round[key] for key in keys}
+
+
 def view_user_round(round):
     """ Return the user-view for a round.
     """
     keys = [
-        'title',
+        'id', 'title',
         'allow_register', 'register_from', 'register_until',
         'allow_access', 'access_from', 'access_until',
         'min_team_size', 'max_team_size', 'min_team_ratio'
@@ -99,6 +109,7 @@ def view_user_round(round):
 
 def view_user_question(question_id):
     """ Return the user-view for a question.
+        Avoid loading the full question data.
     """
     if question_id is None:
         return None

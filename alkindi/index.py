@@ -64,12 +64,9 @@ def index_view(request):
         'logout_url': request.route_url('logout')
     }
     # Add info about the logged-in user (if any) to the frontend config.
-    profile = get_user_profile(request)
-    if profile is not None:
-        user_id = app.model.find_user(profile['idUser'])
-        if user_id is not None:
-            badges = profile['badges']
-            frontend_config['user'] = views.view_user(user_id, badges)
+    user_id = request.authenticated_userid
+    if user_id is not None:
+        frontend_config['seed'] = views.view_user_seed(user_id)
     return {
         'frontend_config': frontend_config
     }
@@ -80,21 +77,14 @@ def get_api(request):
 
 
 def read_user(request):
-    # Get the user's foreign_id to query the profile.
     user_id = request.context.user_id
-    user = app.model.load_user(user_id)
-    # Get the user's badges from their profile.
-    profile = get_user_profile(request, user_id=user['foreign_id'])
-    if profile is None:
-        return {'error': 'failed to get profile'}
-    badges = profile['badges']
-    return {'user': views.view_user(user_id, badges)}
+    return views.view_user_seed(user_id)
 
 
 def read_team(request):
     team = request.context.team
     check_etag(request, team['revision'])
-    return views.view_user_team(team)
+    return {'team': views.view_user_team(team)}
 
 
 def create_team(request):
