@@ -37,8 +37,6 @@ def api_post(config, context, name, view):
         permission='change', renderer='json')
 
 
-
-
 def check_etag(request, etag):
     etag = str(etag)
     if etag in request.if_none_match:
