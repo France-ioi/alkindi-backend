@@ -1,5 +1,6 @@
 
 from pyramid.httpexceptions import HTTPNotModified, HTTPFound
+from ua_parser import user_agent_parser
 
 from alkindi.auth import get_user_profile, reset_user_principals
 from alkindi.contexts import (
@@ -57,15 +58,16 @@ def model_error_view(error, request):
 
 
 def ancient_browser_view(request):
-    if request.headers.get('X-Ancient-Browser') != '1':
+    if not is_ancient_browser(request):
         raise HTTPFound(request.route_url('index'))
-    return {}
+    ua = request.headers['User-Agent']
+    return user_agent_parser.Parse(ua)
 
 
 def index_view(request):
     # Redirect ancient browsers (detection is performed by the reverse
     # proxy).
-    if request.headers.get('X-Ancient-Browser') == '1':
+    if is_ancient_browser(request):
         raise HTTPFound(request.route_url('ancient_browser'))
     # Prepare the frontend's config for injection as JSON in a script tag.
     assets_template = request.static_url('alkindi_r2_front:assets/{}') \
@@ -180,3 +182,22 @@ def update_user_profile(request, user_id=None):
     if profile is None:
         raise RuntimeError("failed to get the user's profile")
     app.model.update_user(user_id, profile)
+
+
+MinimumFamilyVersion = {
+    'Chrome': 47,
+    'Iceweasel': 38,
+    'Safari': 8,
+}
+
+
+def is_ancient_browser(request):
+    ua = request.headers['User-Agent']
+    ua = user_agent_parser.Parse(ua)
+    ua = ua['user_agent']
+    family = ua['family']
+    if family in MinimumFamilyVersion:
+        major = int(ua['major'])
+        if major >= MinimumFamilyVersion[family]:
+            return False
+    return True
