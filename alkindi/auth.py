@@ -219,7 +219,7 @@ def accept_oauth2_code(request):
     state = request.params.get('state')
     # XXX verify state
     token = exchange_code_for_token(request, code)
-    return accept_oauth2_token(session, token)
+    return accept_oauth2_token(request.session, token)
 
 
 def accept_oauth2_token(session, token):
