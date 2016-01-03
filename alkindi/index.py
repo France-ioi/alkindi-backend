@@ -1,7 +1,7 @@
 
 from pyramid.httpexceptions import HTTPNotModified
 
-from alkindi.auth import reset_user_principals
+from alkindi.auth import get_user_profile, reset_user_principals
 from alkindi.contexts import (
     ApiContext, UserApiContext, TeamApiContext, ADMIN_GROUP
 )
@@ -91,19 +91,26 @@ def create_team(request):
     """ Create a team for the context's user.
         An administrator can also perform the action on a user's behalf.
     """
+    # Refresh the user profile in case their badges changed.
+    update_user_profile(request, request.context.user_id)
+    app.db.commit()
     # Create the team.
     user_id = request.context.user_id
-    result = app.model.create_team(user_id)
-    app.db.commit()
-    # Ensure the user gets team credentials.
-    reset_user_principals(request)
-    return {'success': result}
+    success = app.model.create_team(user_id)
+    if success:
+        app.db.commit()
+        # Ensure the user gets team credentials.
+        reset_user_principals(request)
+    return {'success': success}
 
 
 def join_team(request):
     """ Add the context's user to an existing team.
         An administrator can also perform the action on a user's behalf.
     """
+    # Refresh the user profile in case their badges changed.
+    update_user_profile(request, request.context.user_id)
+    app.db.commit()
     # Find the team corresponding to the provided code.
     data = request.json_body
     team_id = None
@@ -115,14 +122,15 @@ def join_team(request):
         code = data['code']
         team_id = app.model.find_team_by_code(code)
     if team_id is None:
-        return False
+        return {'success': False}
     # Add the user to the team.
     user = request.context.user
-    result = app.model.join_team(user, team_id)
-    app.db.commit()
-    # Ensure the user gets team credentials.
-    reset_user_principals(request)
-    return {'success': result}
+    success = app.model.join_team(user, team_id)
+    if success:
+        app.db.commit()
+        # Ensure the user gets team credentials.
+        reset_user_principals(request)
+    return {'success': success}
 
 
 def leave_team(request):
@@ -147,3 +155,10 @@ def update_team(request):
     app.model.update_team(team_id, request.json_body)
     app.db.commit()
     return {'success': True}
+
+
+def update_user_profile(request, user_id=None):
+    profile = get_user_profile(request.session, user_id)
+    if profile is None:
+        raise RuntimeError("failed to get the user's profile")
+    app.model.update_user(user_id, profile)
