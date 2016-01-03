@@ -91,18 +91,11 @@ def read_team(request):
 
 def create_team(request):
     """ Create a team for the context's user.
-        An administrator can also perform the action for a user.
+        An administrator can also perform the action on a user's behalf.
     """
-    # Get the user's foreign_id to query the profile.
-    user_id = request.context.user_id
-    user = app.model.load_user(user_id)
-    # Get the user's badges from their profile.
-    profile = get_user_profile(request, user_id=user['foreign_id'])
-    if profile is None:
-        return {'error': 'failed to get profile'}
-    badges = profile['badges']
     # Create the team.
-    result = app.model.create_team(user_id, badges)
+    user_id = request.context.user_id
+    result = app.model.create_team(user_id)
     app.db.commit()
     # Ensure the user gets team credentials.
     reset_user_principals(request)
