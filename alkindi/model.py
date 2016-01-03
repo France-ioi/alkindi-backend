@@ -44,6 +44,14 @@ class Model:
         user_id = self.db.insert(query)
         return user_id
 
+    def update_user(self, user_id, profile):
+        self.__update_row(self.db.tables.users, user_id, {
+            'username': profile['sLogin'],
+            'firstname': profile['sFirstName'],
+            'lastname': profile['sLastName'],
+            'badges': ' '.join(profile['badges']),
+        })
+
     def get_user_principals(self, user_id):
         user_id = int(user_id)
         users = self.db.tables.users
@@ -71,14 +79,6 @@ class Model:
         if self.db.view_bool(row[1]):
             principals.append('tc:{}'.format(team_id))
         return principals
-
-    def update_user(self, user_id, profile):
-        self.__update_row(self.db.tables.users, user_id, {
-            'username': profile['sLogin'],
-            'firstname': profile['sFirstName'],
-            'lastname': profile['sLastName'],
-            'badges': ' '.join(profile['badges']),
-        })
 
     def create_team(self, user_id, badges):
         """ Create a team for the specified user, and associate it with
