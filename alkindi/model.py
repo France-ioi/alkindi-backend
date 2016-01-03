@@ -259,6 +259,22 @@ class Model:
             result[key] = self.db.view_bool(result[key])
         return result
 
+    def load_team_members(self, team_id):
+        team_members = self.db.tables.team_members
+        query = self.db.query(team_members) \
+            .where(team_members.team_id == team_id) \
+            .fields(team_members.user_id, team_members.joined_at,
+                    team_members.is_selected, team_members.is_creator)
+        return [
+            {
+                'user_id': row[0],
+                'joined_at': row[1],
+                'is_selected': self.db.view_bool(row[2]),
+                'is_creator': self.db.view_bool(row[3])
+            }
+            for row in self.db.all(query)
+        ]
+
     def get_team_creator(self, team_id):
         team_members = self.db.tables.team_members
         tm_query = self.db.query(team_members) \
