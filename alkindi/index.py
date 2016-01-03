@@ -67,6 +67,7 @@ def index_view(request):
     user_id = request.authenticated_userid
     if user_id is not None:
         frontend_config['seed'] = views.view_user_seed(user_id)
+    request.response.cache_control = 'max-age=0, private'
     return {
         'frontend_config': frontend_config
     }
