@@ -60,8 +60,9 @@ class TeamApiContext(ApiContextBase):
 
     def __init__(self, parent, team):
         self.__parent__ = parent
+        self.team_id = team['id']
         self.team = team
-        self.members = app.model.load_team_members(team['id'])
+        self._members = None
 
     @property
     def __acl__(self):
@@ -70,6 +71,12 @@ class TeamApiContext(ApiContextBase):
             (Allow, 'tc:{}'.format(self.team_id), ['read']),
             (Allow, 't:{}'.format(self.team_id), ['read', 'change']),
         ]
+
+    @property
+    def members(self):
+        if self._members is None:
+            self._members = app.model.load_team_members(self.team_id)
+        return self._members
 
 
 class TeamsApiContext(ApiContextBase):
