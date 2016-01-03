@@ -217,7 +217,8 @@ def accept_oauth2_code(request):
     """
     code = request.params.get('code')
     state = request.params.get('state')
-    # XXX verify state
+    if request.session['oauth_state'] != state:
+        raise AuthenticationError('bad state')
     token = exchange_code_for_token(request, code)
     return accept_oauth2_token(request.session, token)
 
