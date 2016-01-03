@@ -4,9 +4,11 @@ import time
 import uuid
 
 from oauthlib import oauth2
-import requests
+from pyramid.authorization import ACLAuthorizationPolicy
+from pyramid.authentication import SessionAuthenticationPolicy
 from pyramid.httpexceptions import HTTPSeeOther
 from pyramid.security import remember, forget
+import requests
 
 from alkindi.globals import app
 
@@ -16,6 +18,8 @@ from alkindi.globals import app
 #
 
 def includeme(config):
+    config.include(set_authorization_policy)
+    config.include(set_authentication_policy)
     config.add_route('login', '/login', request_method='GET')
     config.add_view(login_view, route_name='login')
     config.add_route('logout', '/logout', request_method='GET')
@@ -26,6 +30,25 @@ def includeme(config):
     config.add_view(
         oauth_callback_view, route_name='oauth_callback',
         renderer='templates/after_login.mako')
+
+
+def set_authorization_policy(config):
+    authorization_policy = ACLAuthorizationPolicy()
+    config.set_authorization_policy(authorization_policy)
+
+
+def set_authentication_policy(config):
+    authentication_policy = SessionAuthenticationPolicy(
+        callback=get_user_principals)
+    config.set_authentication_policy(authentication_policy)
+
+
+def get_user_principals(userid, request):
+    principals = request.session['principals']
+    if principals is None:
+        principals = app.model.get_user_principals(userid)
+        request.session['principals'] = principals
+    return principals
 
 
 def login_view(request):
@@ -54,6 +77,8 @@ def oauth_callback_view(request):
         user_id = app.model.import_user(profile)
     else:
         app.model.update_user(user_id, profile)
+    # Clear the user's cached principals to force them to be refreshed.
+    request.session['principals'] = None
     app.db.commit()
     remember(request, str(user_id))
     # The view template posts the result (encoded as JSON) to the parent

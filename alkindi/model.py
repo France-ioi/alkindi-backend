@@ -43,6 +43,34 @@ class Model:
         user_id = self.db.insert(query)
         return user_id
 
+    def get_user_principals(self, user_id):
+        user_id = int(user_id)
+        users = self.db.tables.users
+        query = self.db.query(users) \
+            .where(users.id == user_id) \
+            .fields(users.team_id)
+        row = self.db.first(query)
+        if row is None:
+            raise ModelError('invalid user')
+        principals = ['u:{}'.format(user_id)]
+        team_id = row[0]
+        if team_id is None:
+            return principals
+        team_members = self.db.tables.team_members
+        query = self.db.query(team_members) \
+            .where(team_members.user_id == user_id) \
+            .where(team_members.team_id == team_id) \
+            .fields(team_members.is_selected, team_members.is_creator)
+        row = self.db.first(query)
+        if row is None:
+            raise ModelError('missing team_member row')
+        principals.append('t:{}'.format(team_id))
+        if self.db.view_bool(row[0]):
+            principals.append('ts:{}'.format(team_id))
+        if self.db.view_bool(row[1]):
+            principals.append('tc:{}'.format(team_id))
+        return principals
+
     def update_user(self, user_id, profile):
         self.__update_row(self.db.tables.users, user_id, {
             'username': profile['sLogin'],

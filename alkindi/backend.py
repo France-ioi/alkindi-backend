@@ -7,8 +7,6 @@ import decimal
 import json
 import os
 
-from pyramid.authorization import ACLAuthorizationPolicy
-from pyramid.authentication import SessionAuthenticationPolicy
 from pyramid.events import BeforeRender
 from pyramid.config import Configurator
 from pyramid.renderers import JSON
@@ -30,8 +28,6 @@ def application(_global_config, **settings):
     config = Configurator(settings=settings)
     config.include('pyramid_debugtoolbar')
     config.include(set_session_factory)
-    config.include(set_authorization_policy)
-    config.include(set_authentication_policy)
     config.include('pyramid_mako')
 
     config.add_subscriber(set_renderer_context, BeforeRender)
@@ -65,22 +61,6 @@ def set_session_factory(config):
     settings['client_callable'] = get_redis
     session_factory = RedisSessionFactory(**settings)
     config.set_session_factory(session_factory)
-
-
-def set_authorization_policy(config):
-    authorization_policy = ACLAuthorizationPolicy()
-    config.set_authorization_policy(authorization_policy)
-
-
-def set_authentication_policy(config):
-    authentication_policy = SessionAuthenticationPolicy(
-        callback=get_user_principals)
-    config.set_authentication_policy(authentication_policy)
-
-
-def get_user_principals(userid, request):
-    # TODO: return ['g:admin'] for admins.
-    return []
 
 
 def set_renderer_context(event):
