@@ -67,7 +67,7 @@ def ancient_browser_view(request):
 def index_view(request):
     # Redirect ancient browsers (detection is performed by the reverse
     # proxy).
-    if is_ancient_browser(request):
+    if 'ancient' not in request.params and is_ancient_browser(request):
         raise HTTPFound(request.route_url('ancient_browser'))
     # Prepare the frontend's config for injection as JSON in a script tag.
     assets_template = request.static_url('alkindi_r2_front:assets/{}') \
@@ -185,10 +185,13 @@ def update_user_profile(request, user_id=None):
 
 
 MinimumFamilyVersion = {
-    'Chrome': 47,
+    'Chrome':    30,
+    'Firefox':   30,
+    'IE':         9,
+    'Edge':      13,
     'Iceweasel': 38,
-    'Safari': 8,
-    'Firefox': 43,
+    'Safari':     8,
+    'Opera':     34,
 }
 
 
