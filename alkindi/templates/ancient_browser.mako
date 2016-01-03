@@ -9,11 +9,11 @@
     </p>
     <p>Vous pouvez utiliser l'une de ces versions ou ultérieures :</p>
     <ul>
-      <li><a href="https://www.google.fr/intl/fr/chrome/browser/desktop/">Chrome</a> 47</li>
-      <li><a href="https://www.mozilla.org/fr/firefox/new/">Firefox</a> 43</li>
+      <li><a href="https://www.google.fr/intl/fr/chrome/browser/desktop/">Chrome</a> 30</li>
+      <li><a href="https://www.mozilla.org/fr/firefox/new/">Firefox</a> 30</li>
       <li><a href="http://www.opera.com/fr">Opera</a> 34</li>
-      <li>Safari 9.0.2</li>
-      <li>Microsoft IE 9 ou Edge 25</li>
+      <li>Safari 8</li>
+      <li>Microsoft IE 9 ou Edge 13</li>
     </ul>
     <p>
       Si vous voulez essayer, sans garantie que cela fonctionne, suivez ce
