@@ -77,6 +77,7 @@ class Model:
             'username': profile['sLogin'],
             'firstname': profile['sFirstName'],
             'lastname': profile['sLastName'],
+            'badges': ' '.join(profile['badges']),
         })
 
     def create_team(self, user_id, badges):
