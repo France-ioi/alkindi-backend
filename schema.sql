@@ -177,7 +177,7 @@ ALTER TABLE users ADD COLUMN badges TEXT NOT NULL DEFAULT '';
 ALTER TABLE teams ADD COLUMN revision INT NOT NULL DEFAULT 0;
 ALTER TABLE teams ADD COLUMN message TEXT NULL;
 
-ALTER TABLE teams DROP COLUMN round_id;
+ALTER TABLE teams DROP FOREIGN KEY fk_teams__question_id;
 ALTER TABLE teams DROP COLUMN question_id;
 
 #---
