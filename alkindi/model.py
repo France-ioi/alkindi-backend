@@ -166,14 +166,9 @@ class Model:
         team_id = user['team_id']
         if user['team_id'] is None:
             return False
-        # The team must not have accessed the question.
+        # The team must not be locked.
         team = self.load_team(team_id)
-        if team['question_id'] is not None:
-            return False
-        # The round must be open for registration.
-        if not self.__is_round_registration_open(team['round_id']):
-            return False
-        if not team['is_open']:
+        if team['is_locked']:
             return False
         # Clear the user's team_id.
         self.__set_user_team_id(user_id, None)
