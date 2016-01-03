@@ -135,11 +135,12 @@ def join_team(request):
 
 def leave_team(request):
     user_id = request.context.user_id
-    result = app.model.leave_team(user_id)
-    app.db.commit()
-    # Clear the user's team credentials.
-    reset_user_principals(request)
-    return {'success': result}
+    success = app.model.leave_team(user_id)
+    if success:
+        app.db.commit()
+        # Clear the user's team credentials.
+        reset_user_principals(request)
+    return {'success': success}
 
 
 def update_team(request):
