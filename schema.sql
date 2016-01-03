@@ -29,7 +29,7 @@ CREATE INDEX ix_users__team_id USING btree ON users (team_id);
 CREATE TABLE teams (
     id BIGINT NOT NULL AUTO_INCREMENT,
     created_at DATETIME NOT NULL,
-    round_id BIGINT NOT NULL,
+    round_id BIGINT NOT NULL,  # changes over the team's lifetime
     question_id BIGINT NULL,
     code TEXT NOT NULL,
     is_open BOOLEAN NOT NULL,
@@ -174,5 +174,21 @@ ALTER TABLE team_members DROP COLUMN is_unlocked;
 
 ALTER TABLE `users` ADD COLUMN `badges` TEXT NOT NULL DEFAULT '';
 
+ALTER TABLE `teams` ADD COLUMN `revision` INT NOT NULL DEFAULT 0;
+ALTER TABLE `teams` ADD COLUMN `message` TEXT NULL;
+
 #---
 
+CREATE TABLE access_codes (
+    attempt_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    code TEXT NOT NULL,
+    is_unlocked BOOLEAN NOT NULL,
+    PRIMARY KEY (attempt_id, user_id)
+) CHARACTER SET utf8 ENGINE=InnoDB;
+CREATE INDEX ix_access_codes__attempt_id USING btree ON access_codes (attempt_id);
+CREATE INDEX ix_access_codes__user_id USING btree ON access_codes (user_id);
+ALTER TABLE access_codes ADD CONSTRAINT fk_access_codes__attempt_id
+  FOREIGN KEY (attempt_id) REFERENCES attempts(id) ON DELETE CASCADE;
+ALTER TABLE access_codes ADD CONSTRAINT fk_access_codes__user_id
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;

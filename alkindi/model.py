@@ -237,7 +237,8 @@ class Model:
         if team_id is None:
             return None
         keys = [
-            'id', 'created_at', 'round_id', 'question_id', 'code', 'is_open'
+            'id', 'revision', 'created_at', 'round_id', 'question_id',
+            'code', 'is_open', 'message'
         ]
         result = self.__load_row(self.db.tables.teams, team_id, keys)
         result['is_open'] = self.db.view_bool(result['is_open'])
