@@ -229,9 +229,10 @@ class Model:
             return None
         keys = [
             'id', 'created_at', 'foreign_id', 'team_id',
-            'username', 'firstname', 'lastname'
+            'username', 'firstname', 'lastname', 'badges'
         ]
         result = self.__load_row(self.db.tables.users, user_id, keys)
+        result['badges'] = result['badges'].split(' ')
         return result
 
     def load_team(self, team_id):
