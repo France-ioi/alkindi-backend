@@ -72,7 +72,7 @@ def add_json_renderer(config):
     json_renderer = JSON()
 
     def datetime_adapter(obj, request):
-        return obj.isoformat()
+        return "{}Z".format(obj.isoformat())
 
     def date_adapter(obj, request):
         return obj.isoformat()
