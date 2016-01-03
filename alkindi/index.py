@@ -164,14 +164,10 @@ def update_team(request):
     team_id = user['team_id']
     if team_id is None:
         return {'error': 'no team'}
-    # If the user is not an admin, they must be the team's creator,
-    # and the team must not have accessed the question.
+    # If the user is not an admin, they must be the team's creator.
     if ADMIN_GROUP not in request.effective_principals:
         if user_id != app.model.get_team_creator(team_id):
             return {'error': 'permission denied (not team creator)'}
-        team = app.model.load_team(team_id)
-        if team['question_id'] is not None:
-            return {'error': 'permission denied (question accessed)'}
     app.model.update_team(team_id, request.json_body)
     app.db.commit()
     return {'success': True}
