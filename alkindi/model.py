@@ -117,20 +117,22 @@ class Model:
         self.__set_user_team_id(user_id, team_id)
         return True
 
-    def join_team(self, user_id, team_id, user_badges):
+    def join_team(self, user, team_id):
         """ Add a user to a team.
             Registration for the team's round must be open.
             Return a boolean indicating if the team member was added.
         """
-        # Verify that the user exists and does not already belong to a team.
-        user = self.load_user(user_id)
+        # Verify that the user does not already belong to a team.
         if user['team_id'] is not None:
             # User is already in a team.
             return False
-        # Verify that the team exists, is open, and get its round_id.
+        # Verify that the team exists, is open, and not locked.
         team = self.load_team(team_id)
+        if team['is_locked']:
+            # Team is locked (an attempt was started).
+            return False
         if not team['is_open']:
-            # Team is closed.
+            # Team is closed (by its creator).
             return False
         round_id = team['round_id']
         # Verify that the round is open for registration.
@@ -138,6 +140,7 @@ class Model:
             return False
         # Look up the badges that grant access to the team's round, to
         # figure out whether the user is selected for that round.
+        user_badges = user['badges']
         badges = self.db.tables.badges
         if len(user_badges) == 0:
             is_selected = False
@@ -149,6 +152,7 @@ class Model:
                     .where(badges.is_active))
             is_selected = row is not None
         # Create the team_members row.
+        user_id = user['id']
         self.__add_team_member(team_id, user_id, is_selected=is_selected)
         # Update the user's team_id.
         self.__set_user_team_id(user_id, team_id)
