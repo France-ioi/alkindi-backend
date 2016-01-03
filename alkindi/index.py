@@ -1,5 +1,5 @@
 
-from pyramid.httpexceptions import HTTPNotModified
+from pyramid.httpexceptions import HTTPNotModified, HTTPFound
 
 from alkindi.auth import get_user_profile, reset_user_principals
 from alkindi.contexts import (
@@ -14,6 +14,11 @@ def includeme(config):
     config.add_route('index', '/', request_method='GET')
     config.add_view(
         index_view, route_name='index', renderer='templates/index.mako')
+    config.add_route(
+        'ancient_browser', '/ancient_browser', request_method='GET')
+    config.add_view(
+        ancient_browser_view, route_name='ancient_browser',
+        renderer='templates/ancient_browser.mako')
     config.add_view(model_error_view, context=ModelError, renderer='json')
     api_get(config, UserApiContext, '', read_user)
     api_post(config, UserApiContext, 'create_team', create_team)
@@ -51,7 +56,17 @@ def model_error_view(error, request):
     return {'error': str(error), 'source': 'model'}
 
 
+def ancient_browser_view(request):
+    if request.headers.get('X-Ancient-Browser') != '1':
+        raise HTTPFound(request.route_url('index'))
+    return {}
+
+
 def index_view(request):
+    # Redirect ancient browsers (detection is performed by the reverse
+    # proxy).
+    if request.headers.get('X-Ancient-Browser') == '1':
+        raise HTTPFound(request.route_url('ancient_browser'))
     # Prepare the frontend's config for injection as JSON in a script tag.
     assets_template = request.static_url('alkindi_r2_front:assets/{}') \
         .replace('%7B%7D', '{}')
