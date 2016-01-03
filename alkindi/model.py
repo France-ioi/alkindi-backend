@@ -326,6 +326,24 @@ class Model:
             result['not_enough_selected_users'] = True
         return result
 
+    def load_team_current_attempt(self, team_id):
+        attempts = self.db.tables.attempts
+        keys = [
+            'id', 'team_id', 'round_id', 'question_id', 'created_at',
+            'closes_at', 'is_current', 'is_training'
+        ]
+        query = self.db.query(attempts) \
+            .where(attempts.team_id == team_id) \
+            .where(attempts.is_current) \
+            .fields(*[getattr(attempts, key) for key in keys])
+        row = self.db.first(query)
+        if row is None:
+            return None
+        result = {key: row[i] for i, key in enumerate(keys)}
+        result['is_current'] = self.db.view_bool(result['is_current'])
+        result['is_training'] = self.db.view_bool(result['is_training'])
+        return result
+
     # --- private methods below ---
 
     def __load_row(self, table, id, keys):
