@@ -80,12 +80,11 @@ class Model:
             principals.append('tc:{}'.format(team_id))
         return principals
 
-    def create_team(self, user_id, badges):
-        """ Create a team for the specified user, and associate it with
-            a round based on the given badges.
-            Registration for the round must be open, and the badge must
-            be valid.
-            Return a boolean indicating if the team was created.
+    def create_team(self, user_id):
+        """ Create a team for the specified user.
+            The user's badges are used to determine the round with which the
+            team is associated.
+            Return a boolean indicating whether the team was created.
         """
         # Verify that the user exists and does not already belong to a team.
         user = self.load_user(user_id)
@@ -93,9 +92,9 @@ class Model:
             # User is already in a team.
             return False
         # Select a round based on the user's badges.
-        round_id = self.select_round_with_badges(badges)
+        round_id = self.select_round_with_badges(user['badges'])
         if round_id is None:
-            # The user does not have access to any round.
+            # The user does not have access to any open round.
             return False
         # Generate an unused code.
         code = generate_access_code()
@@ -106,9 +105,9 @@ class Model:
         query = self.db.query(teams).insert({
             teams.created_at: datetime.utcnow(),
             teams.round_id: round_id,
-            teams.question_id: None,
             teams.code: code,
-            teams.is_open: True
+            teams.is_open: True,
+            teams.is_locked: False
         })
         team_id = self.db.insert(query)
         # Create the team_members row.
