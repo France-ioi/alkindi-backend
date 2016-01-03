@@ -204,6 +204,7 @@ class Model:
 
     def update_team(self, team_id, options):
         """ Update a team's options.
+            is_open: can users join the team?
             No checks are performed in this function.
         """
         attrs = {}
