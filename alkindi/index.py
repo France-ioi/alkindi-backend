@@ -78,6 +78,7 @@ def get_api(request):
 
 
 def read_user(request):
+    request.response.cache_control = 'max-age=0, private'
     user_id = request.context.user_id
     return views.view_user_seed(user_id)
 
