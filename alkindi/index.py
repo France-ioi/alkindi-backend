@@ -188,6 +188,7 @@ MinimumFamilyVersion = {
     'Chrome': 47,
     'Iceweasel': 38,
     'Safari': 8,
+    'Firefox': 43,
 }
 
 
