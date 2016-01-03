@@ -148,7 +148,7 @@ def update_team(request):
     user = app.model.load_user(user_id)
     team_id = user['team_id']
     if team_id is None:
-        return {'error': 'no team'}
+        return {'success': False, 'error': 'you have no team'}
     # If the user is not an admin, they must be the team's creator.
     if ADMIN_GROUP not in request.effective_principals:
         if user_id != app.model.get_team_creator(team_id):
