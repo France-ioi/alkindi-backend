@@ -120,6 +120,7 @@ def get_user_profile(session, user_id=None, refresh=True):
         'Accept': 'application/json',
         'Authorization': 'Bearer {}'.format(access_token)
     }
+    print('Access Token: {}'.format(access_token))
     req = requests.get(
         idp_uri, headers=headers, verify='/etc/ssl/certs/ca-certificates.crt')
     try:
