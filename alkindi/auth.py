@@ -120,13 +120,11 @@ def get_user_profile(session, user_id=None, refresh=True):
         'Accept': 'application/json',
         'Authorization': 'Bearer {}'.format(access_token)
     }
-    print('Access Token: {}'.format(access_token))
     req = requests.get(
         idp_uri, headers=headers, verify='/etc/ssl/certs/ca-certificates.crt')
     try:
         req.raise_for_status()
         profile = req.json()
-        print("profile: {}".format(profile))
         if 'idUser' not in profile:
             raise RuntimeError('profile object has no idUser key')
         return profile
@@ -186,10 +184,16 @@ def get_oauth2_token(session, refresh=True):
         'Accept': 'application/json',
         'Content-Type': 'application/x-www-form-urlencoded'
     }
+    # Bug in oauthlib?  prepare_refresh_body should include the client_id
+    # and client_secret in the body but does not, so we add the manually.
+    client_id = app['oauth_client_id']
+    client_secret = app['oauth_client_secret']
     body = get_oauth_client().prepare_refresh_body(
-        refresh_token=refresh_token,
+        client_id=client_id, client_secret=client_secret,
+        refresh_token=refresh_token)
+    req = requests.post(
+        refresh_uri, headers=headers, data=body,
         verify='/etc/ssl/certs/ca-certificates.crt')
-    req = requests.post(refresh_uri, headers=headers, data=body)
     token = req.json()
     return accept_oauth2_token(session, token)
 
