@@ -43,18 +43,6 @@ def set_authentication_policy(config):
     config.set_authentication_policy(authentication_policy)
 
 
-def reset_user_principals(request):
-    request.session['principals'] = None
-
-
-def get_user_principals(userid, request):
-    principals = request.session.get('principals')
-    if principals is None:
-        principals = app.model.get_user_principals(userid)
-        request.session['principals'] = principals
-    return principals
-
-
 def login_view(request):
     # Opening this view in a new window will take the user to the
     # identity provider (IdP) for authentication.  The IdP will
@@ -74,7 +62,7 @@ def oauth_callback_view(request):
     except AuthenticationError as ex:
         return {'error': str(ex)}
     # Get the user identity (refreshing the token should not be needed).
-    profile = get_user_profile(request, refresh=False)
+    profile = get_user_profile(request.session, refresh=False)
     # Make pyramid remember the user's id.
     user_id = app.model.find_user(profile['idUser'])
     if user_id is None:
@@ -112,19 +100,68 @@ def logout_view(request):
 # Public definitions
 #
 
+def get_user_profile(session, user_id=None, refresh=True):
+    """ Query the identity provider for the specified (foreign) user_id,
+        authenticating using the access token from the given session.
+        If user_id is None, the profile of the authenticated user is queried.
+        Set refresh to False to disable automatic access token refresh.
+        If the query fails or if the access token has expired and cannot
+        be refreshed, None is returned.
+    """
+    try:
+        access_token = get_oauth2_token(session, refresh)
+    except AuthenticationError:
+        return None
+    idp_uri = app['identity_provider_uri']
+    params = {}
+    if user_id is not None:
+        params['user_id'] = user_id
+    headers = {
+        'Accept': 'application/json',
+        'Authorization': 'Bearer {}'.format(access_token)
+    }
+    req = requests.get(
+        idp_uri, headers=headers, verify='/etc/ssl/certs/ca-certificates.crt')
+    try:
+        req.raise_for_status()
+        profile = req.json()
+        print("profile: {}".format(profile))
+        if 'idUser' not in profile:
+            raise RuntimeError('profile object has no idUser key')
+        return profile
+    except requests.exceptions.HTTPError:
+        return None
+
+
+def get_user_principals(userid, request):
+    principals = request.session.get('principals')
+    if principals is None:
+        principals = app.model.get_user_principals(userid)
+        request.session['principals'] = principals
+    return principals
+
+
+def reset_user_principals(request):
+    request.session['principals'] = None
+
+
+#
+# Private definitions
+#
+
+
 class AuthenticationError(RuntimeError):
 
     def __init__(self, message):
         super().__init__(message)
 
 
-def get_oauth2_token(request, refresh=True):
+def get_oauth2_token(session, refresh=True):
     """ Return the logged-in user's access token.
         If refresh is True and the access token has expired, an attempt
         to refresh the token is made.
         If no access token can be obtained, AuthenticationError is raised.
     """
-    session = request.session
     expires_ts = session.get('access_token_expires')
     if expires_ts is None:
         # If we do not have token expiry information, assume that we do
@@ -153,43 +190,7 @@ def get_oauth2_token(request, refresh=True):
         verify='/etc/ssl/certs/ca-certificates.crt')
     req = requests.post(refresh_uri, headers=headers, data=body)
     token = req.json()
-    return accept_oauth2_token(request, token)
-
-
-def get_user_profile(request, user_id=None, refresh=True):
-    """ Query the identity provider for the authenticated user's
-        identity, using the access token found in the user's session.
-        If the query fails (or if the access token has expired and
-        cannot be refreshed), None is returned.
-    """
-    try:
-        access_token = get_oauth2_token(request, refresh)
-    except AuthenticationError:
-        return None
-    idp_uri = app['identity_provider_uri']
-    params = {}
-    if user_id is not None:
-        params['user_id'] = user_id
-    headers = {
-        'Accept': 'application/json',
-        'Authorization': 'Bearer {}'.format(access_token)
-    }
-    req = requests.get(
-        idp_uri, headers=headers, verify='/etc/ssl/certs/ca-certificates.crt')
-    try:
-        req.raise_for_status()
-        profile = req.json()
-        print("profile: {}".format(profile))
-        if 'idUser' not in profile:
-            raise RuntimeError('profile object has no idUser key')
-        return profile
-    except requests.exceptions.HTTPError:
-        return None
-
-
-#
-# Private definitions
-#
+    return accept_oauth2_token(session, token)
 
 
 def oauth2_provider_uri(request):
@@ -218,10 +219,10 @@ def accept_oauth2_code(request):
     state = request.params.get('state')
     # XXX verify state
     token = exchange_code_for_token(request, code)
-    return accept_oauth2_token(request, token)
+    return accept_oauth2_token(session, token)
 
 
-def accept_oauth2_token(request, token):
+def accept_oauth2_token(session, token):
     """ Store an OAuth2 token in the session, and return the access token.
         AuthenticationError is raised if the token is invalid.
     """
@@ -236,7 +237,6 @@ def accept_oauth2_token(request, token):
     refresh_token = token.get('refresh_token')
     # Store the token data in the (redis) session.
     # The expiry time is stored as a UTC timestamp.
-    session = request.session
     session['access_token'] = access_token
     session['access_token_expires'] = time.time() + int(token_expiry)
     if refresh_token is None:
