@@ -43,8 +43,12 @@ def set_authentication_policy(config):
     config.set_authentication_policy(authentication_policy)
 
 
+def reset_user_principals(request):
+    request.session['principals'] = None
+
+
 def get_user_principals(userid, request):
-    principals = request.session['principals']
+    principals = request.session.get('principals')
     if principals is None:
         principals = app.model.get_user_principals(userid)
         request.session['principals'] = principals
@@ -77,9 +81,9 @@ def oauth_callback_view(request):
         user_id = app.model.import_user(profile)
     else:
         app.model.update_user(user_id, profile)
-    # Clear the user's cached principals to force them to be refreshed.
-    request.session['principals'] = None
     app.db.commit()
+    # Clear the user's cached principals to force them to be refreshed.
+    reset_user_principals(request)
     remember(request, str(user_id))
     # The view template posts the result (encoded as JSON) to the parent
     # window, causing the frontend to update its state.
