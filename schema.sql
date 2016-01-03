@@ -172,10 +172,11 @@ ALTER TABLE attempts ADD CONSTRAINT fk_attempts__question_id
 ALTER TABLE team_members DROP COLUMN code;
 ALTER TABLE team_members DROP COLUMN is_unlocked;
 
-ALTER TABLE `users` ADD COLUMN `badges` TEXT NOT NULL DEFAULT '';
+ALTER TABLE users ADD COLUMN badges TEXT NOT NULL DEFAULT '';
 
-ALTER TABLE `teams` ADD COLUMN `revision` INT NOT NULL DEFAULT 0;
-ALTER TABLE `teams` ADD COLUMN `message` TEXT NULL;
+ALTER TABLE teams ADD COLUMN revision INT NOT NULL DEFAULT 0;
+ALTER TABLE teams ADD COLUMN message TEXT NULL;
+
 
 #---
 
