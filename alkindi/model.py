@@ -238,11 +238,12 @@ class Model:
         if team_id is None:
             return None
         keys = [
-            'id', 'revision', 'created_at', 'round_id', 'question_id',
-            'code', 'is_open', 'message'
+            'id', 'revision', 'created_at', 'round_id', 'code',
+            'is_open', 'is_locked', 'message'
         ]
         result = self.__load_row(self.db.tables.teams, team_id, keys)
         result['is_open'] = self.db.view_bool(result['is_open'])
+        result['is_locked'] = self.db.view_bool(result['is_locked'])
         return result
 
     def load_round(self, round_id):
