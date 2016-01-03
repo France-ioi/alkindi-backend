@@ -45,6 +45,10 @@ class UserApiContext(ApiContextBase):
             (Allow, 'u:{}'.format(self.user_id), ['read', 'change'])
         ]
 
+    @property
+    def user(self):
+        return app.model.load_user(self.user_id)
+
 
 class UsersApiContext(ApiContextBase):
 
