@@ -180,6 +180,10 @@ ALTER TABLE teams ADD COLUMN message TEXT NULL;
 ALTER TABLE teams DROP FOREIGN KEY fk_teams__question_id;
 ALTER TABLE teams DROP COLUMN question_id;
 
+ALTER TABLE attempts ADD COLUMN started_at DATETIME NULL;
+
+ALTER TABLE teams ADD COLUMN is_locked BOOLEAN NOT NULL DEFAULT FALSE;
+
 #---
 
 CREATE TABLE access_codes (
