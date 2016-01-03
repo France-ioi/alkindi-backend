@@ -199,7 +199,7 @@ def oauth2_provider_uri(request):
     authorise_uri = app['oauth_authorise_uri']
     callback_uri = request.route_url('oauth_callback')
     # XXX store the state in a database rather than in the session
-    request.session['oauth_state'] = state = uuid.uuid4()
+    request.session['oauth_state'] = state = str(uuid.uuid4())
     oauth_params = {
         'state': state,
         'redirect_uri': callback_uri,
