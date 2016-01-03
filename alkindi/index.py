@@ -104,7 +104,7 @@ def create_team(request):
 
 def join_team(request):
     """ Add the context's user to an existing team.
-        An administrator can also perform the action for a user.
+        An administrator can also perform the action on a user's behalf.
     """
     # Find the team corresponding to the provided code.
     data = request.json_body
@@ -118,16 +118,9 @@ def join_team(request):
         team_id = app.model.find_team_by_code(code)
     if team_id is None:
         return False
-    # Get the user's foreign_id to query the profile.
-    user_id = request.context.user_id
-    user = app.model.load_user(user_id)
-    # Get the user's badges from their profile.
-    profile = get_user_profile(request, user_id=user['foreign_id'])
-    if profile is None:
-        return {'error': 'failed to get profile'}
-    badges = profile['badges']
     # Add the user to the team.
-    result = app.model.join_team(user_id, team_id, badges)
+    user = request.context.user
+    result = app.model.join_team(user, team_id)
     app.db.commit()
     # Ensure the user gets team credentials.
     reset_user_principals(request)
