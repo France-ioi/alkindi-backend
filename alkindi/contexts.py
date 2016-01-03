@@ -17,7 +17,7 @@ class RootContext:
     __name__ = None
     __acl__ = [DENY_ALL]
 
-    def __init__(self):
+    def __init__(self, request):
         pass
 
     def __getitem__(self, path_element):
