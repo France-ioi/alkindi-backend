@@ -29,7 +29,7 @@ CREATE INDEX ix_users__team_id USING btree ON users (team_id);
 CREATE TABLE teams (
     id BIGINT NOT NULL AUTO_INCREMENT,
     created_at DATETIME NOT NULL,
-    round_id BIGINT NOT NULL,  # changes over the team's lifetime
+    round_id BIGINT NOT NULL,
     question_id BIGINT NULL,
     code TEXT NOT NULL,
     is_open BOOLEAN NOT NULL,
@@ -177,6 +177,8 @@ ALTER TABLE users ADD COLUMN badges TEXT NOT NULL DEFAULT '';
 ALTER TABLE teams ADD COLUMN revision INT NOT NULL DEFAULT 0;
 ALTER TABLE teams ADD COLUMN message TEXT NULL;
 
+ALTER TABLE teams DROP COLUMN round_id;
+ALTER TABLE teams DROP COLUMN question_id;
 
 #---
 
