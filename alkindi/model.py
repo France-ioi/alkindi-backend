@@ -288,6 +288,10 @@ class Model:
         return row[0]
 
     def select_round_with_badges(self, badges):
+        """ Select a round (active, registration open) for which the
+            badges qualify, and return its id.
+            If no round qualifies, None is returned.
+        """
         rounds = self.db.tables.rounds
         if len(badges) == 0:
             return None
