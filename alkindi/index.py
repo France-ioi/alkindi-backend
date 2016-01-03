@@ -10,6 +10,19 @@ from alkindi.model import ModelError
 import alkindi.views as views
 
 
+def includeme(config):
+    config.add_route('index', '/', request_method='GET')
+    config.add_view(
+        index_view, route_name='index', renderer='templates/index.mako')
+    config.add_view(model_error_view, context=ModelError, renderer='json')
+    api_get(config, UserApiContext, '', read_user)
+    api_post(config, UserApiContext, 'create_team', create_team)
+    api_post(config, UserApiContext, 'join_team', join_team)
+    api_post(config, UserApiContext, 'leave_team', leave_team)
+    api_post(config, UserApiContext, 'update_team', update_team)
+    api_get(config, TeamApiContext, '', read_team)
+
+
 def api_get(config, context, name, view):
     config.add_view(
         view, context=context, name=name,
@@ -24,17 +37,6 @@ def api_post(config, context, name, view):
         permission='change', renderer='json')
 
 
-def includeme(config):
-    config.add_route('index', '/', request_method='GET')
-    config.add_view(
-        index_view, route_name='index', renderer='templates/index.mako')
-    config.add_view(model_error_view, context=ModelError, renderer='json')
-    api_get(config, UserApiContext, '', read_user)
-    api_post(config, UserApiContext, 'create_team', create_team)
-    api_post(config, UserApiContext, 'join_team', join_team)
-    api_post(config, UserApiContext, 'leave_team', leave_team)
-    api_post(config, UserApiContext, 'update_team', update_team)
-    api_get(config, TeamApiContext, '', read_team)
 
 
 def check_etag(request, etag):
