@@ -145,8 +145,6 @@ CREATE INDEX ix_workspaces__round_id USING btree ON workspaces (round_id);
 ALTER TABLE workspaces ADD CONSTRAINT fk_workspaces__round_id
     FOREIGN KEY (round_id) REFERENCES rounds(id) ON DELETE CASCADE;
 
-#---
-
 ALTER TABLE questions DROP FOREIGN KEY fk_questions__round_id;
 ALTER TABLE questions DROP COLUMN round_id;
 
@@ -173,4 +171,8 @@ ALTER TABLE attempts ADD CONSTRAINT fk_attempts__question_id
 
 ALTER TABLE team_members DROP COLUMN code;
 ALTER TABLE team_members DROP COLUMN is_unlocked;
+
+ALTER TABLE `users` ADD COLUMN `badges` TEXT NOT NULL DEFAULT '';
+
+#---
 

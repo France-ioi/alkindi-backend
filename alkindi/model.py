@@ -39,6 +39,7 @@ class Model:
             users.username: profile['sLogin'],
             users.firstname: profile['sFirstName'],
             users.lastname: profile['sLastName'],
+            users.badges: ' '.join(profile['badges']),
         })
         user_id = self.db.insert(query)
         return user_id
