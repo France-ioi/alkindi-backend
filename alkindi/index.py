@@ -1,7 +1,7 @@
 
 from pyramid.httpexceptions import HTTPNotModified
 
-from alkindi.auth import get_user_profile
+from alkindi.auth import reset_user_principals
 from alkindi.contexts import (
     ApiContext, UserApiContext, TeamApiContext, ADMIN_GROUP
 )
@@ -112,6 +112,8 @@ def create_team(request):
     # Create the team.
     result = app.model.create_team(user_id, badges)
     app.db.commit()
+    # Ensure the user gets team credentials.
+    reset_user_principals(request)
     return {'success': result}
 
 
@@ -142,6 +144,8 @@ def join_team(request):
     # Add the user to the team.
     result = app.model.join_team(user_id, team_id, badges)
     app.db.commit()
+    # Ensure the user gets team credentials.
+    reset_user_principals(request)
     return {'success': result}
 
 
@@ -149,6 +153,8 @@ def leave_team(request):
     user_id = request.context.user_id
     result = app.model.leave_team(user_id)
     app.db.commit()
+    # Clear the user's team credentials.
+    reset_user_principals(request)
     return {'success': result}
 
 
