@@ -17,6 +17,7 @@ class MysqlAdapter:
         self.db = mysql.connect(**kwargs)
         self.result = Result(mysql_compile)
         self.log = True
+        self.broken = False
 
     def query(self, *args):
         return Q(*args, result=self.result)
@@ -36,8 +37,11 @@ class MysqlAdapter:
             return cursor
         except mysql.IntegrityError as ex:
             raise ModelError(ex)
-        except (mysql.OperationalError,
-                mysql.DataError,
+        except mysql.OperationalError as ex:
+            print("Lost connection to mysql")
+            self.broken = True
+            raise ModelError(ex)
+        except (mysql.DataError,
                 mysql.ProgrammingError,
                 mysql.InternalError,
                 mysql.NotSupportedError) as ex:
@@ -79,6 +83,11 @@ class MysqlAdapter:
         id = cursor.fetchone()
         cursor.close()
         return None if id is None else id[0]
+
+    def reconnect_if_broken(self):
+        if self.broken:
+            self.db.reconnect()
+            self.broken = False
 
     def rollback(self):
         self.db.rollback()
