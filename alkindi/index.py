@@ -1,6 +1,10 @@
 
+from pyramid.httpexceptions import HTTPNotModified
+
 from alkindi.auth import get_user_profile
-from alkindi.contexts import ApiContext, UserApiContext, ADMIN_GROUP
+from alkindi.contexts import (
+    ApiContext, UserApiContext, TeamApiContext, ADMIN_GROUP
+)
 from alkindi.globals import app
 from alkindi.model import ModelError
 import alkindi.views as views
@@ -30,6 +34,16 @@ def includeme(config):
     api_post(config, UserApiContext, 'join_team', join_team)
     api_post(config, UserApiContext, 'leave_team', leave_team)
     api_post(config, UserApiContext, 'update_team', update_team)
+    api_get(config, TeamApiContext, '', read_team)
+
+
+def check_etag(request, etag):
+    etag = str(etag)
+    if etag in request.if_none_match:
+        raise HTTPNotModified()
+    request.response.vary = 'Cookie'
+    request.response.cache_control = 'max-age=3600, private, must-revalidate'
+    request.response.etag = etag
 
 
 def model_error_view(error, request):
@@ -75,6 +89,12 @@ def read_user(request):
         return {'error': 'failed to get profile'}
     badges = profile['badges']
     return {'user': views.view_user(user_id, badges)}
+
+
+def read_team(request):
+    team = request.context.team
+    check_etag(request, team['revision'])
+    return views.view_user_team(team)
 
 
 def create_team(request):
