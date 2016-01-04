@@ -1,6 +1,5 @@
 
 import mysql.connector as mysql
-
 from sqlbuilder.smartsql import Q, T, Query, Result
 from sqlbuilder.smartsql.compilers.mysql import compile as mysql_compile
 
@@ -16,8 +15,7 @@ class MysqlAdapter:
     def __init__(self, **kwargs):
         self.db = mysql.connect(**kwargs)
         self.result = Result(mysql_compile)
-        self.log = True
-        self.broken = False
+        self.log = False
 
     def query(self, *args):
         return Q(*args, result=self.result)
@@ -28,7 +26,7 @@ class MysqlAdapter:
         elif type(query) == tuple:
             (stmt, values) = query
         else:
-            raise "invalid query type: {}".format(query)
+            raise ModelError("invalid query type: {}".format(query))
         try:
             if self.log:
                 print("[SQL] {};".format(stmt % tuple(values)))
@@ -39,7 +37,6 @@ class MysqlAdapter:
             raise ModelError(ex)
         except mysql.OperationalError as ex:
             print("Lost connection to mysql")
-            self.broken = True
             raise ModelError(ex)
         except (mysql.DataError,
                 mysql.ProgrammingError,
@@ -84,10 +81,11 @@ class MysqlAdapter:
         cursor.close()
         return None if id is None else id[0]
 
-    def reconnect_if_broken(self):
-        if self.broken:
-            self.db.reconnect()
-            self.broken = False
+    def ensure_connected(self):
+        try:
+            self.db.ping(reconnect=True, attempts=5, delay=2)
+        except mysql.InterfaceError:
+            raise ModelError('database is unavailable')
 
     def rollback(self):
         self.db.rollback()

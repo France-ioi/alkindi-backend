@@ -45,7 +45,7 @@ class Globals:
 
     def before_request(self):
         # Perform pre-request setup here.
-        app.db.reconnect_if_broken()
+        app.db.ensure_connected()
 
     def after_request(self):
         # Perform post-request teardown here.
