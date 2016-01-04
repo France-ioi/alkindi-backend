@@ -2,7 +2,7 @@
 
 <head lang="fr">
   <meta charset="utf-8">
-  <title>Index</title>
+  <title>Concours Alkindi</title>
   <link rel="stylesheet" href="${request.static_url('alkindi_r2_front:assets/bootstrap/css/bootstrap.min.css')}">
   <link rel="stylesheet" href="${request.static_url('alkindi_r2_front:assets/font-awesome/css/font-awesome.min.css')}">
   <link rel="stylesheet" href="${request.static_url('alkindi_r2_front:assets/main'+front_min+'.css')}">
