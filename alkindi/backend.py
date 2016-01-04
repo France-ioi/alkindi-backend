@@ -14,7 +14,9 @@ from pyramid.static import QueryStringConstantCacheBuster
 
 from alkindi import helpers
 from alkindi.globals import app
-from alkindi_r2_front import version as front_version
+from alkindi_r2_front import (
+    version as front_version,
+    min_build as front_min)
 
 
 def application(_global_config, **settings):
@@ -66,6 +68,7 @@ def set_session_factory(config):
 def set_renderer_context(event):
     event['g'] = app
     event['h'] = helpers
+    event['front_min'] = '.min' if front_min else ''
 
 
 def add_json_renderer(config):
