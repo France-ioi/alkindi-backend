@@ -69,7 +69,7 @@ class Model:
         query = self.db.query(team_members) \
             .where(team_members.user_id == user_id) \
             .where(team_members.team_id == team_id) \
-            .fields(team_members.is_selected, team_members.is_creator)
+            .fields(team_members.is_qualified, team_members.is_creator)
         row = self.db.first(query)
         if row is None:
             raise ModelError('missing team_member row')
@@ -112,7 +112,7 @@ class Model:
         team_id = self.db.insert(query)
         # Create the team_members row.
         self.__add_team_member(
-            team_id, user_id, is_selected=True, is_creator=True)
+            team_id, user_id, is_qualified=True, is_creator=True)
         # Update the user's team_id.
         self.__set_user_team_id(user_id, team_id)
         return True
@@ -139,21 +139,21 @@ class Model:
         if not self.__is_round_registration_open(round_id):
             return False
         # Look up the badges that grant access to the team's round, to
-        # figure out whether the user is selected for that round.
+        # figure out whether the user is qualified for that round.
         user_badges = user['badges']
         badges = self.db.tables.badges
         if len(user_badges) == 0:
-            is_selected = False
+            is_qualified = False
         else:
             row = self.db.first(
                 self.db.query(badges).fields(badges.id)
                     .where(badges.round_id == round_id)
                     .where(badges.symbol.in_(user_badges))
                     .where(badges.is_active))
-            is_selected = row is not None
+            is_qualified = row is not None
         # Create the team_members row.
         user_id = user['id']
-        self.__add_team_member(team_id, user_id, is_selected=is_selected)
+        self.__add_team_member(team_id, user_id, is_qualified=is_qualified)
         # Update the user's team_id.
         self.__set_user_team_id(user_id, team_id)
         return True
@@ -231,6 +231,8 @@ class Model:
             'username', 'firstname', 'lastname', 'badges'
         ]
         result = self.__load_row(self.db.tables.users, user_id, keys)
+        if result is None:
+            return None
         result['badges'] = result['badges'].split(' ')
         return result
 
@@ -251,27 +253,23 @@ class Model:
             return None
         keys = [
             'id', 'created_at', 'updated_at', 'title',
-            'allow_register', 'register_from', 'register_until',
-            'allow_access', 'access_from', 'access_until',
+            'registration_opens_at', 'training_opens_at',
             'min_team_size', 'max_team_size', 'min_team_ratio',
             'questions_path'
         ]
-        result = self.__load_row(self.db.tables.rounds, round_id, keys)
-        for key in ['allow_register', 'allow_access']:
-            result[key] = self.db.view_bool(result[key])
-        return result
+        return self.__load_row(self.db.tables.rounds, round_id, keys)
 
     def load_team_members(self, team_id):
         team_members = self.db.tables.team_members
         query = self.db.query(team_members) \
             .where(team_members.team_id == team_id) \
             .fields(team_members.user_id, team_members.joined_at,
-                    team_members.is_selected, team_members.is_creator)
+                    team_members.is_qualified, team_members.is_creator)
         return [
             {
                 'user_id': row[0],
                 'joined_at': row[1],
-                'is_selected': self.db.view_bool(row[2]),
+                'is_qualified': self.db.view_bool(row[2]),
                 'is_creator': self.db.view_bool(row[3])
             }
             for row in self.db.all(query)
@@ -296,35 +294,20 @@ class Model:
         if len(badges) == 0:
             return None
         badges_table = self.db.tables.badges
+        now = datetime.now()
         row = self.db.first(
             self.db.query(rounds & badges_table)
                 .fields(rounds.id)
                 .where(badges_table.round_id == rounds.id)
                 .where(badges_table.symbol.in_(badges))
                 .where(badges_table.is_active)
-                .where(rounds.allow_register))
+                .where(rounds.registration_opens_at <= now))
         if row is None:
             # If no round was found, the user does not have a badge that
             # grants them access to a round and we cannot create a team.
             return None
         (round_id,) = row
         return round_id
-
-    def test_question_blocked(self, team, round_):
-        """ Return a dict whose keys indicate reasons why the given
-            team cannot access the question associated with the given round.
-        """
-        result = {}
-        if not round_['allow_access']:
-            result['round_closed'] = True
-        (n_members, n_selected) = self.__get_team_stats(team['id'])
-        if n_members < round_['min_team_size']:
-            result['team_too_small'] = True
-        if n_members > round_['max_team_size']:
-            result['team_too_large'] = True
-        if n_selected < n_members * round_['min_team_ratio']:
-            result['not_enough_selected_users'] = True
-        return result
 
     def load_team_current_attempt(self, team_id):
         attempts = self.db.tables.attempts
@@ -344,6 +327,14 @@ class Model:
         result['is_training'] = self.db.view_bool(result['is_training'])
         return result
 
+    def count_team_started_attempts(self, team_id):
+        attempts = self.db.tables.attempts
+        query = self.db.query(attempts) \
+            .where(attempts.team_id == team_id) \
+            .where(attempts.started_at.is_not(None)) \
+            .fields(attempts.id.count())
+        return self.db.scalar(query)
+
     # --- private methods below ---
 
     def __load_row(self, table, id, keys):
@@ -351,6 +342,8 @@ class Model:
         query = query.fields(*[getattr(table, key) for key in keys])
         query = query.where(table.id == id)
         row = self.db.first(query)
+        if row is None:
+            return None
         return {key: row[i] for i, key in enumerate(keys)}
 
     def __update_row(self, table, id, attrs):
@@ -362,37 +355,38 @@ class Model:
         cursor.close()
 
     def __add_team_member(self, team_id, user_id,
-                          is_selected=False, is_creator=False):
+                          is_qualified=False, is_creator=False):
         team_members = self.db.tables.team_members
         query = self.db.query(team_members).insert({
             team_members.team_id: team_id,
             team_members.user_id: user_id,
             team_members.joined_at: datetime.utcnow(),
-            team_members.is_selected: is_selected,
+            team_members.is_qualified: is_qualified,
             team_members.is_creator: is_creator
         })
         self.db.execute(query)
 
     def __is_round_registration_open(self, round_id):
         rounds = self.db.tables.rounds
-        (allow_register,) = self.db.first(
+        (registration_opens_at,) = self.db.first(
             self.db.query(rounds)
-                .fields(rounds.allow_register)
+                .fields(rounds.registration_opens_at)
                 .where(rounds.id == round_id))
-        return self.db.view_bool(allow_register)
+        now = datetime.now()
+        return (registration_opens_at <= now)
 
     def __set_user_team_id(self, user_id, team_id):
         self.__update_row(self.db.tables.users, user_id, {'team_id': team_id})
 
-    def __get_team_stats(self, team_id):
-        """ Return (n_members, n_selected) for the given team.
+    def get_team_stats(self, team_id):
+        """ Return (n_members, n_qualified) for the given team.
         """
         team_members = self.db.tables.team_members
         tm_query = self.db.query(team_members) \
             .where(team_members.team_id == team_id)
         n_members = self.db.scalar(
             tm_query.fields(team_members.user_id.count()))
-        n_selected = self.db.scalar(
-            tm_query.where(team_members.is_selected)
-                    .fields(team_members.user_id.count()))
-        return (n_members, n_selected)
+        n_qualified = self.db.scalar(
+            tm_query.where(team_members.is_qualified)
+            .fields(team_members.user_id.count()))
+        return (n_members, n_qualified)

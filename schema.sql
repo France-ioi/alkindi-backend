@@ -184,7 +184,21 @@ ALTER TABLE attempts ADD COLUMN started_at DATETIME NULL;
 
 ALTER TABLE teams ADD COLUMN is_locked BOOLEAN NOT NULL DEFAULT FALSE;
 
-#---
+#--- prod
+
+ALTER TABLE rounds DROP COLUMN allow_access;
+ALTER TABLE rounds DROP COLUMN access_from;
+ALTER TABLE rounds DROP COLUMN access_until;
+ALTER TABLE rounds ADD COLUMN training_opens_at DATETIME NOT NULL;
+
+ALTER TABLE rounds DROP COLUMN allow_register;
+ALTER TABLE rounds DROP COLUMN register_from;
+ALTER TABLE rounds DROP COLUMN register_until;
+ALTER TABLE rounds ADD COLUMN registration_opens_at DATETIME NOT NULL;
+
+ALTER TABLE team_members CHANGE COLUMN is_selected is_qualified BOOLEAN NOT NULL;
+
+#--- epix2
 
 CREATE TABLE access_codes (
     attempt_id BIGINT NOT NULL,

@@ -1,10 +1,14 @@
 
+from datetime import datetime
+
 from alkindi.globals import app
 
 
 def view_user_seed(user_id):
     init = {}
     user = app.model.load_user(user_id)
+    if user is None:
+        return None
     init['user'] = view_user(user)
     team_id = user['team_id']
     if team_id is None:
@@ -13,15 +17,14 @@ def view_user_seed(user_id):
         badges = user['badges']
         round_id = app.model.select_round_with_badges(badges)
         if round_id is not None:
-            round = app.model.load_round(round_id)
-            init['round'] = view_user_round(round)
+            round_ = app.model.load_round(round_id)
+            init['round'] = view_user_round(round_)
         return init
-    # Add team data.
+    # Add team and round data.
     team = app.model.load_team(team_id)
-    init['team'] = view_user_team(team)
-    # Add round data.
-    round = app.model.load_round(team['round_id'])
-    init['round'] = view_user_round(round)
+    round_ = app.model.load_round(team['round_id'])
+    init['team'] = view_user_team(team, round_)
+    init['round'] = view_user_round(round_)
     # Find the team's current attempt.
     attempt = app.model.load_team_current_attempt(team_id)
     if attempt is None:
@@ -41,12 +44,12 @@ def view_user(user):
     return {key: user[key] for key in keys}
 
 
-def view_user_team(team):
+def view_user_team(team, round_=None):
     """ Return the user-view for a team.
     """
     members = view_team_members(team['id'])
     creator = [m for m in members if m['is_creator']]
-    return {
+    result = {
         'id': team['id'],
         'code': team['code'],
         'is_open': team['is_open'],
@@ -54,6 +57,30 @@ def view_user_team(team):
         'creator': creator[0]['user'],
         'members': members
     }
+    if round_ is not None:
+        causes = validate_team_for_round(members, round_)
+        result['round_access'] = causes
+        result['is_invalid'] = len(causes) != 0
+    return result
+
+
+def validate_team_for_round(members, round_):
+    """ Return a dict whose keys indicate reasons why the given
+        team members cannot start training for the given round.
+    """
+    result = {}
+    now = datetime.now()
+    if now < round_['training_opens_at']:
+        result['has_not_started'] = True
+    n_members = len(members)
+    n_qualified = len([m for m in members if m['is_qualified']])
+    if n_members < round_['min_team_size']:
+        result['team_too_small'] = True
+    if n_members > round_['max_team_size']:
+        result['team_too_large'] = True
+    if n_qualified < n_members * round_['min_team_ratio']:
+        result['insufficient_qualified_users'] = True
+    return result
 
 
 def view_team_members(team_id):
@@ -63,20 +90,20 @@ def view_team_members(team_id):
     query = query.where(team_members.user_id == users.id)
     query = query.where(team_members.team_id == team_id)
     query = query.fields(
-        team_members.joined_at,    # 0
-        team_members.is_selected,  # 1
-        team_members.is_creator,   # 2
-        users.id,                  # 3
-        users.username,            # 4
-        users.firstname,           # 5
-        users.lastname,            # 6
+        team_members.joined_at,     # 0
+        team_members.is_qualified,  # 1
+        team_members.is_creator,    # 2
+        users.id,                   # 3
+        users.username,             # 4
+        users.firstname,            # 5
+        users.lastname,             # 6
     )
     query = query.order_by(team_members.joined_at)
     members = []
     for row in app.db.all(query):
         view = {
             'joined_at': row[0],
-            'is_selected': app.db.view_bool(row[1]),
+            'is_qualified': app.db.view_bool(row[1]),
             'is_creator': app.db.view_bool(row[2]),
             'user': {
                 'id': row[3],
@@ -92,19 +119,18 @@ def view_team_members(team_id):
 def view_user_attempt(attempt):
     keys = ['id', 'created_at', 'closes_at', 'is_current', 'is_training']
     # TODO: add info on which user has submitted their code.
-    return {key: round[key] for key in keys}
+    return {key: attempt[key] for key in keys}
 
 
-def view_user_round(round):
+def view_user_round(round_):
     """ Return the user-view for a round.
     """
     keys = [
         'id', 'title',
-        'allow_register', 'register_from', 'register_until',
-        'allow_access', 'access_from', 'access_until',
+        'registration_opens_at', 'training_opens_at',
         'min_team_size', 'max_team_size', 'min_team_ratio'
     ]
-    return {key: round[key] for key in keys}
+    return {key: round_[key] for key in keys}
 
 
 def view_user_question(question_id):
