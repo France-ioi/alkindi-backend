@@ -150,7 +150,7 @@ def join_team(request):
     success = app.model.join_team(user, team_id)
     if success:
         # Joining a team cancels its attempts.
-        app.model.cancel_team_attempts(team_id)
+        app.model.cancel_current_team_attempt(team_id)
         app.db.commit()
         # Ensure the user gets team credentials.
         reset_user_principals(request)
@@ -163,7 +163,7 @@ def leave_team(request):
     success = app.model.leave_team(user)
     if success:
         # Leaving a team cancels its attempts.
-        app.model.cancel_team_attempts(user['team_id'])
+        app.model.cancel_current_team_attempt(user['team_id'])
         app.db.commit()
         # Clear the user's team credentials.
         reset_user_principals(request)
