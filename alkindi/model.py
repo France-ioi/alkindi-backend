@@ -467,8 +467,8 @@ class Model:
             .where(access_codes.code == code) \
             .update({'is_unlocked': True})
         cursor = self.db.execute(query)
+        count = cursor.rowcount
         cursor.close()
-        count = self.db.get_row_count()
         return count == 1
 
     # --- private methods below ---
