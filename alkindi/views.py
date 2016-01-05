@@ -47,7 +47,7 @@ def view_user(user):
 def view_user_team(team, round_=None):
     """ Return the user-view for a team.
     """
-    members = app.db.load_team_members(team['id'], users=True)
+    members = app.model.load_team_members(team['id'], users=True)
     creator = [m for m in members if m['is_creator']]
     result = {
         'id': team['id'],
