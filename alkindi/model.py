@@ -431,6 +431,19 @@ class Model:
             for row in self.db.all(query)
         ]
 
+    def get_current_attempt_access_code(self, user_id):
+        teams = self.db.tables.teams
+        attempts = self.db.tables.attempts
+        access_codes = self.db.tables.access_codes
+        query = self.db.query(teams & attempts & access_codes) \
+            .where(attempts.team_id == teams.id) \
+            .where(attempts.is_current) \
+            .where(access_codes.attempt_id == attempts.id) \
+            .where(access_codes.user_id == user_id) \
+            .fields(access_codes.code)
+        row = self.db.first(query)
+        return None if row is None else row[0]
+
     # --- private methods below ---
 
     def __load_row(self, table, id, keys):

@@ -27,6 +27,7 @@ def includeme(config):
     api_post(config, UserApiContext, 'update_team', update_team)
     api_post(config, UserApiContext, 'start_attempt', start_attempt)
     api_post(config, UserApiContext, 'cancel_attempt', cancel_attempt)
+    api_get(config, UserApiContext, 'access_code', view_access_code)
     api_get(config, TeamApiContext, '', read_team)
 
 
@@ -250,6 +251,14 @@ def cancel_attempt(request):
     app.model.cancel_current_team_attempt(team_id)
     app.db.commit()
     return {'success': True}
+
+
+def view_access_code(request):
+    user_id = request.context.user_id
+    code = app.model.get_current_attempt_access_code(user_id)
+    if code is None:
+        return {'success': False}
+    return {'success': True, 'code': code}
 
 
 def enter_code(request):
