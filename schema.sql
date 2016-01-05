@@ -184,6 +184,9 @@ ALTER TABLE attempts ADD COLUMN started_at DATETIME NULL;
 
 ALTER TABLE teams ADD COLUMN is_locked BOOLEAN NOT NULL DEFAULT FALSE;
 
+ALTER TABLE rounds ADD COLUMN max_attempts INTEGER NOT NULL;
+UPDATE rounds SET max_attempts = 3;
+
 #--- prod
 
 ALTER TABLE rounds DROP COLUMN allow_access;
@@ -197,6 +200,8 @@ ALTER TABLE rounds DROP COLUMN register_until;
 ALTER TABLE rounds ADD COLUMN registration_opens_at DATETIME NOT NULL;
 
 ALTER TABLE team_members CHANGE COLUMN is_selected is_qualified BOOLEAN NOT NULL;
+
+ALTER TABLE attempts ADD COLUMN is_unsolved BOOLEAN NOT NULL;
 
 #--- epix2
 
@@ -213,3 +218,12 @@ ALTER TABLE access_codes ADD CONSTRAINT fk_access_codes__attempt_id
   FOREIGN KEY (attempt_id) REFERENCES attempts(id) ON DELETE CASCADE;
 ALTER TABLE access_codes ADD CONSTRAINT fk_access_codes__user_id
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+
+
+* !round.allow_access     ==> round.has_not_started
+  (synthétique, migration: supprimer du modèle)
+* attempt === undefined
+* !attempt.is_started     ==> attempt.needs_codes
+  (migration: renommer)
+* !attempt.is_successful  ==> attempt.is_unsolved
+  (migration: renommer)

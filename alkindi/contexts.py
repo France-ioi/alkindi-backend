@@ -2,9 +2,7 @@
 from pyramid.security import DENY_ALL, Allow
 
 from alkindi.globals import app
-
-
-ADMIN_GROUP = 'g:admin'
+from alkindi.auth import ADMIN_GROUP
 
 
 def includeme(config):

@@ -13,6 +13,9 @@ import requests
 from alkindi.globals import app
 
 
+ADMIN_GROUP = 'g:admin'
+
+
 #
 # Pyramid routes and views
 #
@@ -30,6 +33,7 @@ def includeme(config):
     config.add_view(
         oauth_callback_view, route_name='oauth_callback',
         renderer='templates/after_login.mako')
+    config.add_request_method(get_by_admin, 'by_admin', reify=True)
 
 
 def set_authorization_policy(config):
@@ -142,6 +146,10 @@ def get_user_principals(userid, request):
 
 def reset_user_principals(request):
     request.session['principals'] = None
+
+
+def get_by_admin(request):
+    return ADMIN_GROUP in request.effective_principals
 
 
 #

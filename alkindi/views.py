@@ -47,7 +47,7 @@ def view_user(user):
 def view_user_team(team, round_=None):
     """ Return the user-view for a team.
     """
-    members = view_team_members(team['id'])
+    members = app.db.load_team_members(team['id'], users=True)
     creator = [m for m in members if m['is_creator']]
     result = {
         'id': team['id'],
@@ -58,13 +58,13 @@ def view_user_team(team, round_=None):
         'members': members
     }
     if round_ is not None:
-        causes = validate_team_for_round(members, round_)
+        causes = validate_members_for_round(members, round_)
         result['round_access'] = causes
         result['is_invalid'] = len(causes) != 0
     return result
 
 
-def validate_team_for_round(members, round_):
+def validate_members_for_round(members, round_):
     """ Return a dict whose keys indicate reasons why the given
         team members cannot start training for the given round.
     """
@@ -81,39 +81,6 @@ def validate_team_for_round(members, round_):
     if n_qualified < n_members * round_['min_team_ratio']:
         result['insufficient_qualified_users'] = True
     return result
-
-
-def view_team_members(team_id):
-    team_members = app.db.tables.team_members
-    users = app.db.tables.users
-    query = app.db.query(team_members & users)
-    query = query.where(team_members.user_id == users.id)
-    query = query.where(team_members.team_id == team_id)
-    query = query.fields(
-        team_members.joined_at,     # 0
-        team_members.is_qualified,  # 1
-        team_members.is_creator,    # 2
-        users.id,                   # 3
-        users.username,             # 4
-        users.firstname,            # 5
-        users.lastname,             # 6
-    )
-    query = query.order_by(team_members.joined_at)
-    members = []
-    for row in app.db.all(query):
-        view = {
-            'joined_at': row[0],
-            'is_qualified': app.db.view_bool(row[1]),
-            'is_creator': app.db.view_bool(row[2]),
-            'user': {
-                'id': row[3],
-                'username': row[4],
-                'firstname': row[5],
-                'lastname': row[6],
-            }
-        }
-        members.append(view)
-    return members
 
 
 def view_user_attempt(attempt):

@@ -3,6 +3,9 @@ from datetime import datetime
 
 from .utils import generate_access_code
 
+# TODO: add started_at to attempts
+# TODO: when the first attempt starts, *lock* the team.
+
 
 class ModelError(RuntimeError):
     pass
@@ -158,11 +161,11 @@ class Model:
         self.__set_user_team_id(user_id, team_id)
         return True
 
-    def leave_team(self, user_id):
+    def leave_team(self, user):
         """ Remove a user from their team.
         """
         # The user must be member of a team.
-        user = self.load_user(user_id)
+        user_id = user['id']
         team_id = user['team_id']
         if user['team_id'] is None:
             return False
@@ -202,15 +205,14 @@ class Model:
                     {team_members.is_creator: True})
         return True
 
-    def update_team(self, team_id, options):
-        """ Update a team's options.
-            is_open: can users join the team?
+    def update_team(self, team_id, settings):
+        """ Update a team's settings.
+            These settings are available:
+                is_open: can users join the team?
+                is_locked: can users join or leave the team?
             No checks are performed in this function.
         """
-        attrs = {}
-        if 'is_open' in options:
-            attrs['is_open'] = options['is_open']
-        self.__update_row(self.db.tables.teams, team_id, attrs)
+        self.__update_row(self.db.tables.teams, team_id, settings)
 
     def find_team_by_code(self, code):
         teams = self.db.tables.teams
@@ -244,8 +246,8 @@ class Model:
             'is_open', 'is_locked', 'message'
         ]
         result = self.__load_row(self.db.tables.teams, team_id, keys)
-        result['is_open'] = self.db.view_bool(result['is_open'])
-        result['is_locked'] = self.db.view_bool(result['is_locked'])
+        for key in ['is_open', 'is_locked']:
+            result[key] = self.db.view_bool(result[key])
         return result
 
     def load_round(self, round_id):
@@ -255,12 +257,41 @@ class Model:
             'id', 'created_at', 'updated_at', 'title',
             'registration_opens_at', 'training_opens_at',
             'min_team_size', 'max_team_size', 'min_team_ratio',
-            'questions_path'
+            'max_attempts', 'questions_path'
         ]
         return self.__load_row(self.db.tables.rounds, round_id, keys)
 
-    def load_team_members(self, team_id):
+    def load_team_members(self, team_id, users=False):
         team_members = self.db.tables.team_members
+        if users:
+            users = self.db.tables.users
+            query = self.db.query(team_members & users)
+            query = query.where(team_members.user_id == users.id)
+            query = query.where(team_members.team_id == team_id)
+            query = query.fields(
+                team_members.joined_at,     # 0
+                team_members.is_qualified,  # 1
+                team_members.is_creator,    # 2
+                users.id,                   # 3
+                users.username,             # 4
+                users.firstname,            # 5
+                users.lastname,             # 6
+            )
+            query = query.order_by(team_members.joined_at)
+            return [
+                {
+                    'joined_at': row[0],
+                    'is_qualified': self.db.view_bool(row[1]),
+                    'is_creator': self.db.view_bool(row[2]),
+                    'user': {
+                        'id': row[3],
+                        'username': row[4],
+                        'firstname': row[5],
+                        'lastname': row[6],
+                    }
+                }
+                for row in self.db.all(query)
+            ]
         query = self.db.query(team_members) \
             .where(team_members.team_id == team_id) \
             .fields(team_members.user_id, team_members.joined_at,
@@ -309,11 +340,18 @@ class Model:
         (round_id,) = row
         return round_id
 
+    def cancel_team_attempts(self, team_id):
+        attempts = self.db.tables.attempts
+        query = self.db.query(attempts) \
+            .where(attempts.team_id == team_id)
+        self.db.delete(query)
+
     def load_team_current_attempt(self, team_id):
         attempts = self.db.tables.attempts
         keys = [
-            'id', 'team_id', 'round_id', 'question_id', 'created_at',
-            'closes_at', 'is_current', 'is_training'
+            'id', 'team_id', 'round_id', 'question_id',
+            'created_at', 'started_at', 'closes_at',
+            'is_current', 'is_training', 'is_unsolved'
         ]
         query = self.db.query(attempts) \
             .where(attempts.team_id == team_id) \
@@ -323,17 +361,37 @@ class Model:
         if row is None:
             return None
         result = {key: row[i] for i, key in enumerate(keys)}
-        result['is_current'] = self.db.view_bool(result['is_current'])
-        result['is_training'] = self.db.view_bool(result['is_training'])
+        for key in ['is_current', 'is_training', 'is_unsolved']:
+            result[key] = self.db.view_bool(result[key])
         return result
 
-    def count_team_started_attempts(self, team_id):
+    def count_team_timed_attempts(self, team_id):
         attempts = self.db.tables.attempts
         query = self.db.query(attempts) \
             .where(attempts.team_id == team_id) \
-            .where(attempts.started_at.is_not(None)) \
+            .where(~attempts.is_training) \
             .fields(attempts.id.count())
         return self.db.scalar(query)
+
+    def create_attempt(self, round_id, team_id, members, is_training=True):
+        attempts = self.db.tables.attempts
+        attempt_id = self.__insert_row(attempts, {
+            'team_id': team_id,
+            'round_id': round_id,
+            'question_id': None,  # set when question is accessed
+            'created_at': datetime.utcnow(),
+            'started_at': None,   # set when enough codes have been entered
+            'closes_at': None,    # set when question is accessed
+            'is_current': True,
+            'is_training': is_training,
+            'is_unsolved': False
+        })
+        # TODO: create codes
+        return attempt_id
+
+    def set_attempt_not_current(self, attempt_id):
+        attempts = self.db.tables.attempts
+        self.__update_row(attempts, attempt_id, {'is_current': False})
 
     # --- private methods below ---
 
@@ -345,6 +403,13 @@ class Model:
         if row is None:
             return None
         return {key: row[i] for i, key in enumerate(keys)}
+
+    def __insert_row(self, table, attrs):
+        query = self.db.query(table)
+        query = query.insert({
+            getattr(table, key): attrs[key] for key in attrs
+        })
+        return self.db.insert(query)
 
     def __update_row(self, table, id, attrs):
         query = self.db.query(table).where(table.id == id)

@@ -3,9 +3,7 @@ from pyramid.httpexceptions import HTTPNotModified, HTTPFound
 from ua_parser import user_agent_parser
 
 from alkindi.auth import get_user_profile, reset_user_principals
-from alkindi.contexts import (
-    ApiContext, UserApiContext, TeamApiContext, ADMIN_GROUP
-)
+from alkindi.contexts import (ApiContext, UserApiContext, TeamApiContext)
 from alkindi.globals import app
 from alkindi.model import ModelError
 import alkindi.views as views
@@ -26,6 +24,7 @@ def includeme(config):
     api_post(config, UserApiContext, 'join_team', join_team)
     api_post(config, UserApiContext, 'leave_team', leave_team)
     api_post(config, UserApiContext, 'update_team', update_team)
+    api_post(config, UserApiContext, 'start_attempt', start_attempt)
     api_get(config, TeamApiContext, '', read_team)
 
 
@@ -133,7 +132,7 @@ def join_team(request):
     # Find the team corresponding to the provided code.
     data = request.json_body
     team_id = None
-    if ADMIN_GROUP in request.effective_principals:
+    if request.by_admin:
         # Accept a team_id if the authenticated user is an admin.
         if 'team_id' in data:
             team_id = data['team_id']
@@ -146,6 +145,8 @@ def join_team(request):
     user = request.context.user
     success = app.model.join_team(user, team_id)
     if success:
+        # Joining a team cancels its attempts.
+        app.model.cancel_team_attempts(team_id)
         app.db.commit()
         # Ensure the user gets team credentials.
         reset_user_principals(request)
@@ -154,8 +155,11 @@ def join_team(request):
 
 def leave_team(request):
     user_id = request.context.user_id
-    success = app.model.leave_team(user_id)
+    user = app.model.load_user(user_id)
+    success = app.model.leave_team(user)
     if success:
+        # Leaving a team cancels its attempts.
+        app.model.cancel_team_attempts(user['team_id'])
         app.db.commit()
         # Clear the user's team credentials.
         reset_user_principals(request)
@@ -169,12 +173,75 @@ def update_team(request):
     if team_id is None:
         return {'success': False, 'error': 'you have no team'}
     # If the user is not an admin, they must be the team's creator.
-    if ADMIN_GROUP not in request.effective_principals:
+    if request.by_admin:
         if user_id != app.model.get_team_creator(team_id):
             return {'error': 'permission denied (not team creator)'}
-    app.model.update_team(team_id, request.json_body)
+        # The creator can only change some settings.
+        allowed_keys = ['is_open']
+        body = request.json_body
+        settings = {key: body[key] for key in allowed_keys}
+    else:
+        # Admins can change all settings.
+        settings = request.json_body
+    app.model.update_team(team_id, settings)
     app.db.commit()
     return {'success': True}
+
+
+def start_attempt(request):
+    user_id = request.context.user_id
+    user = app.model.load_user(user_id)
+    team_id = user['team_id']
+    if team_id is None:
+        return {'success': False, 'error': 'you have no team'}
+    # Load team, team members, round.
+    team = app.model.load_team(team_id)
+    round_id = team['round_id']
+    members = app.model.load_team_members(team_id)
+    round_ = app.model.load_round(round_id)
+    # Get the team's current attempt.
+    attempt = app.model.load_team_current_attempt(team_id)
+    if attempt is None:
+        # Check that the team is valid for the round.
+        causes = views.validate_members_for_round(members, round_)
+        if len(causes) != 0:
+            return {'success': False, 'error': 'team is invalid'}
+        # Create a training attempt.
+        # The team is not locked at this time, but any change to the
+        # team should cancel the attempt.
+        app.model.create_attempt(team_id, round_id, members, is_training=True)
+    else:
+        if attempt['is_training']:
+            # Current attempt is training.  Team must pass training to
+            # create a timed attempt.
+            if attempt['is_unsolved']:
+                return {'success': False, 'error': 'must pass training'}
+        else:
+            # XXX Current attempt is timed, do we allow the team to
+            # start a new attempt before the time has elapsed?
+            pass
+        # Limit the number of timed attempts.
+        n_attempts = app.model.count_team_timed_attempts(team_id)
+        if n_attempts == round_['max_attempts']:
+            return {'success': False, 'error': 'too many attempts'}
+        # Reset the is_current flag on the current attempt.
+        app.model.set_attempt_not_current(attempt['id'])
+        # Create a timed attempt.
+        app.model.create_attempt(team_id, round_id, members, is_training=False)
+    app.db.commit()
+    return {'success': True}
+
+
+def enter_code(request):
+    user_id = request.context.user_id
+    user = app.model.load_user(user_id)
+    team_id = user['team_id']
+    if team_id is None:
+        return {'success': False, 'error': 'you have no team'}
+    if False:
+        # Lock the team.
+        app.model.update_team(team_id, {'is_locked': True})
+    return {}
 
 
 def update_user_profile(request, user_id=None):
