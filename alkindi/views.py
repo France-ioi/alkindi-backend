@@ -27,10 +27,10 @@ def view_user_seed(user_id):
     init['round'] = view_user_round(round_)
     if attempt is not None:
         init['attempt'] = view_user_attempt(attempt)
-    # Add question data, if available.
-    question_id = attempt['question_id']
-    if question_id is not None:
-        init['question'] = view_user_question(question_id)
+        # Add question data, if available.
+        question_id = attempt['question_id']
+        if question_id is not None:
+            init['question'] = view_user_question(question_id)
     return init
 
 
