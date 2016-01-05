@@ -96,11 +96,5 @@ class MysqlAdapter:
     def close(self):
         self.db.close()
 
-    def get_row_count(self):
-        cursor = self.db.cursor()
-        cursor.execute('SELECT ROW_COUNT()')
-        row = cursor.fetchone()
-        return row[0]
-
     def view_bool(self, value):
         return value != 0
