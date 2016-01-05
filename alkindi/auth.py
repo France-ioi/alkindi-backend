@@ -104,6 +104,13 @@ def logout_view(request):
 # Public definitions
 #
 
+def sanitize_session(request):
+    user_id = request.authenticated_userid
+    session = request.session
+    if user_id is not None and 'access_token' not in session:
+        forget(request)
+
+
 def get_user_profile(session, user_id=None, refresh=True):
     """ Query the identity provider for the specified (foreign) user_id,
         authenticating using the access token from the given session.
