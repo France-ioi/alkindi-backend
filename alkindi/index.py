@@ -272,9 +272,9 @@ def enter_access_code(request):
         return {'success': False, 'error': 'you have no team'}
     data = request.json_body
     code = data['code']
-    app.model.unlock_current_attempt_access_code(user_id, code)
+    success = app.model.unlock_current_attempt_access_code(user_id, code)
     app.db.commit()
-    return {'success': True}
+    return {'success': success}
 
 
 def access_question(request):
