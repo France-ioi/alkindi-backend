@@ -143,16 +143,20 @@ def join_team(request):
         team_id = app.model.find_team_by_code(code)
     if team_id is None:
         return {'success': False}
-    # Add the user to the team.
     user = request.context.user
+    # Verify that the user does not already belong to a team.
+    if user['team_id'] is not None:
+        return {'success': False}
+    # Add the user to the team.
     success = app.model.join_team(user, team_id)
-    if success:
-        # Joining a team cancels its attempts.
-        app.model.cancel_current_team_attempt(team_id)
-        app.db.commit()
-        # Ensure the user gets team credentials.
-        reset_user_principals(request)
-    return {'success': success}
+    if not success:
+        return {'success': False, 'error': 'bad code'}
+    # Joining a team cancels its attempts.
+    app.model.cancel_current_team_attempt(team_id)
+    app.db.commit()
+    # Ensure the user gets team credentials.
+    reset_user_principals(request)
+    return {'success': True}
 
 
 def leave_team(request):
@@ -173,11 +177,11 @@ def update_team(request):
     user = app.model.load_user(user_id)
     team_id = user['team_id']
     if team_id is None:
-        return {'success': False, 'error': 'you have no team'}
+        return {'success': False}
     # If the user is not an admin, they must be the team's creator.
     if request.by_admin:
         if user_id != app.model.get_team_creator(team_id):
-            return {'error': 'permission denied (not team creator)'}
+            return {'success': False, 'error': 'denied'}
         # The creator can only change some settings.
         allowed_keys = ['is_open']
         body = request.json_body
@@ -195,7 +199,7 @@ def start_attempt(request):
     user = app.model.load_user(user_id)
     team_id = user['team_id']
     if team_id is None:
-        return {'success': False, 'error': 'you have no team'}
+        return {'success': False}
     # Load team, team members, round.
     team = app.model.load_team(team_id)
     members = app.model.load_team_members(team_id)
@@ -208,7 +212,7 @@ def start_attempt(request):
         # Check that the team is valid for the round.
         causes = views.validate_members_for_round(members, round_)
         if len(causes) != 0:
-            return {'success': False, 'error': 'team is invalid'}
+            return {'success': False, 'error': 'invalid team'}
         # Create a training attempt.
         # The team is not locked at this time, but any change to the
         # team should cancel the attempt.
