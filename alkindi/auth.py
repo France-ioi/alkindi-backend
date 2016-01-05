@@ -251,15 +251,11 @@ def accept_oauth2_token(session, token):
     token_expiry = token.get('expires_in')
     if token_expiry is None:
         raise AuthenticationError('missing access token expiry')
-    refresh_token = token.get('refresh_token')
     # Store the token data in the (redis) session.
     # The expiry time is stored as a UTC timestamp.
     session['access_token'] = access_token
     session['access_token_expires'] = time.time() + int(token_expiry)
-    if refresh_token is None:
-        del session['refresh_token']
-    else:
-        session['refresh_token'] = refresh_token
+    session['refresh_token'] = token.get('refresh_token')
     return access_token
 
 
