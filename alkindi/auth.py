@@ -66,7 +66,7 @@ def oauth_callback_view(request):
     except AuthenticationError as ex:
         return {'error': str(ex)}
     # Get the user identity (refreshing the token should not be needed).
-    profile = get_user_profile(request.session, refresh=False)
+    profile = get_user_profile(request, refresh=False)
     # Make pyramid remember the user's id.
     user_id = app.model.find_user(profile['idUser'])
     if user_id is None:
@@ -104,16 +104,9 @@ def logout_view(request):
 # Public definitions
 #
 
-def sanitize_session(request):
-    user_id = request.authenticated_userid
-    session = request.session
-    if user_id is not None and 'access_token' not in session:
-        forget(request)
-
-
-def get_user_profile(session, user_id=None, refresh=True):
+def get_user_profile(request, user_id=None, refresh=True):
     """ Query the identity provider for the specified (foreign) user_id,
-        authenticating using the access token from the given session.
+        authenticating using the access token from the given request's session.
         If user_id is None, the profile of the authenticated user is queried.
         Set refresh to False to disable automatic access token refresh.
         If the query fails or if the access token has expired and cannot
@@ -170,12 +163,13 @@ class AuthenticationError(RuntimeError):
         super().__init__(message)
 
 
-def get_oauth2_token(session, refresh=True):
+def get_oauth2_token(request, refresh=True):
     """ Return the logged-in user's access token.
         If refresh is True and the access token has expired, an attempt
         to refresh the token is made.
         If no access token can be obtained, AuthenticationError is raised.
     """
+    session = request.session
     expires_ts = session.get('access_token_expires')
     if expires_ts is None:
         # If we do not have token expiry information, assume that we do
@@ -189,10 +183,11 @@ def get_oauth2_token(session, refresh=True):
     # Do we attempt to refresh the token?
     refresh_token = session.get('refresh_token')
     if not refresh or refresh_token is None:
-        # Clear the expired access token and bail out.
+        # Clear the expired access token, log out, and bail out.
         del session['access_token_expires']
         del session['access_token']
-        return AuthenticationError('access token has expired')
+        forget(request)
+        raise AuthenticationError('access token has expired')
     # Refresh the token.
     refresh_uri = app['oauth_refresh_uri']
     headers = {
@@ -218,7 +213,6 @@ def oauth2_provider_uri(request):
     """
     authorise_uri = app['oauth_authorise_uri']
     callback_uri = request.route_url('oauth_callback')
-    # XXX store the state in a database rather than in the session
     request.session['oauth_state'] = state = str(uuid.uuid4())
     oauth_params = {
         'state': state,
@@ -237,9 +231,11 @@ def accept_oauth2_code(request):
     """
     code = request.params.get('code')
     state = request.params.get('state')
-    if request.session['oauth_state'] != state:
+    saved_state = request.session.get('oauth_state')
+    if saved_state != state:
         raise AuthenticationError('bad state')
-    token = exchange_code_for_token(request, code)
+    token = exchange_code_for_token(request, code, state)
+    del request.session['oauth_state']
     return accept_oauth2_token(request.session, token)
 
 
@@ -277,13 +273,12 @@ def format_error_value(value):
     return message
 
 
-def exchange_code_for_token(request, code, **kwargs):
+def exchange_code_for_token(request, code, state, **kwargs):
     """ Exchange the given OAuth2 code for an access token.
     """
     token_uri = app['oauth_token_uri']
     callback_uri = request.route_url('oauth_callback')
     client_secret = app['oauth_client_secret']
-    state = request.session['oauth_state']
     body = get_oauth_client().prepare_request_body(
         state=state, code=code, redirect_uri=callback_uri,
         client_secret=client_secret, **kwargs)

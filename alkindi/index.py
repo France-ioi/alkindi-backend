@@ -3,8 +3,7 @@ import datetime
 from pyramid.httpexceptions import HTTPNotModified, HTTPFound
 from ua_parser import user_agent_parser
 
-from alkindi.auth import (
-    get_user_profile, reset_user_principals, sanitize_session)
+from alkindi.auth import get_user_profile, reset_user_principals
 from alkindi.contexts import (ApiContext, UserApiContext, TeamApiContext)
 from alkindi.globals import app
 from alkindi.model import ModelError
@@ -69,7 +68,6 @@ def ancient_browser_view(request):
 
 
 def index_view(request):
-    sanitize_session(request)
     # Redirect ancient browsers (detection is performed by the reverse
     # proxy).
     if 'ancient' not in request.params and is_ancient_browser(request):
@@ -299,7 +297,7 @@ def access_question(request):
 
 
 def update_user_profile(request, user_id=None):
-    profile = get_user_profile(request.session, user_id)
+    profile = get_user_profile(request, user_id)
     if profile is None:
         raise RuntimeError("failed to get the user's profile")
     app.model.update_user(user_id, profile)
