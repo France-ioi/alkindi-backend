@@ -271,11 +271,13 @@ def enter_access_code(request):
     user = app.model.load_user(user_id)
     team_id = user['team_id']
     if team_id is None:
-        return {'success': False, 'error': 'you have no team'}
+        return {'success': False, 'error': 'no team'}
     data = request.json_body
     code = data['code']
     success = app.model.unlock_current_attempt_access_code(user_id, code)
     app.db.commit()
+    if not success:
+        return {'success': False, 'error': 'bad code'}
     return {'success': success}
 
 
@@ -284,7 +286,7 @@ def access_question(request):
     user = app.model.load_user(user_id)
     team_id = user['team_id']
     if team_id is None:
-        return {'success': False, 'error': 'you have no team'}
+        return {'success': False, 'error': 'no team'}
     # Get the team's current attempt.
     attempt = app.model.load_team_current_attempt(team_id)
     # Load round.
