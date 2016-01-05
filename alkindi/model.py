@@ -283,6 +283,7 @@ class Model:
                     'joined_at': row[0],
                     'is_qualified': self.db.view_bool(row[1]),
                     'is_creator': self.db.view_bool(row[2]),
+                    'user_id': row[3],
                     'user': {
                         'id': row[3],
                         'username': row[4],
@@ -396,12 +397,39 @@ class Model:
             'is_training': is_training,
             'is_unsolved': True
         })
-        # TODO: create codes
+        # Create access codes.
+        access_codes = self.db.tables.access_codes
+        used_codes = {}
+        for member in members:
+            # Generate a distinct code for each member.
+            code = generate_access_code()
+            while code in used_codes:
+                code = generate_access_code()
+            self.__insert_row(access_codes, {
+                'attempt_id': attempt_id,
+                'user_id': member['user_id'],
+                'code': code,
+                'is_unlocked': False
+            })
         return attempt_id
 
     def set_attempt_not_current(self, attempt_id):
         attempts = self.db.tables.attempts
         self.__update_row(attempts, attempt_id, {'is_current': False})
+
+    def load_unlocked_access_codes(self, attempt_id):
+        access_codes = self.db.tables.access_codes
+        query = self.db.query(access_codes) \
+            .where(access_codes.attempt_id == attempt_id) \
+            .where(access_codes.is_unlocked) \
+            .fields(access_codes.user_id, access_codes.code)
+        return [
+            {
+                'user_id': row[0],
+                'code': row[1],
+            }
+            for row in self.db.all(query)
+        ]
 
     # --- private methods below ---
 

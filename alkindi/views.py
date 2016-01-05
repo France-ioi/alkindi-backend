@@ -18,16 +18,15 @@ def view_user_seed(user_id):
             round_ = app.model.load_round(round_id)
             init['round'] = view_user_round(round_)
         return init
-    # Add team and round data.
+    # Lead team, round, attempt.
     team = app.model.load_team(team_id)
     round_ = app.model.load_round(team['round_id'])
-    init['team'] = view_user_team(team, round_)
-    init['round'] = view_user_round(round_)
-    # Find the team's current attempt.
     attempt = app.model.load_team_current_attempt(team_id)
-    if attempt is None:
-        return init
-    init['attempt'] = view_user_attempt(attempt)
+    # Find the team's current attempt.
+    init['team'] = view_user_team(team, round_, attempt)
+    init['round'] = view_user_round(round_)
+    if attempt is not None:
+        init['attempt'] = view_user_attempt(attempt)
     # Add question data, if available.
     question_id = attempt['question_id']
     if question_id is not None:
@@ -42,7 +41,7 @@ def view_user(user):
     return {key: user[key] for key in keys}
 
 
-def view_user_team(team, round_=None):
+def view_user_team(team, round_=None, attempt=None):
     """ Return the user-view for a team.
     """
     members = app.model.load_team_members(team['id'], users=True)
@@ -59,6 +58,13 @@ def view_user_team(team, round_=None):
         causes = validate_members_for_round(members, round_)
         result['round_access'] = causes
         result['is_invalid'] = len(causes) != 0
+    if attempt is not None:
+        access_codes = app.model.load_unlocked_access_codes(attempt['id'])
+        code_map = {code['user_id']: code for code in access_codes}
+        for member in members:
+            user_id = member['user_id']
+            if user_id in code_map:
+                member['access_code'] = code_map[user_id]['code']
     return result
 
 

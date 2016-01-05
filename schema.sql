@@ -184,26 +184,28 @@ ALTER TABLE attempts ADD COLUMN started_at DATETIME NULL;
 
 ALTER TABLE teams ADD COLUMN is_locked BOOLEAN NOT NULL DEFAULT FALSE;
 
-ALTER TABLE rounds ADD COLUMN max_attempts INTEGER NOT NULL;
-UPDATE rounds SET max_attempts = 3;
-
 #--- prod
 
 ALTER TABLE rounds DROP COLUMN allow_access;
 ALTER TABLE rounds DROP COLUMN access_from;
 ALTER TABLE rounds DROP COLUMN access_until;
 ALTER TABLE rounds ADD COLUMN training_opens_at DATETIME NOT NULL;
+UPDATE rounds SET training_opens_at = '2016-01-09 08:00:00';
 
 ALTER TABLE rounds DROP COLUMN allow_register;
 ALTER TABLE rounds DROP COLUMN register_from;
 ALTER TABLE rounds DROP COLUMN register_until;
 ALTER TABLE rounds ADD COLUMN registration_opens_at DATETIME NOT NULL;
+UPDATE rounds SET registration_opens_at = '2016-01-04 08:00:00';
 
 ALTER TABLE team_members CHANGE COLUMN is_selected is_qualified BOOLEAN NOT NULL;
 
 ALTER TABLE attempts ADD COLUMN is_unsolved BOOLEAN NOT NULL;
 
-#--- epix2
+ALTER TABLE rounds ADD COLUMN max_attempts INTEGER NOT NULL;
+UPDATE rounds SET max_attempts = 3;
+
+#--- epix2, v-alkindi
 
 CREATE TABLE access_codes (
     attempt_id BIGINT NOT NULL,
@@ -212,18 +214,8 @@ CREATE TABLE access_codes (
     is_unlocked BOOLEAN NOT NULL,
     PRIMARY KEY (attempt_id, user_id)
 ) CHARACTER SET utf8 ENGINE=InnoDB;
-CREATE INDEX ix_access_codes__attempt_id USING btree ON access_codes (attempt_id);
 CREATE INDEX ix_access_codes__user_id USING btree ON access_codes (user_id);
 ALTER TABLE access_codes ADD CONSTRAINT fk_access_codes__attempt_id
   FOREIGN KEY (attempt_id) REFERENCES attempts(id) ON DELETE CASCADE;
 ALTER TABLE access_codes ADD CONSTRAINT fk_access_codes__user_id
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
-
-
-* !round.allow_access     ==> round.has_not_started
-  (synthétique, migration: supprimer du modèle)
-* attempt === undefined
-* !attempt.is_started     ==> attempt.needs_codes
-  (migration: renommer)
-* !attempt.is_successful  ==> attempt.is_unsolved
-  (migration: renommer)
