@@ -468,6 +468,8 @@ class Model:
             .update({'is_unlocked': True})
         cursor = self.db.execute(query)
         cursor.close()
+        count = self.db.get_row_count()
+        return count == 1
 
     # --- private methods below ---
 
