@@ -340,11 +340,21 @@ class Model:
         (round_id,) = row
         return round_id
 
-    def cancel_team_attempts(self, team_id):
+    def cancel_current_team_attempt(self, team_id):
         attempts = self.db.tables.attempts
         query = self.db.query(attempts) \
-            .where(attempts.team_id == team_id)
+            .where(attempts.team_id == team_id) \
+            .where(attempts.is_current)
         self.db.delete(query)
+        # If a training attempt exists, make it current.
+        query = self.db.query(attempts) \
+            .where(attempts.team_id == team_id) \
+            .where(attempts.is_training) \
+            .fields(attempts.id)
+        row = self.db.first(query,)
+        if row is not None:
+            (attempt_id,) = row
+            self.__update_row(attempts, attempt_id, {'is_current': True})
 
     def load_team_current_attempt(self, team_id):
         attempts = self.db.tables.attempts
@@ -384,7 +394,7 @@ class Model:
             'closes_at': None,    # set when question is accessed
             'is_current': True,
             'is_training': is_training,
-            'is_unsolved': False
+            'is_unsolved': True
         })
         # TODO: create codes
         return attempt_id

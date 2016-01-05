@@ -1,3 +1,4 @@
+import datetime
 
 from pyramid.httpexceptions import HTTPNotModified, HTTPFound
 from ua_parser import user_agent_parser
@@ -25,6 +26,7 @@ def includeme(config):
     api_post(config, UserApiContext, 'leave_team', leave_team)
     api_post(config, UserApiContext, 'update_team', update_team)
     api_post(config, UserApiContext, 'start_attempt', start_attempt)
+    api_post(config, UserApiContext, 'cancel_attempt', cancel_attempt)
     api_get(config, TeamApiContext, '', read_team)
 
 
@@ -196,12 +198,13 @@ def start_attempt(request):
         return {'success': False, 'error': 'you have no team'}
     # Load team, team members, round.
     team = app.model.load_team(team_id)
-    round_id = team['round_id']
     members = app.model.load_team_members(team_id)
-    round_ = app.model.load_round(round_id)
     # Get the team's current attempt.
     attempt = app.model.load_team_current_attempt(team_id)
     if attempt is None:
+        # Use the team's round.
+        round_id = team['round_id']
+        round_ = app.model.load_round(round_id)
         # Check that the team is valid for the round.
         causes = views.validate_members_for_round(members, round_)
         if len(causes) != 0:
@@ -209,7 +212,7 @@ def start_attempt(request):
         # Create a training attempt.
         # The team is not locked at this time, but any change to the
         # team should cancel the attempt.
-        app.model.create_attempt(team_id, round_id, members, is_training=True)
+        app.model.create_attempt(round_id, team_id, members, is_training=True)
     else:
         if attempt['is_training']:
             # Current attempt is training.  Team must pass training to
@@ -220,6 +223,9 @@ def start_attempt(request):
             # XXX Current attempt is timed, do we allow the team to
             # start a new attempt before the time has elapsed?
             pass
+        # Load the attempt's round.
+        round_id = attempt['round_id']
+        round_ = app.model.load_round(round_id)
         # Limit the number of timed attempts.
         n_attempts = app.model.count_team_timed_attempts(team_id)
         if n_attempts == round_['max_attempts']:
@@ -227,7 +233,21 @@ def start_attempt(request):
         # Reset the is_current flag on the current attempt.
         app.model.set_attempt_not_current(attempt['id'])
         # Create a timed attempt.
-        app.model.create_attempt(team_id, round_id, members, is_training=False)
+        app.model.create_attempt(round_id, team_id, members, is_training=False)
+    app.db.commit()
+    return {'success': True}
+
+
+def cancel_attempt(request):
+    user_id = request.context.user_id
+    user = app.model.load_user(user_id)
+    team_id = user['team_id']
+    if team_id is None:
+        return {'success': False, 'error': 'no team'}
+    attempt = app.model.load_team_current_attempt(team_id)
+    if attempt['started_at'] is not None:
+        return {'success': False, 'error': 'attempt already started'}
+    app.model.cancel_current_team_attempt(team_id)
     app.db.commit()
     return {'success': True}
 
@@ -241,6 +261,23 @@ def enter_code(request):
     if False:
         # Lock the team.
         app.model.update_team(team_id, {'is_locked': True})
+    return {}
+
+
+def access_question(request):
+    user_id = request.context.user_id
+    user = app.model.load_user(user_id)
+    team_id = user['team_id']
+    if team_id is None:
+        return {'success': False, 'error': 'you have no team'}
+    # Get the team's current attempt.
+    attempt = app.model.load_team_current_attempt(team_id)
+    # Load round.
+    round_id = attempt['round_id']
+    round_ = app.model.load_round(round_id)
+    now = datetime.now()
+    if now < round_['training_opens_at']:
+        return {'success': False, 'error': 'too early'}
     return {}
 
 

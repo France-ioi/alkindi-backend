@@ -1,6 +1,4 @@
 
-from datetime import datetime
-
 from alkindi.globals import app
 
 
@@ -69,9 +67,6 @@ def validate_members_for_round(members, round_):
         team members cannot start training for the given round.
     """
     result = {}
-    now = datetime.now()
-    if now < round_['training_opens_at']:
-        result['has_not_started'] = True
     n_members = len(members)
     n_qualified = len([m for m in members if m['is_qualified']])
     if n_members < round_['min_team_size']:
@@ -85,8 +80,10 @@ def validate_members_for_round(members, round_):
 
 def view_user_attempt(attempt):
     keys = ['id', 'created_at', 'closes_at', 'is_current', 'is_training']
+    result = {key: attempt[key] for key in keys}
     # TODO: add info on which user has submitted their code.
-    return {key: attempt[key] for key in keys}
+    result['needs_codes'] = True
+    return result
 
 
 def view_user_round(round_):
