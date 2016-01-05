@@ -113,7 +113,7 @@ def get_user_profile(request, user_id=None, refresh=True):
         be refreshed, None is returned.
     """
     try:
-        access_token = get_oauth2_token(session, refresh)
+        access_token = get_oauth2_token(request, refresh)
     except AuthenticationError:
         return None
     idp_uri = app['identity_provider_uri']
