@@ -115,7 +115,6 @@ def create_team(request):
     """
     # Refresh the user profile in case their badges changed.
     update_user_profile(request, request.context.user_id)
-    app.db.commit()
     # Create the team.
     user_id = request.context.user_id
     success = app.model.create_team(user_id)
@@ -132,7 +131,6 @@ def join_team(request):
     """
     # Refresh the user profile in case their badges changed.
     update_user_profile(request, request.context.user_id)
-    app.db.commit()
     # Find the team corresponding to the provided code.
     data = request.json_body
     team_id = None
@@ -301,6 +299,7 @@ def update_user_profile(request, user_id=None):
     if profile is None:
         raise RuntimeError("failed to get the user's profile")
     app.model.update_user(user_id, profile)
+    app.db.commit()
 
 
 MinimumFamilyVersion = {
