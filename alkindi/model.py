@@ -357,6 +357,17 @@ class Model:
             (attempt_id,) = row
             self.__update_row(attempts, attempt_id, {'is_current': True})
 
+    def get_user_current_attempt_id(self, user_id):
+        users = self.db.tables.users
+        attempts = self.db.tables.attempts
+        query = self.db.query(users & attempts) \
+            .where(users.id == user_id) \
+            .where(attempts.team_id == users.team_id) \
+            .where(attempts.is_current) \
+            .fields(attempts.id)
+        row = self.db.first(query)
+        return None if row is None else row[0]
+
     def load_team_current_attempt(self, team_id):
         attempts = self.db.tables.attempts
         keys = [
@@ -432,17 +443,31 @@ class Model:
         ]
 
     def get_current_attempt_access_code(self, user_id):
-        teams = self.db.tables.teams
+        users = self.db.tables.users
         attempts = self.db.tables.attempts
         access_codes = self.db.tables.access_codes
-        query = self.db.query(teams & attempts & access_codes) \
-            .where(attempts.team_id == teams.id) \
+        query = self.db.query(users & attempts & access_codes) \
+            .where(users.id == user_id) \
+            .where(attempts.team_id == users.team_id) \
             .where(attempts.is_current) \
             .where(access_codes.attempt_id == attempts.id) \
             .where(access_codes.user_id == user_id) \
             .fields(access_codes.code)
         row = self.db.first(query)
         return None if row is None else row[0]
+
+    def unlock_current_attempt_access_code(self, user_id, code):
+        attempt_id = self.get_user_current_attempt_id(user_id)
+        if attempt_id is None:
+            return
+        # Mark the access code as unlocked.
+        access_codes = self.db.tables.access_codes
+        query = self.db.query(access_codes) \
+            .where(access_codes.attempt_id == attempt_id) \
+            .where(access_codes.code == code) \
+            .update({'is_unlocked': True})
+        cursor = self.db.execute(query)
+        cursor.close()
 
     # --- private methods below ---
 

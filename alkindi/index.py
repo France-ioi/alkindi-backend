@@ -28,6 +28,7 @@ def includeme(config):
     api_post(config, UserApiContext, 'start_attempt', start_attempt)
     api_post(config, UserApiContext, 'cancel_attempt', cancel_attempt)
     api_get(config, UserApiContext, 'access_code', view_access_code)
+    api_post(config, UserApiContext, 'access_code', enter_access_code)
     api_get(config, TeamApiContext, '', read_team)
 
 
@@ -246,6 +247,8 @@ def cancel_attempt(request):
     if team_id is None:
         return {'success': False, 'error': 'no team'}
     attempt = app.model.load_team_current_attempt(team_id)
+    if attempt is None:
+        return {'success': False, 'error': 'no attempt'}
     if attempt['started_at'] is not None:
         return {'success': False, 'error': 'attempt already started'}
     app.model.cancel_current_team_attempt(team_id)
@@ -261,16 +264,17 @@ def view_access_code(request):
     return {'success': True, 'code': code}
 
 
-def enter_code(request):
+def enter_access_code(request):
     user_id = request.context.user_id
     user = app.model.load_user(user_id)
     team_id = user['team_id']
     if team_id is None:
         return {'success': False, 'error': 'you have no team'}
-    if False:
-        # Lock the team.
-        app.model.update_team(team_id, {'is_locked': True})
-    return {}
+    data = request.json_body
+    code = data['code']
+    app.model.unlock_current_attempt_access_code(user_id, code)
+    app.db.commit()
+    return {'success': True}
 
 
 def access_question(request):
@@ -287,6 +291,8 @@ def access_question(request):
     now = datetime.now()
     if now < round_['training_opens_at']:
         return {'success': False, 'error': 'too early'}
+    # Lock the team.
+    app.model.update_team(team_id, {'is_locked': True})
     return {}
 
 

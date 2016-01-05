@@ -27,6 +27,8 @@ def view_user_seed(user_id):
     init['round'] = view_user_round(round_)
     if attempt is not None:
         init['attempt'] = view_user_attempt(attempt)
+        init['attempt']['needs_codes'] = \
+            not have_code_majority(init['team']['members'])
         # Add question data, if available.
         question_id = attempt['question_id']
         if question_id is not None:
@@ -85,7 +87,7 @@ def validate_members_for_round(members, round_):
 
 
 def view_user_attempt(attempt):
-    keys = ['id', 'created_at', 'closes_at', 'is_current', 'is_training']
+    keys = ['id', 'created_at', 'closes_at', 'is_current', 'is_training', 'is_unsolved']
     result = {key: attempt[key] for key in keys}
     # TODO: add info on which user has submitted their code.
     result['needs_codes'] = True
@@ -117,3 +119,9 @@ def view_user_question(question_id):
     return {
         'team_data': team_data
     }
+
+
+def have_code_majority(members):
+    n_members = len(members)
+    n_codes = len([m for m in members if 'access_code' in m])
+    return n_codes * 2 >= n_members
