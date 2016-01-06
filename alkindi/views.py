@@ -29,10 +29,10 @@ def view_user_seed(user_id):
         init['attempt'] = view_user_attempt(attempt)
         init['attempt']['needs_codes'] = \
             not have_code_majority(init['team']['members'])
-        # Add question data, if available.
-        question_id = attempt['question_id']
-        if question_id is not None:
-            init['question'] = view_user_question(question_id)
+        # Add task data, if available.
+        task = app.model.load_task_team_data(attempt['id'])
+        if task is not None:
+            init['task'] = task
     return init
 
 
@@ -103,22 +103,6 @@ def view_user_round(round_):
         'min_team_size', 'max_team_size', 'min_team_ratio'
     ]
     return {key: round_[key] for key in keys}
-
-
-def view_user_question(question_id):
-    """ Return the user-view for a question.
-        Avoid loading the full question data.
-    """
-    if question_id is None:
-        return None
-    questions = app.db.tables.questions
-    (team_data,) = app.db.first(
-        app.db.query(questions)
-              .fields(questions.team_data)
-              .where(questions.id == question_id))
-    return {
-        'team_data': team_data
-    }
 
 
 def have_code_majority(members):

@@ -257,7 +257,7 @@ class Model:
             'id', 'created_at', 'updated_at', 'title',
             'registration_opens_at', 'training_opens_at',
             'min_team_size', 'max_team_size', 'min_team_ratio',
-            'max_attempts', 'questions_path'
+            'max_attempts', 'tasks_path'
         ]
         return self.__load_row(self.db.tables.rounds, round_id, keys)
 
@@ -371,7 +371,7 @@ class Model:
     def load_team_current_attempt(self, team_id):
         attempts = self.db.tables.attempts
         keys = [
-            'id', 'team_id', 'round_id', 'question_id',
+            'id', 'team_id', 'round_id',
             'created_at', 'started_at', 'closes_at',
             'is_current', 'is_training', 'is_unsolved'
         ]
@@ -400,10 +400,9 @@ class Model:
         attempt_id = self.__insert_row(attempts, {
             'team_id': team_id,
             'round_id': round_id,
-            'question_id': None,  # set when question is accessed
             'created_at': datetime.utcnow(),
             'started_at': None,   # set when enough codes have been entered
-            'closes_at': None,    # set when question is accessed
+            'closes_at': None,    # set when task is accessed
             'is_current': True,
             'is_training': is_training,
             'is_unsolved': True
@@ -470,6 +469,17 @@ class Model:
         count = cursor.rowcount
         cursor.close()
         return count == 1
+
+    def load_task_team_data(self, attempt_id):
+        tasks = self.db.tables.tasks
+        query = self.db.query(tasks) \
+            .where(tasks.attempt_id == attempt_id) \
+            .fields(tasks.team_data)
+        row = self.db.first(query)
+        if row is None:
+            return None
+        (team_data,) = row
+        return team_data
 
     # --- private methods below ---
 

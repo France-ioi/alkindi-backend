@@ -184,13 +184,11 @@ ALTER TABLE attempts ADD COLUMN started_at DATETIME NULL;
 
 ALTER TABLE teams ADD COLUMN is_locked BOOLEAN NOT NULL DEFAULT FALSE;
 
-#--- prod
-
 ALTER TABLE rounds DROP COLUMN allow_access;
 ALTER TABLE rounds DROP COLUMN access_from;
 ALTER TABLE rounds DROP COLUMN access_until;
 ALTER TABLE rounds ADD COLUMN training_opens_at DATETIME NOT NULL;
-UPDATE rounds SET training_opens_at = '2016-01-09 08:00:00';
+UPDATE rounds SET training_opens_at = '2016-01-09 07:00:00';
 
 ALTER TABLE rounds DROP COLUMN allow_register;
 ALTER TABLE rounds DROP COLUMN register_from;
@@ -205,8 +203,6 @@ ALTER TABLE attempts ADD COLUMN is_unsolved BOOLEAN NOT NULL;
 ALTER TABLE rounds ADD COLUMN max_attempts INTEGER NOT NULL;
 UPDATE rounds SET max_attempts = 3;
 
-#--- epix2, v-alkindi
-
 CREATE TABLE access_codes (
     attempt_id BIGINT NOT NULL,
     user_id BIGINT NOT NULL,
@@ -219,3 +215,24 @@ ALTER TABLE access_codes ADD CONSTRAINT fk_access_codes__attempt_id
   FOREIGN KEY (attempt_id) REFERENCES attempts(id) ON DELETE CASCADE;
 ALTER TABLE access_codes ADD CONSTRAINT fk_access_codes__user_id
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+
+#--- v-alkindi, prod
+
+ALTER TABLE attempts DROP FOREIGN KEY fk_attempts__question_id;
+ALTER TABLE attempts DROP INDEX ix_attempts__question_id;
+ALTER TABLE attempts DROP COLUMN question_id;
+ALTER TABLE rounds CHANGE COLUMN questions_path tasks_path TEXT NOT NULL;
+DROP TABLE questions;
+
+CREATE TABLE tasks (
+    attempt_id BIGINT NOT NULL,
+    created_at DATETIME NOT NULL,
+    full_data TEXT NOT NULL,
+    team_data TEXT NOT NULL,
+    PRIMARY KEY (attempt_id)
+) CHARACTER SET utf8 ENGINE=InnoDB;
+ALTER TABLE tasks ADD CONSTRAINT fk_tasks__attempt_id
+  FOREIGN KEY (attempt_id) REFERENCES attempts(id) ON DELETE CASCADE;
+
+#--- epix2
+
