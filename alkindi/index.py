@@ -314,7 +314,9 @@ MinimumFamilyVersion = {
 
 
 def is_ancient_browser(request):
-    ua = request.headers['User-Agent']
+    ua = request.headers.get('User-Agent')
+    if ua is None:
+        return True
     ua = user_agent_parser.Parse(ua)
     ua = ua['user_agent']
     family = ua['family']
