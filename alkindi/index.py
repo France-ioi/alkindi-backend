@@ -1,4 +1,3 @@
-import datetime
 
 from pyramid.httpexceptions import HTTPNotModified, HTTPFound
 from ua_parser import user_agent_parser
@@ -29,6 +28,8 @@ def includeme(config):
     api_post(config, UserApiContext, 'cancel_attempt', cancel_attempt)
     api_get(config, UserApiContext, 'access_code', view_access_code)
     api_post(config, UserApiContext, 'access_code', enter_access_code)
+    api_post(
+        config, UserApiContext, 'assign_attempt_task', assign_attempt_task)
     api_get(config, TeamApiContext, '', read_team)
 
 
@@ -281,23 +282,16 @@ def enter_access_code(request):
     return {'success': success}
 
 
-def access_question(request):
+def assign_attempt_task(request):
     user_id = request.context.user_id
-    user = app.model.load_user(user_id)
-    team_id = user['team_id']
-    if team_id is None:
-        return {'success': False, 'error': 'no team'}
-    # Get the team's current attempt.
-    attempt = app.model.load_team_current_attempt(team_id)
-    # Load round.
-    round_id = attempt['round_id']
-    round_ = app.model.load_round(round_id)
-    now = datetime.now()
-    if now < round_['training_opens_at']:
-        return {'success': False, 'error': 'too early'}
-    # Lock the team.
-    app.model.update_team(team_id, {'is_locked': True})
-    return {}
+    attempt_id = app.model.get_user_current_attempt_id(user_id)
+    if attempt_id is None:
+        return {'success': False, 'error': 'no current attempt'}
+    error = app.model.assign_attempt_task(attempt_id)
+    if error is None:
+        return {'success': True}
+    else:
+        return {'success': False, 'error': error}
 
 
 def update_user_profile(request, user_id=None):

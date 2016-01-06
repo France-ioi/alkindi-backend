@@ -470,7 +470,7 @@ class Model:
     def unlock_current_attempt_access_code(self, user_id, code):
         attempt_id = self.get_user_current_attempt_id(user_id)
         if attempt_id is None:
-            return
+            return False
         # Mark the access code as unlocked.
         access_codes = self.db.tables.access_codes
         query = self.db.query(access_codes) \
@@ -491,19 +491,23 @@ class Model:
         if row is None:
             return None
         (team_data,) = row
-        return team_data
+        return json.loads(team_data)
 
     def assign_attempt_task(self, attempt_id):
+        now = datetime.utcnow()
         attempt = self.load_attempt(attempt_id)
         if attempt['started_at'] is not None:
-            return False
+            return 'already have a task'
         rounds = self.db.tables.rounds
         query = self.db.query(rounds) \
             .where(rounds.id == attempt['round_id']) \
-            .fields(rounds.tasks_path, rounds.duration)
-        (tasks_path, duration) = self.db.first(query)
+            .fields(rounds.tasks_path,
+                    rounds.duration,
+                    rounds.training_opens_at)
+        (tasks_path, duration, training_opens_at) = self.db.first(query)
+        if now < training_opens_at:
+            return 'training is not open'
         task = playfair.get_task(tasks_path)
-        now = datetime.utcnow()
         task_attrs = {
             'attempt_id': attempt_id,
             'created_at': now,
@@ -524,7 +528,6 @@ class Model:
             attempt_attrs['closes_at'] = now + timedelta(minutes=duration)
         attempts = self.db.tables.attempts
         self.__update_row(attempts, attempt_id, attempt_attrs)
-        return True
 
     # --- private methods below ---
 
