@@ -1,7 +1,9 @@
 
-from datetime import datetime
+from datetime import datetime, timedelta
+import json
 
-from .utils import generate_access_code
+from alkindi.utils import generate_access_code
+from alkindi.tasks import playfair
 
 # TODO: add started_at to attempts
 # TODO: when the first attempt starts, *lock* the team.
@@ -261,6 +263,16 @@ class Model:
         ]
         return self.__load_row(self.db.tables.rounds, round_id, keys)
 
+    def load_attempt(self, attempt_id):
+        if attempt_id is None:
+            return None
+        keys = [
+            'id', 'team_id', 'round_id',
+            'created_at', 'started_at', 'closes_at',
+            'is_current', 'is_training', 'is_unsolved'
+        ]
+        return self.__load_row(self.db.tables.attempts, attempt_id, keys)
+
     def load_team_members(self, team_id, users=False):
         team_members = self.db.tables.team_members
         if users:
@@ -480,6 +492,39 @@ class Model:
             return None
         (team_data,) = row
         return team_data
+
+    def assign_attempt_task(self, attempt_id):
+        attempt = self.load_attempt(attempt_id)
+        if attempt['started_at'] is not None:
+            return False
+        rounds = self.db.tables.rounds
+        query = self.db.query(rounds) \
+            .where(rounds.id == attempt['round_id']) \
+            .fields(rounds.tasks_path, rounds.duration)
+        (tasks_path, duration) = self.db.first(query)
+        task = playfair.get_task(tasks_path)
+        now = datetime.utcnow()
+        task_attrs = {
+            'attempt_id': attempt_id,
+            'created_at': now,
+            'full_data': json.dumps(task['full_data']),
+            'team_data': json.dumps(task['team_data']),
+        }
+        tasks = self.db.tables.tasks
+        query = self.db.query(tasks).insert(task_attrs)
+        self.__insert_row(tasks, task_attrs)
+        attempt_attrs = {'started_at': now}
+        if attempt['is_training']:
+            # Lock the team.
+            team_id = attempt['team_id']
+            teams = self.db.tables.teams
+            self.__update_row(teams, team_id, {'is_locked': True})
+        else:
+            # Set the closing time on the attempt.
+            attempt_attrs['closes_at'] = now + timedelta(minutes=duration)
+        attempts = self.db.tables.attempts
+        self.__update_row(attempts, attempt_id, attempt_attrs)
+        return True
 
     # --- private methods below ---
 

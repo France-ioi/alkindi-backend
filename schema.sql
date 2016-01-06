@@ -234,5 +234,10 @@ CREATE TABLE tasks (
 ALTER TABLE tasks ADD CONSTRAINT fk_tasks__attempt_id
   FOREIGN KEY (attempt_id) REFERENCES attempts(id) ON DELETE CASCADE;
 
+UPDATE rounds SET tasks_path = '/home/sebc/alkindi/tasks/playfair/INDEX';
+
+ALTER TABLE rounds ADD COLUMN duration INT NOT NULL;
+UPDATE rounds SET duration = 60;
+
 #--- epix2
 
