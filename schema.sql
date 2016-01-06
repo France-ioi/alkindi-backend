@@ -239,5 +239,7 @@ UPDATE rounds SET tasks_path = '/home/sebc/alkindi/tasks/playfair/INDEX';
 ALTER TABLE rounds ADD COLUMN duration INT NOT NULL;
 UPDATE rounds SET duration = 60;
 
-#--- epix2
+ALTER TABLE rounds ADD COLUMN pre_task_html TEXT NOT NULL;
+ALTER TABLE rounds ADD COLUMN post_task_html TEXT NOT NULL;
 
+#--- epix2

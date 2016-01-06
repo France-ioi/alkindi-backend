@@ -259,7 +259,8 @@ class Model:
             'id', 'created_at', 'updated_at', 'title',
             'registration_opens_at', 'training_opens_at',
             'min_team_size', 'max_team_size', 'min_team_ratio',
-            'max_attempts', 'tasks_path'
+            'max_attempts', 'tasks_path',
+            'pre_task_html', 'post_task_html'
         ]
         return self.__load_row(self.db.tables.rounds, round_id, keys)
 

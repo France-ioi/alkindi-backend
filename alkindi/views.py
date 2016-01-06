@@ -1,5 +1,17 @@
+import bleach
 
 from alkindi.globals import app
+
+
+AllowHtmlAttrs = {
+    '*': ['class'],
+    'a': ['href', 'title'],
+}
+
+AllowHtmlTags = [
+    'div', 'span', 'p', 'ul', 'ol', 'li', 'h1', 'h2', 'h3',
+    'b', 'i', 'strong', 'em'
+]
 
 
 def view_user_seed(user_id):
@@ -33,7 +45,13 @@ def view_user_seed(user_id):
         task = app.model.load_task_team_data(attempt['id'])
         if task is not None:
             init['task'] = task
+            init['task']['pre_html'] = safe_html(round_['pre_task_html'])
+            init['task']['post_html'] = safe_html(round_['post_task_html'])
     return init
+
+
+def safe_html(text):
+    return bleach.clean(text, tags=AllowHtmlTags, attributes=AllowHtmlAttrs)
 
 
 def view_user(user):
