@@ -7,7 +7,7 @@ import decimal
 import json
 import os
 
-from pyramid.events import BeforeRender
+from pyramid.events import NewRequest, BeforeRender
 from pyramid.config import Configurator
 from pyramid.renderers import JSON
 from pyramid.static import QueryStringConstantCacheBuster
@@ -32,6 +32,7 @@ def application(_global_config, **settings):
     config.include(set_session_factory)
     config.include('pyramid_mako')
 
+    config.add_subscriber(add_cors_headers, NewRequest)
     config.add_subscriber(set_renderer_context, BeforeRender)
 
     # Serve versioned static assets from alkindi-r2-front at /front
@@ -51,6 +52,16 @@ def application(_global_config, **settings):
     config.include('.misc')
 
     return app.wrap_middleware(config.make_wsgi_app())
+
+
+def add_cors_headers(event):
+    def cors_headers(request, response):
+        response.headers.update({
+            'Access-Control-Allow-Origin': 'https://suite.concours-alkindi.fr',
+            'Access-Control-Allow-Methods': 'GET',
+            'Access-Control-Max-Age': '1728000',
+        })
+    event.request.add_response_callback(cors_headers)
 
 
 def get_redis(request, **kwargs):
