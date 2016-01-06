@@ -289,6 +289,7 @@ def assign_attempt_task(request):
         return {'success': False, 'error': 'no current attempt'}
     error = app.model.assign_attempt_task(attempt_id)
     if error is None:
+        app.db.commit()
         return {'success': True}
     else:
         return {'success': False, 'error': error}
