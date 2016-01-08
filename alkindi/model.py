@@ -274,6 +274,19 @@ class Model:
         ]
         return self.__load_row(self.db.tables.attempts, attempt_id, keys)
 
+    def load_task(self, attempt_id):
+        if attempt_id is None:
+            return None
+        keys = [
+            'attempt_id', 'created_at', 'full_data', 'team_data', 'score'
+        ]
+        tasks = self.db.tables.tasks
+        result = self.__load_row(
+            tasks, attempt_id, keys, primary_key=tasks.attempt_id)
+        for key in ['full_data', 'team_data']:
+            result[key] = json.loads(result[key])
+        return result
+
     def load_team_members(self, team_id, users=False):
         team_members = self.db.tables.team_members
         if users:
