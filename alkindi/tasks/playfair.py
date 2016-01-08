@@ -25,18 +25,21 @@ def get_task(index):
         answer = f.read().strip()
     task_lines = task.split('\n')
     grid_pos = len(task_lines) - 5
-    cipher_text = '\n'.join(task_lines[:grid_pos])
+    cipher_text = '\n'.join(task_lines[0:1])
+    firstname = task_lines[2]
     initial_grid = '\n'.join(task_lines[grid_pos:])
     return {
         'score': 500,
         'full_data': {
             'plain_text': plain_text,
             'cipher_text': cipher_text,
-            'hints': parse_grid(hints_grid),
             'answer_txt': answer,
+            'firstname': firstname,
+            'hints': parse_grid(hints_grid),
         },
         'team_data': {
             'cipher_text': cipher_text,
+            'firstname': firstname,
             'hints': parse_grid(initial_grid)
         }
     }
