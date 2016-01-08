@@ -575,6 +575,28 @@ class Model:
         row = self.db.first(query)
         return None if row is None else row[0]
 
+    def store_revision(self, user_id, parent_id, title, state):
+        workspace_id = self.get_user_workspace_id(user_id)
+        if workspace_id is None:
+            raise ModelError('user has not workspace')
+        # If set, the parent revision must belong to the same workspace.
+        if parent_id is not None:
+            other_workspace_id = get_revision_workspace_id(parent_id)
+            if other_workspace_id != workspace_id:
+                parent_id = None
+        revisions = self.db.tables.workspace_revisions
+        revision_id = self.__insert_row(revisions, {
+            'workspace_id': workspace_id,
+            'creator_id': user_id,
+            'parent_id': parent_id,
+            'title': title,
+            'created_at': datetime.utcnow(),
+            'is_active': False,
+            'is_precious': True,
+            'state': json.dumps(state)
+        })
+        return revision_id
+
     def create_team_workspace(self, team_id, round_id, title='None'):
         workspaces = self.db.tables.workspaces
         now = datetime.utcnow()
