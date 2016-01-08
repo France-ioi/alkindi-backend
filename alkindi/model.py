@@ -515,14 +515,14 @@ class Model:
 
     def load_task_team_data(self, attempt_id):
         tasks = self.db.tables.tasks
-        query = self.db.query(tasks) \
-            .where(tasks.attempt_id == attempt_id) \
-            .fields(tasks.team_data)
-        row = self.db.first(query)
+        row = self.__load_row(
+            tasks, attempt_id, ['score', 'team_data'],
+            primary_key=tasks.attempt_id)
         if row is None:
             return None
-        (team_data,) = row
-        return json.loads(team_data)
+        result = json.loads(row['team_data'])
+        result['score'] = row['score']
+        return result
 
     def assign_attempt_task(self, attempt_id):
         now = datetime.utcnow()
