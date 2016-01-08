@@ -60,7 +60,7 @@ def check_etag(request, etag):
 
 def model_error_view(error, request):
     # This view handles alkindi.model.ModelError.
-    return {'error': str(error), 'source': 'model'}
+    return {'success': False, 'error': str(error), 'source': 'model'}
 
 
 def ancient_browser_view(request):
@@ -292,12 +292,9 @@ def assign_attempt_task(request):
     attempt_id = app.model.get_user_current_attempt_id(user_id)
     if attempt_id is None:
         return {'success': False, 'error': 'no current attempt'}
-    error = app.model.assign_attempt_task(attempt_id)
-    if error is None:
-        app.db.commit()
-        return {'success': True}
-    else:
-        return {'success': False, 'error': error}
+    app.model.assign_attempt_task(attempt_id)
+    app.db.commit()
+    return {'success': True}
 
 
 def get_hint(request):
