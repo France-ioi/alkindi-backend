@@ -536,10 +536,12 @@ class Model:
 
     # --- private methods below ---
 
-    def __load_row(self, table, id, keys):
+    def __load_row(self, table, id, keys, primary_key=None):
         query = self.db.query(table)
         query = query.fields(*[getattr(table, key) for key in keys])
-        query = query.where(table.id == id)
+        if primary_key is None:
+            primary_key = table.id
+        query = query.where(primary_key == id)
         row = self.db.first(query)
         if row is None:
             return None
@@ -552,8 +554,10 @@ class Model:
         })
         return self.db.insert(query)
 
-    def __update_row(self, table, id, attrs):
-        query = self.db.query(table).where(table.id == id)
+    def __update_row(self, table, id, attrs, primary_key=None):
+        if primary_key is None:
+            primary_key = table.id
+        query = self.db.query(table).where(primary_key == id)
         query = query.update({
             getattr(table, key): attrs[key] for key in attrs
         })
