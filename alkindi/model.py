@@ -635,6 +635,7 @@ class Model:
             .where(workspaces.team_id == users.team_id) \
             .where(workspace_revisions.workspace_id == workspaces.id) \
             .where(workspace_revisions.creator_id == user_id) \
+            .order_by(workspace_revisions.created_at.desc()) \
             .fields(workspace_revisions.id)
         row = self.db.first(query)
         return None if row is None else row[0]
