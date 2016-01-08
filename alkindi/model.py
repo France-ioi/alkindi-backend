@@ -565,6 +565,16 @@ class Model:
         }, primary_key=tasks.attempt_id)
         return True
 
+    def get_user_workspace_id(self, user_id):
+        users = self.db.tables.users
+        workspaces = self.db.tables.workspaces
+        query = self.db.query(users & workspaces) \
+            .where(users.id == user_id) \
+            .where(workspaces.team_id == users.team_id) \
+            .fields(workspaces.id)
+        row = self.db.first(query)
+        return None if row is None else row[0]
+
     def create_team_workspace(self, team_id, round_id, title='None'):
         workspaces = self.db.tables.workspaces
         now = datetime.utcnow()
