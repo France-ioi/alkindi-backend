@@ -609,6 +609,19 @@ class Model:
         })
         return workspace_id
 
+    def load_user_latest_revision_id(self, user_id):
+        users = self.db.tables.users
+        workspaces = self.db.tables.workspaces
+        workspace_revisions = self.db.tables.workspace_revisions
+        query = self.db.query(users & workspaces & workspace_revisions) \
+            .where(users.id == user_id) \
+            .where(workspaces.team_id == users.team_id) \
+            .where(workspace_revisions.workspace_id == workspaces.id) \
+            .where(workspace_revisions.creator_id == user_id) \
+            .fields(workspace_revisions.id)
+        row = self.db.first(query)
+        return None if row is None else row[0]
+
     # --- private methods below ---
 
     def __load_row(self, table, id, keys, primary_key=None):
