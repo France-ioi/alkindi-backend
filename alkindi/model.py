@@ -639,6 +639,18 @@ class Model:
         row = self.db.first(query)
         return None if row is None else row[0]
 
+    def get_workspace_revision_ownership(self, revision_id):
+        """ Return the revision's (team_id, creator_id).
+        """
+        workspace_revisions = self.db.tables.workspace_revisions
+        workspaces = self.db.tables.workspaces
+        query = self.db.query(workspace_revisions & workspaces) \
+            .where(workspace_revisions.id == revision_id) \
+            .where(workspaces.id == workspace_revisions.workspace_id) \
+            .fields(workspaces.team_id, workspace_revisions.creator_id)
+        row = self.db.first(query)
+        return None if row is None else row
+
     # --- private methods below ---
 
     def __load_row(self, table, id, keys, primary_key=None):
