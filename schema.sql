@@ -216,7 +216,7 @@ ALTER TABLE access_codes ADD CONSTRAINT fk_access_codes__attempt_id
 ALTER TABLE access_codes ADD CONSTRAINT fk_access_codes__user_id
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
 
-#--- v-alkindi, prod
+#--- prod
 
 ALTER TABLE attempts DROP FOREIGN KEY fk_attempts__question_id;
 ALTER TABLE attempts DROP INDEX ix_attempts__question_id;
@@ -242,4 +242,4 @@ UPDATE rounds SET duration = 60;
 ALTER TABLE rounds ADD COLUMN pre_task_html TEXT NOT NULL;
 ALTER TABLE rounds ADD COLUMN post_task_html TEXT NOT NULL;
 
-#--- epix2
+#--- v-alkindi, epix2
