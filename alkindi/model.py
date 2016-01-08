@@ -508,10 +508,11 @@ class Model:
         (tasks_path, duration, training_opens_at) = self.db.first(query)
         if now < training_opens_at:
             return 'training is not open'
-        task = playfair.get_task(tasks_path)
+        task = playfair.get_task(tasks_path)  # XXX playfair
         task_attrs = {
             'attempt_id': attempt_id,
             'created_at': now,
+            'score': task['score'],
             'full_data': json.dumps(task['full_data']),
             'team_data': json.dumps(task['team_data']),
         }
