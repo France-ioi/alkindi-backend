@@ -1,6 +1,7 @@
 import bleach
 
 from alkindi.globals import app
+from alkindi.model import ModelError
 
 
 AllowHtmlAttrs = {
@@ -33,7 +34,10 @@ def view_user_seed(user_id):
     # Lead team, round, attempt.
     team = app.model.load_team(team_id)
     round_ = app.model.load_round(team['round_id'])
-    attempt = app.model.load_team_current_attempt(team_id)
+    try:
+        attempt = app.model.load_team_current_attempt(team_id)
+    except ModelError:
+        attempt = None
     # Find the team's current attempt.
     init['team'] = view_user_team(team, round_, attempt)
     init['round'] = view_user_round(round_)
