@@ -284,6 +284,9 @@ def enter_access_code(request):
 
 def assign_attempt_task(request):
     user_id = request.context.user_id
+    # The team is validated when the attempt is created, and the attempt
+    # is automatically cancelled if any member joins or leaves the team.
+    # It is therefore safe to assume that the team is valid.
     attempt_id = app.model.get_user_current_attempt_id(user_id)
     if attempt_id is None:
         return {'success': False, 'error': 'no current attempt'}
