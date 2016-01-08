@@ -287,6 +287,23 @@ class Model:
             result[key] = json.loads(result[key])
         return result
 
+    def load_workspace_revision(self, workspace_revision_id):
+        if workspace_revision_id is None:
+            return None
+        keys = [
+            'id', 'title', 'workspace_id', 'created_at', 'creator_id',
+            'parent_id', 'is_active', 'is_precious', 'state'
+        ]
+        workspace_revisions = self.db.tables.workspace_revisions
+        result = self.__load_row(
+            workspace_revisions, workspace_revision_id, keys)
+        for key in ['is_active', 'is_precious']:
+            result[key] = self.db.view_bool(result[key])
+        for key in ['state']:
+            result[key] = json.loads(result[key])
+        return result
+
+
     def load_team_members(self, team_id, users=False):
         team_members = self.db.tables.team_members
         if users:
