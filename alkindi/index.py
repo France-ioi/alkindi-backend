@@ -229,7 +229,10 @@ def start_attempt(request):
     team = app.model.load_team(team_id)
     members = app.model.load_team_members(team_id)
     # Get the team's current attempt.
-    attempt = app.model.load_team_current_attempt(team_id)
+    try:
+        attempt = app.model.load_team_current_attempt(team_id)
+    except ModelError:
+        attempt = None
     if attempt is None:
         # Use the team's round.
         round_id = team['round_id']

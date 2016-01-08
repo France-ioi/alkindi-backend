@@ -46,7 +46,10 @@ def view_user_seed(user_id):
         init['attempt']['needs_codes'] = \
             not have_code_majority(init['team']['members'])
         # Add task data, if available.
-        task = app.model.load_task_team_data(attempt['id'])
+        try:
+            task = app.model.load_task_team_data(attempt['id'])
+        except ModelError:
+            task = None
         if task is not None:
             init['task'] = task
             init['task']['pre_html'] = safe_html(round_['pre_task_html'])
