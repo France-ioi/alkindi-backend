@@ -119,6 +119,7 @@ def read_workspace_revision(request):
     revision = request.context.workspace_revision
     check_etag(request, revision['created_at'])
     return {
+        'success': True,
         'workspace_revision': views.view_user_workspace_revision(revision)
     }
 
