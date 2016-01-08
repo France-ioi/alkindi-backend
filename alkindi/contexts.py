@@ -101,6 +101,19 @@ class WorkspaceRevisionApiContext(ApiContextBase):
         return app.model.load_workspace_revision(self.workspace_revision_id)
 
 
+class WorkspaceRevisionsApiContext(ApiContextBase):
+
+    def __getitem__(self, path_element):
+        revision_id = int(path_element)
+        ownership = app.model.get_workspace_revision_ownership(revision_id)
+        if ownership is None:
+            raise KeyError()
+        team_id, creator_id = ownership
+        return WorkspaceRevisionApiContext(
+            self, workspace_revision_id=revision_id,
+            team_id=team_id, creator_id=creator_id)
+
+
 class ApiContext(ApiContextBase):
 
     __name__ = 'api'
@@ -111,6 +124,7 @@ class ApiContext(ApiContextBase):
     FACTORIES = {
         'users': UsersApiContext,
         'teams': TeamsApiContext,
+        'workspace_revisions': WorkspaceRevisionsApiContext,
     }
 
     def __getitem__(self, path_element):
