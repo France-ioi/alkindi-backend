@@ -303,6 +303,7 @@ def get_hint(request):
     user_id = request.context.user_id
     query = request.json_body
     success = app.model.get_user_task_hint(user_id, query)
+    app.db.commit()
     return {'success': success}
 
 
