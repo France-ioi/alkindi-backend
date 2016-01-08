@@ -544,8 +544,23 @@ class Model:
         attempts = self.db.tables.attempts
         self.__update_row(attempts, attempt_id, attempt_attrs)
 
-    def get_user_task_hint(self, user_id):
-        return False
+    def get_user_task_hint(self, user_id, query):
+        attempt_id = self.get_user_current_attempt_id(user_id)
+        if attempt_id is None:
+            return False
+        task = self.load_task(attempt_id)
+        if task is None:
+            return False
+        # get_hint updates task in-place
+        success = playfair.get_hint(task, query)
+        if not success:
+            return False
+        tasks = self.db.tables.tasks
+        self.__update_row(tasks, attempt_id, {
+            'score': task['score'],
+            'team_data': json.dumps(task['team_data'])
+        }, primary_key=tasks.attempt_id)
+        return True
 
     # --- private methods below ---
 
