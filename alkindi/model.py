@@ -531,6 +531,9 @@ class Model:
         attempts = self.db.tables.attempts
         self.__update_row(attempts, attempt_id, attempt_attrs)
 
+    def get_user_task_hint(self, user_id):
+        return False
+
     # --- private methods below ---
 
     def __load_row(self, table, id, keys):

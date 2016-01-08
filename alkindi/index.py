@@ -30,6 +30,7 @@ def includeme(config):
     api_post(config, UserApiContext, 'access_code', enter_access_code)
     api_post(
         config, UserApiContext, 'assign_attempt_task', assign_attempt_task)
+    api_post(config, UserApiContext, 'get_hint', get_hint)
     api_get(config, TeamApiContext, '', read_team)
 
 
@@ -296,6 +297,13 @@ def assign_attempt_task(request):
         return {'success': True}
     else:
         return {'success': False, 'error': error}
+
+
+def get_hint(request):
+    user_id = request.context.user_id
+    query = request.json_body
+    success = app.model.get_user_task_hint(user_id, query)
+    return {'success': success}
 
 
 def update_user_profile(request, user_id=None):
