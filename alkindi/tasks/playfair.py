@@ -28,6 +28,7 @@ def get_task(index):
     cipher_text = '\n'.join(task_lines[:grid_pos])
     initial_grid = '\n'.join(task_lines[grid_pos:])
     return {
+        'score': 500,
         'full_data': {
             'plain_text': plain_text,
             'cipher_text': cipher_text,
@@ -62,6 +63,70 @@ def parse_grid(text):
     return [objects[i:i+span] for i in range(0, len(chars), span)]
 
 
+def get_hint(task, query):
+    try:
+        if query['type'] == 'grid':
+            return get_grid_hint(task, int(query['row']), int(query['col']))
+        if query['type'] == 'alphabet':
+            return get_alphabet_hint(task, int(query['rank']))
+        return False
+    except KeyError:
+        return False
+
+
+def get_grid_hint(task, row, col):
+    if task['score'] < 10:
+        return False
+    try:
+        dst_hints = task['team_data']['hints']
+        if 'l' in dst_hints[row][col]:
+            return False
+        src_hints = task['full_data']['hints']
+        cell = src_hints[row][col]
+        dst_hints[row][col] = cell
+        task['score'] -= 10
+        return True
+    except IndexError:
+        return False
+
+
+def get_alphabet_hint(task, rank):
+    if task['score'] < 10:
+        return False
+    src_hints = task['full_data']['hints']
+    dst_hints = task['team_data']['hints']
+    for row, row_cells in enumerate(src_hints):
+        for col, cell in enumerate(row_cells):
+            if cell['l'] == rank and 'l' not in dst_hints[row][col]:
+                task['score'] -= 10
+                dst_hints[row][col] = cell
+                return True
+    return False
+
+
+def print_hints(hints):
+    for row_cells in hints:
+        for cell in row_cells:
+            if 'l' in cell:
+                print(ALPHABET[cell['l']], end=' ')
+            else:
+                print(' ', end=' ')
+        print('')
+
+
 if __name__ == '__main__':
     task = get_task('/home/sebc/alkindi/tasks/playfair/INDEX')
     print(task)
+    print("\n\nHints:")
+    print_hints(task['team_data']['hints'])
+    print("Initial score={}\n".format(task['score']))
+
+    print("Getting a grid hint:")
+    get_hint(task, {'type': 'grid', 'row': 0, 'col': 0})
+    print_hints(task['team_data']['hints'])
+    print("New score={}\n".format(task['score']))
+
+    print("Getting an alphabet hint:")
+    get_hint(task, {'type': 'alphabet', 'rank': 4})
+    print_hints(task['team_data']['hints'])
+    print("New score={}\n".format(task['score']))
