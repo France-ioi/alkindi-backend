@@ -229,14 +229,14 @@ class Model:
 
     def load_user(self, user_id):
         if user_id is None:
-            return None
+            raise ModelError('no such user')
         keys = [
             'id', 'created_at', 'foreign_id', 'team_id',
             'username', 'firstname', 'lastname', 'badges'
         ]
         result = self.__load_row(self.db.tables.users, user_id, keys)
         if result is None:
-            return None
+            raise ModelError('no such user')
         result['badges'] = result['badges'].split(' ')
         return result
 
@@ -424,7 +424,7 @@ class Model:
             .fields(*[getattr(attempts, key) for key in keys])
         row = self.db.first(query)
         if row is None:
-            return None
+            raise ModelError('no current attempt')
         result = {key: row[i] for i, key in enumerate(keys)}
         for key in ['is_current', 'is_training', 'is_unsolved']:
             result[key] = self.db.view_bool(result[key])
@@ -519,7 +519,7 @@ class Model:
             tasks, attempt_id, ['score', 'team_data'],
             primary_key=tasks.attempt_id)
         if row is None:
-            return None
+            raise ModelError('no task')
         result = json.loads(row['team_data'])
         result['score'] = row['score']
         return result
