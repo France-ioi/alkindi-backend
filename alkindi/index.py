@@ -316,6 +316,7 @@ def update_user_profile(request, user_id=None):
 
 MinimumFamilyVersion = {
     'Chrome':    30,
+    'Chromium':  30,
     'Firefox':   30,
     'IE':         9,
     'Edge':      13,
