@@ -3,7 +3,9 @@ from pyramid.httpexceptions import HTTPNotModified, HTTPFound
 from ua_parser import user_agent_parser
 
 from alkindi.auth import get_user_profile, reset_user_principals
-from alkindi.contexts import (ApiContext, UserApiContext, TeamApiContext)
+from alkindi.contexts import (
+    ApiContext, UserApiContext, TeamApiContext,
+    WorkspaceRevisionApiContext)
 from alkindi.globals import app
 from alkindi.model import ModelError
 import alkindi.views as views
@@ -32,6 +34,7 @@ def includeme(config):
         config, UserApiContext, 'assign_attempt_task', assign_attempt_task)
     api_post(config, UserApiContext, 'get_hint', get_hint)
     api_post(config, UserApiContext, 'store_revision', store_revision)
+    api_get(config, WorkspaceRevisionApiContext, '', read_workspace_revision)
     api_get(config, TeamApiContext, '', read_team)
 
 
@@ -110,6 +113,14 @@ def read_team(request):
     team = request.context.team
     check_etag(request, team['revision'])
     return {'team': views.view_user_team(team)}
+
+
+def read_workspace_revision(request):
+    revision = request.context.workspace_revision
+    check_etag(request, revision['created_at'])
+    return {
+        'workspace_revision': views.view_user_workspace_revision(revision)
+    }
 
 
 def create_team(request):

@@ -131,3 +131,6 @@ def have_code_majority(members):
     n_members = len(members)
     n_codes = len([m for m in members if 'access_code' in m])
     return n_codes * 2 >= n_members
+
+def view_user_workspace_revision(workspace_revision):
+    return workspace_revision
