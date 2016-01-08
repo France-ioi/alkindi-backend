@@ -86,6 +86,21 @@ class TeamsApiContext(ApiContextBase):
         return TeamApiContext(self, team=team)
 
 
+class WorkspaceRevisionApiContext(ApiContextBase):
+
+    @property
+    def __acl__(self):
+        return [
+            (Allow, ADMIN_GROUP, ['read', 'change']),
+            (Allow, 't:{}'.format(self.team_id), ['read']),
+            (Allow, 'u:{}'.format(self.creator_id), ['read', 'change']),
+        ]
+
+    @property
+    def workspace_revision(self):
+        return app.model.load_workspace_revision(self.workspace_revision_id)
+
+
 class ApiContext(ApiContextBase):
 
     __name__ = 'api'
