@@ -36,6 +36,10 @@ def includeme(config):
     api_post(config, UserApiContext, 'store_revision', store_revision)
     api_get(config, WorkspaceRevisionApiContext, '', read_workspace_revision)
     api_get(config, TeamApiContext, '', read_team)
+    config.add_view(
+        view_task, context=UserApiContext, name='task.html',
+        request_method='GET', permission='read',
+        renderer='templates/playfair.mako')  # XXX
 
 
 def api_get(config, context, name, view):
@@ -97,6 +101,12 @@ def index_view(request):
     return {
         'frontend_config': frontend_config
     }
+
+
+def view_task(request):
+    request.response.cache_control = 'max-age=0, private'
+    user_id = request.context.user_id
+    return views.view_user_task(user_id)
 
 
 def get_api(request):

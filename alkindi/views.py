@@ -134,3 +134,10 @@ def have_code_majority(members):
 
 def view_user_workspace_revision(workspace_revision):
     return workspace_revision
+
+
+def view_user_task(user_id):
+    user = app.model.load_user(user_id)
+    team_id = user['team_id']
+    attempt = app.model.load_team_current_attempt(team_id)
+    return app.model.load_task_team_data(attempt['id'])
