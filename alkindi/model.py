@@ -511,16 +511,18 @@ class Model:
         now = datetime.utcnow()
         attempt = self.load_attempt(attempt_id)
         if attempt['started_at'] is not None:
-            return 'already have a task'
+            return ModelError('already have a task')
+        team_id = attempt['team_id']
+        round_id = attempt['round_id']
         rounds = self.db.tables.rounds
         query = self.db.query(rounds) \
-            .where(rounds.id == attempt['round_id']) \
+            .where(rounds.id == round_id) \
             .fields(rounds.tasks_path,
                     rounds.duration,
                     rounds.training_opens_at)
         (tasks_path, duration, training_opens_at) = self.db.first(query)
         if now < training_opens_at:
-            return 'training is not open'
+            raise ModelError('training is not open')
         task = playfair.get_task(tasks_path)  # XXX playfair
         task_attrs = {
             'attempt_id': attempt_id,
@@ -535,7 +537,6 @@ class Model:
         attempt_attrs = {'started_at': now}
         if attempt['is_training']:
             # Lock the team.
-            team_id = attempt['team_id']
             teams = self.db.tables.teams
             self.__update_row(teams, team_id, {'is_locked': True})
         else:
@@ -543,6 +544,8 @@ class Model:
             attempt_attrs['closes_at'] = now + timedelta(minutes=duration)
         attempts = self.db.tables.attempts
         self.__update_row(attempts, attempt_id, attempt_attrs)
+        # Create the team's workspace.
+        self.create_team_workspace(team_id, round_id)
 
     def get_user_task_hint(self, user_id, query):
         attempt_id = self.get_user_current_attempt_id(user_id)
