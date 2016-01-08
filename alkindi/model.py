@@ -562,6 +562,18 @@ class Model:
         }, primary_key=tasks.attempt_id)
         return True
 
+    def create_team_workspace(self, team_id, round_id, title='None'):
+        workspaces = self.db.tables.workspaces
+        now = datetime.utcnow()
+        workspace_id = self.__insert_row(workspaces, {
+            'created_at': now,
+            'updated_at': now,
+            'team_id': team_id,
+            'round_id': round_id,
+            'title': title,
+        })
+        return workspace_id
+
     # --- private methods below ---
 
     def __load_row(self, table, id, keys, primary_key=None):
