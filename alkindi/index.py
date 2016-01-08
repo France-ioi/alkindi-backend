@@ -31,6 +31,7 @@ def includeme(config):
     api_post(
         config, UserApiContext, 'assign_attempt_task', assign_attempt_task)
     api_post(config, UserApiContext, 'get_hint', get_hint)
+    api_post(config, UserApiContext, 'store_revision', store_revision)
     api_get(config, TeamApiContext, '', read_team)
 
 
@@ -305,6 +306,27 @@ def get_hint(request):
     success = app.model.get_user_task_hint(user_id, query)
     app.db.commit()
     return {'success': success}
+
+
+def store_revision(request):
+    user_id = request.context.user_id
+    query = request.json_body
+    state = query['state']
+    title = getStr(query.get('title'))
+    parent_id = getInt(query.get('parent_id'))
+    revision_id = app.model.store_revision(user_id, parent_id, title, state)
+    app.db.commit()
+    return {'success': True, 'revision_id': revision_id}
+
+def getInt(input, defaultValue=None):
+    if input is None:
+        return defaultValue
+    return int(input)
+
+def getStr(input, defaultValue=None):
+    if input is None:
+        return defaultValue
+    return str(input)
 
 
 def update_user_profile(request, user_id=None):
