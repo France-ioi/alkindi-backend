@@ -33,6 +33,7 @@ def includeme(config):
     api_post(
         config, UserApiContext, 'assign_attempt_task', assign_attempt_task)
     api_post(config, UserApiContext, 'get_hint', get_hint)
+    api_post(config, UserApiContext, 'reset_hints', reset_hints)
     api_post(config, UserApiContext, 'store_revision', store_revision)
     api_get(config, WorkspaceRevisionApiContext, '', read_workspace_revision)
     api_get(config, TeamApiContext, '', read_team)
@@ -328,6 +329,13 @@ def get_hint(request):
     success = app.model.get_user_task_hint(user_id, query)
     app.db.commit()
     return {'success': success}
+
+
+def reset_hints(request):
+    user_id = request.context.user_id
+    app.model.reset_user_task_hints(user_id)
+    app.db.commit()
+    return {'success': True}
 
 
 def store_revision(request):

@@ -3,6 +3,9 @@ import random
 import re
 
 
+INITIAL_SCORE = 500
+
+
 def get_task(index):
     with open(index, 'r') as f:
         lines = f.read().strip().split('\n')
@@ -28,19 +31,22 @@ def get_task(index):
     cipher_text = '\n'.join(task_lines[0:1])
     firstname = task_lines[2]
     initial_grid = '\n'.join(task_lines[grid_pos:])
+    hints = parse_grid(hints_grid)
+    initial_hints = parse_grid(initial_grid)
     return {
-        'score': 500,
+        'score': INITIAL_SCORE,
         'full_data': {
             'plain_text': plain_text,
             'cipher_text': cipher_text,
             'answer_txt': answer,
             'firstname': firstname,
-            'hints': parse_grid(hints_grid),
+            'hints': hints,
+            'initial_hints': initial_hints,
         },
         'team_data': {
             'cipher_text': cipher_text,
             'firstname': firstname,
-            'hints': parse_grid(initial_grid)
+            'hints': initial_hints
         }
     }
 
@@ -115,6 +121,11 @@ def print_hints(hints):
             else:
                 print(' ', end=' ')
         print('')
+
+
+def reset_hints(task):
+    task['score'] = INITIAL_SCORE
+    task['team_data']['hints'] = task['full_data']['initial_hints']
 
 
 if __name__ == '__main__':

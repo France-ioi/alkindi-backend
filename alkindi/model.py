@@ -567,10 +567,10 @@ class Model:
     def get_user_task_hint(self, user_id, query):
         attempt_id = self.get_user_current_attempt_id(user_id)
         if attempt_id is None:
-            return False
+            raise ModelError('no current attempt')
         task = self.load_task(attempt_id)
         if task is None:
-            return False
+            raise ModelError('no task')
         # get_hint updates task in-place
         success = playfair.get_hint(task, query)
         if not success:
@@ -581,6 +581,24 @@ class Model:
             'team_data': json.dumps(task['team_data'])
         }, primary_key=tasks.attempt_id)
         return True
+
+    def reset_user_task_hints(self, user_id):
+        attempt_id = self.get_user_current_attempt_id(user_id)
+        if attempt_id is None:
+            raise ModelError('no current attempt')
+        attempt = self.load_attempt(attempt_id)
+        if not attempt['is_training']:
+            raise ModelError('forbidden')
+        task = self.load_task(attempt_id)
+        if task is None:
+            raise ModelError('no task')
+        # reset_hints updates task in-place
+        playfair.reset_hints(task)
+        tasks = self.db.tables.tasks
+        self.__update_row(tasks, attempt_id, {
+            'score': task['score'],
+            'team_data': json.dumps(task['team_data'])
+        }, primary_key=tasks.attempt_id)
 
     def get_user_workspace_id(self, user_id):
         users = self.db.tables.users
