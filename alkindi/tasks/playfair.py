@@ -34,6 +34,7 @@ def get_task(index):
     hints = parse_grid(hints_grid)
     initial_hints = parse_grid(initial_grid)
     return {
+        'task_dir': task_dir,
         'score': INITIAL_SCORE,
         'full_data': {
             'plain_text': plain_text,

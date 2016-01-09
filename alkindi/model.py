@@ -544,6 +544,7 @@ class Model:
         task_attrs = {
             'attempt_id': attempt_id,
             'created_at': now,
+            'task_dir': task['task_dir'],
             'score': task['score'],
             'full_data': json.dumps(task['full_data']),
             'team_data': json.dumps(task['team_data']),

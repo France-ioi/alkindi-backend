@@ -243,3 +243,5 @@ ALTER TABLE rounds ADD COLUMN pre_task_html TEXT NOT NULL;
 ALTER TABLE rounds ADD COLUMN post_task_html TEXT NOT NULL;
 
 #--- v-alkindi, epix2
+
+ALTER TABLE tasks ADD COLUMN task_dir TEXT NOT NULL;
