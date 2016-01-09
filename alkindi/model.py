@@ -172,11 +172,11 @@ class Model:
         user_id = user['id']
         team_id = user['team_id']
         if user['team_id'] is None:
-            return False
+            raise ModelError('no such user')
         # The team must not be locked.
         team = self.load_team(team_id)
         if team['is_locked']:
-            return False
+            raise ModelError('team is locked')
         # Clear the user's team_id.
         self.__set_user_team_id(user_id, None)
         # Delete the team_members row.
@@ -207,7 +207,6 @@ class Model:
                 self.db.update(
                     query.where(team_members.user_id == new_creator_id),
                     {team_members.is_creator: True})
-        return True
 
     def update_team(self, team_id, settings):
         """ Update a team's settings.
