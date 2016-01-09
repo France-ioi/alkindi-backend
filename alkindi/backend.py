@@ -2,7 +2,7 @@
 The Paster application entry point.
 """
 
-import datetime
+from datetime import datetime, date
 import decimal
 import json
 import os
@@ -25,7 +25,7 @@ def application(_global_config, **settings):
 
     print(
         "=== {} worker {} starting (front {}{})".format(
-            datetime.datetime.now().isoformat(), os.getpid(),
+            datetime.now().isoformat(), os.getpid(),
             front_version, 'min' if front_min else ''))
 
     config = Configurator(settings=settings)
@@ -96,8 +96,8 @@ def add_json_renderer(config):
     def decimal_adapter(obj, request):
         return str(obj)
 
-    json_renderer.add_adapter(datetime.datetime, datetime_adapter)
-    json_renderer.add_adapter(datetime.date, date_adapter)
+    json_renderer.add_adapter(datetime, datetime_adapter)
+    json_renderer.add_adapter(date, date_adapter)
     json_renderer.add_adapter(decimal.Decimal, decimal_adapter)
 
     config.add_renderer('json', json_renderer)
