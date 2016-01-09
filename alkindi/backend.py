@@ -24,8 +24,9 @@ def application(_global_config, **settings):
     """
 
     print(
-        "=== {} worker {} starting".format(
-            datetime.datetime.now().isoformat(), os.getpid()))
+        "=== {} worker {} starting (front {}{})".format(
+            datetime.datetime.now().isoformat(), os.getpid(),
+            front_version, 'min' if front_min else ''))
 
     config = Configurator(settings=settings)
     config.include('pyramid_debugtoolbar')
