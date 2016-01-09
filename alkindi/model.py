@@ -67,6 +67,8 @@ class Model:
         if row is None:
             raise ModelError('invalid user')
         principals = ['u:{}'.format(user_id)]
+        if user_id <= 2:
+            principals.append('g:admin')
         team_id = row[0]
         if team_id is None:
             return principals
