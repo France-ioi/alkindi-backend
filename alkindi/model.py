@@ -62,14 +62,14 @@ class Model:
         users = self.db.tables.users
         query = self.db.query(users) \
             .where(users.id == user_id) \
-            .fields(users.team_id)
+            .fields(users.team_id, users.is_admin)
         row = self.db.first(query)
         if row is None:
             raise ModelError('invalid user')
         principals = ['u:{}'.format(user_id)]
-        if user_id <= 2:
-            principals.append('g:admin')
         team_id = row[0]
+        if row[1]:
+            principals.append('g:admin')
         if team_id is None:
             return principals
         team_members = self.db.tables.team_members

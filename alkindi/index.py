@@ -94,8 +94,11 @@ def index_view(request):
         'login_url': request.route_url('login'),
         'logout_url': request.route_url('logout')
     }
-    # Add info about the logged-in user (if any) to the frontend config.
     user_id = request.authenticated_userid
+    if 'g:admin' in request.effective_principals:
+        if 'user_id' in request.params:
+            user_id = int(request.params['user_id'])
+    # Add info about the logged-in user (if any) to the frontend config.
     if user_id is not None:
         frontend_config['seed'] = views.view_user_seed(user_id)
     request.response.cache_control = 'max-age=0, private'
