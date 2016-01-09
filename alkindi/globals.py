@@ -90,9 +90,10 @@ class Globals:
         kw_override = json.loads(self.get('assets_pregenerator'), '{}')
 
         def pregenerator(request, elements, kwargs):
-            kwargs = dict(kwargs)
-            for key, value in kw_override.items():
-                kwargs[key] = value
+            if 'nocdn' not in request.params:
+                kwargs = dict(kwargs)
+                for key, value in kw_override.items():
+                    kwargs[key] = value
             return elements, kwargs
 
         return pregenerator
