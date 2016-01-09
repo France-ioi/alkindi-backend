@@ -103,13 +103,13 @@
 	<strong>Type de chiffrement :</strong> il s’agit du chiffrement appelé Playfair, qui est décrit plus bas.
 	</p>
 	<p>
-	<strong>Outils :</strong> dans l’onglet "cryptanalyse" accessible en haut de votre interface, vous disposez d’outils pour vous aider à déchiffrer le message. Une documentation de ces outils est fournie dans l’onglet "documentation".
+	<strong>Outils :</strong> dans l’onglet "cryptanalyse" accessible en haut de votre interface, vous disposez d’outils pour vous aider à déchiffrer le message (voir lien vers la documentation en haut de cette page).
 	</p>
 	<p>
 	<strong>Indices :</strong> le deuxième de ces outils permet d’obtenir des indices. Chaque indice retire 10 points au score que vous obtiendrez après avoir résolu le sujet. Initialement vous avez un capital de 500 points. Il est difficile de réussir sans indices, donc n’hésitez pas à en demander quelques-uns en les choisissant bien. Assurez-vous cependant que votre équipe est d’accord sur votre stratégie avant de demander des indices.
 	</p>
 	<p>
-	<strong>Entraînement et tentatives :</strong> au départ vous avez un sujet d’entraînement à résoudre sans limite de temps. Le score obtenu sur ce sujet ne compte pas (c’est seulement pour vous donner une indication). Une fois résolu, vous aurez 3 tentatives pour résoudre en 1 heure à chaque fois un sujet avec un message un peu différent, chiffré selon le même principe, mais une clé différente (la grille Playfair) et bien sûr une adresse et un code à trouver différents. À chaque tentative, vous repartez d’une grille presque vide et d’un capital de 500 points.
+	<strong>Entraînement et tentatives :</strong> au départ vous avez un sujet d’entraînement à résoudre sans limite de temps. Le score obtenu sur ce sujet ne compte pas (c’est seulement pour vous donner une indication). Une fois résolu, vous aurez 3 tentatives pour résoudre en 1 heure à chaque fois un sujet avec un message un peu différent, chiffré selon le même principe, mais une clé différente (la grille Playfair) et bien sûr une adresse et des nombres à trouver différents. À chaque tentative, vous repartez d’une grille presque vide et d’un capital de 500 points.
 	</p>
 	<p>
 	<strong>La méthode de chiffrement de Playfair :</strong> voici quelques explications sur les points importants de la méthode qui a été utilisée pour chiffrer le message.
@@ -127,15 +127,15 @@
 		</li>
 		<li>
 			<p>
-			Une grille de 5x5 cases a été remplie avec les lettres de l’alphabet sauf le W. Dans notre cas, considérez que les lettres ont été placées au hasard.
-			</p>
-		</li>
-		<li>
-			<p>
 			Le texte a ensuite été découpé en paires de lettres successives, appelées <strong>bigrammes</strong>. Ainsi le texte “MON TEXTE” est découpé en 4 bigrammes, “MO”, “NT, “EX”, “TE”.
 			</p>
 			<p>
 			Pour éviter des bigrammes consitués de deux fois la même lettre, des X sont insérés dans le texte entre certaines lettres doubles. Ainsi, le texte “BELLE” devient “BE”, “LX”, “LE”. Par contre le texte “ELLE” devient “EL” “LE” car les deux L ne tombent pas dans le même bigramme donc il n’est pas utile d’insérer un X..
+			</p>
+		</li>
+		<li>
+			<p>
+			Une grille de 5x5 cases a été remplie avec les lettres de l’alphabet sauf le W. Dans notre cas, considérez que les lettres ont été placées au hasard.
 			</p>
 		</li>
 		<li>
