@@ -28,7 +28,7 @@ def get_task(index):
         answer = f.read().strip()
     task_lines = task.split('\n')
     grid_pos = len(task_lines) - 5
-    cipher_text = '\n'.join(task_lines[0:1])
+    cipher_text = '\n'.join(task_lines[0:2])
     firstname = task_lines[2]
     initial_grid = '\n'.join(task_lines[grid_pos:])
     hints = parse_grid(hints_grid)
