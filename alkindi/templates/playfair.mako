@@ -109,7 +109,7 @@
 	<strong>Indices :</strong> le deuxième de ces outils permet d’obtenir des indices. Chaque indice retire 10 points au score que vous obtiendrez après avoir résolu le sujet. Initialement vous avez un capital de 500 points. Il est difficile de réussir sans indices, donc n’hésitez pas à en demander quelques-uns en les choisissant bien. Assurez-vous cependant que votre équipe est d’accord sur votre stratégie avant de demander des indices.
 	</p>
 	<p>
-	<strong>Entraînement et tentatives :</strong> au départ vous avez un sujet d’entraînement à résoudre sans limite de temps. Le score obtenu sur ce sujet ne compte pas (c’est seulement pour vous donner une indication). Une fois résolu, vous aurez 3 tentatives pour résoudre en 1 heure à chaque fois un sujet avec un message un peu différent, chiffré selon le même principe, mais une clé différente (la grille Playfair) et bien sûr une adresse et un code à trouver différents. À chaque tentative, vous repartez d’une grille presque vide et d’un capital de 500 points.
+	<strong>Entraînement et tentatives :</strong> au départ vous avez un sujet d’entraînement à résoudre sans limite de temps. Le score obtenu sur ce sujet ne compte pas (c’est seulement pour vous donner une indication). Une fois résolu, vous aurez 3 tentatives pour résoudre en 1 heure à chaque fois un sujet avec un message un peu différent, chiffré selon le même principe, mais une clé différente (la grille Playfair) et bien sûr une adresse et des nombres à trouver différents. À chaque tentative, vous repartez d’une grille presque vide et d’un capital de 500 points.
 	</p>
 	<p>
 	<strong>La méthode de chiffrement de Playfair :</strong> voici quelques explications sur les points importants de la méthode qui a été utilisée pour chiffrer le message.
