@@ -216,8 +216,6 @@ ALTER TABLE access_codes ADD CONSTRAINT fk_access_codes__attempt_id
 ALTER TABLE access_codes ADD CONSTRAINT fk_access_codes__user_id
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
 
-#--- prod
-
 ALTER TABLE attempts DROP FOREIGN KEY fk_attempts__question_id;
 ALTER TABLE attempts DROP INDEX ix_attempts__question_id;
 ALTER TABLE attempts DROP COLUMN question_id;
@@ -242,6 +240,14 @@ UPDATE rounds SET duration = 60;
 ALTER TABLE rounds ADD COLUMN pre_task_html TEXT NOT NULL;
 ALTER TABLE rounds ADD COLUMN post_task_html TEXT NOT NULL;
 
-#--- v-alkindi, epix2
+ALTER TABLE workspace_revisions ADD COLUMN creator_id bigint(20) NOT NULL;
+ALTER TABLE workspace_revisions ADD INDEX ix_workspace_revisions__creator_id (creator_id) USING BTREE;
+ALTER TABLE workspace_revisions ADD CONSTRAINT fk_workspace_revisions__creator_id FOREIGN KEY (creator_id) REFERENCES users (id) ON DELETE CASCADE;
 
 ALTER TABLE tasks ADD COLUMN task_dir TEXT NOT NULL;
+
+#--- v-alkindi, epix2, prod
+
+ALTER TABLE rounds DROP COLUMN pre_task_html;
+ALTER TABLE rounds DROP COLUMN post_task_html;
+ALTER TABLE rounds ADD COLUMN task_url TEXT NOT NULL;
