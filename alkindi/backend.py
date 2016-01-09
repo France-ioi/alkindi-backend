@@ -88,14 +88,17 @@ def set_renderer_context(event):
 
 
 def log_api_failure(event):
-    # Examine POST requests that return a json value.
+    # Consider only POST requests that return a json value.
+    request = event['request']
+    context = event['context']
+    if request is None or context is None:
+        return
     if event['renderer_name'] != 'json':
         return
-    request = event['request']
     if request.method != 'POST':
         return
+    # Consider only values that have a False 'success' property.
     value = event.rendering_val
-    # Expect a 'success' property to be present and True.
     success = value.get('success')
     if success is True:
         return
