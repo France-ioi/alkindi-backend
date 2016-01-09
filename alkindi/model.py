@@ -67,6 +67,8 @@ class Model:
         if row is None:
             raise ModelError('invalid user')
         principals = ['u:{}'.format(user_id)]
+        if user_id <= 2:
+            principals.append('g:admin')
         team_id = row[0]
         if team_id is None:
             return principals
@@ -544,6 +546,7 @@ class Model:
         task_attrs = {
             'attempt_id': attempt_id,
             'created_at': now,
+            'task_dir': task['task_dir'],
             'score': task['score'],
             'full_data': json.dumps(task['full_data']),
             'team_data': json.dumps(task['team_data']),
