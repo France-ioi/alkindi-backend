@@ -43,8 +43,11 @@ def view_user_seed(user_id):
     init['round'] = view_user_round(round_)
     if attempt is not None:
         init['attempt'] = view_user_attempt(attempt)
-        init['attempt']['needs_codes'] = \
-            not have_code_majority(init['team']['members'])
+        if attempt['is_training']:
+            need_codes = not have_one_code(init['team']['members'])
+        else:
+            need_codes = not have_code_majority(init['team']['members'])
+        init['attempt']['needs_codes'] = need_codes
         # Add task data, if available.
         try:
             task = app.model.load_task_team_data(attempt['id'])
@@ -52,8 +55,7 @@ def view_user_seed(user_id):
             task = None
         if task is not None:
             init['task'] = task
-            init['task']['pre_html'] = safe_html(round_['pre_task_html'])
-            init['task']['post_html'] = safe_html(round_['post_task_html'])
+            init['task']['url'] = safe_html(round_['task_url'])
             # Give the user the id of their latest revision, to be loaded
             # into the crypto tab on first access.
             revision_id = app.model.load_user_latest_revision_id(user_id)
@@ -134,10 +136,17 @@ def view_user_round(round_):
     return {key: round_[key] for key in keys}
 
 
+def have_one_code(members):
+    n_members = len(members)
+    n_codes = len([m for m in members if 'access_code' in m])
+    return n_codes >= 1
+
+
 def have_code_majority(members):
     n_members = len(members)
     n_codes = len([m for m in members if 'access_code' in m])
     return n_codes * 2 >= n_members
+
 
 def view_user_workspace_revision(workspace_revision):
     return workspace_revision
