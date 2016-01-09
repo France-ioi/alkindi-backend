@@ -103,7 +103,7 @@
 	<strong>Type de chiffrement :</strong> il s’agit du chiffrement appelé Playfair, qui est décrit plus bas.
 	</p>
 	<p>
-	<strong>Outils :</strong> dans l’onglet "cryptanalyse" accessible en haut de votre interface, vous disposez d’outils pour vous aider à déchiffrer le message. Une documentation de ces outils est fournie dans l’onglet "documentation".
+	<strong>Outils :</strong> dans l’onglet "cryptanalyse" accessible en haut de votre interface, vous disposez d’outils pour vous aider à déchiffrer le message (voir lien vers la documentation en haut de cette page).
 	</p>
 	<p>
 	<strong>Indices :</strong> le deuxième de ces outils permet d’obtenir des indices. Chaque indice retire 10 points au score que vous obtiendrez après avoir résolu le sujet. Initialement vous avez un capital de 500 points. Il est difficile de réussir sans indices, donc n’hésitez pas à en demander quelques-uns en les choisissant bien. Assurez-vous cependant que votre équipe est d’accord sur votre stratégie avant de demander des indices.
