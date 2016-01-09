@@ -34,6 +34,7 @@ def application(_global_config, **settings):
     config.include('pyramid_mako')
 
     config.add_subscriber(add_cors_headers, NewRequest)
+    config.add_subscriber(log_api_failure, BeforeRender)
     config.add_subscriber(set_renderer_context, BeforeRender)
 
     # Serve versioned static assets from alkindi-r2-front at /front
@@ -84,6 +85,33 @@ def set_renderer_context(event):
     event['g'] = app
     event['h'] = helpers
     event['front_min'] = '.min' if front_min else ''
+
+
+def log_api_failure(event):
+    # Examine POST requests that return a json value.
+    if event['renderer_name'] != 'json':
+        return
+    request = event['request']
+    if request.method != 'POST':
+        return
+    value = event.rendering_val
+    # Expect a 'success' property to be present and True.
+    success = value.get('success')
+    if success is True:
+        return
+    # Rollback early to prevent any changes to the model from being
+    # committed when the error is inserted.
+    app.db.rollback()
+    app.model.log_error({
+        'created_at': datetime.now(),
+        'request_url': request.url,
+        'request_body': request.body,
+        'request_headers': json.dumps(dict(request.headers)),
+        'context': str(event['context']),
+        'user_id': request.unauthenticated_userid,
+        'response_body': json.dumps(value)
+    })
+    app.db.commit()
 
 
 def add_json_renderer(config):
