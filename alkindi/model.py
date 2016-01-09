@@ -598,7 +598,7 @@ class Model:
             raise ModelError('user has not workspace')
         # If set, the parent revision must belong to the same workspace.
         if parent_id is not None:
-            other_workspace_id = get_revision_workspace_id(parent_id)
+            other_workspace_id = self.get_revision_workspace_id(parent_id)
             if other_workspace_id != workspace_id:
                 parent_id = None
         revisions = self.db.tables.workspace_revisions
@@ -651,6 +651,16 @@ class Model:
             .fields(workspaces.team_id, workspace_revisions.creator_id)
         row = self.db.first(query)
         return None if row is None else row
+
+    def get_revision_workspace_id(self, revision_id):
+        """ Return the revision's workspace_id.
+        """
+        workspace_revisions = self.db.tables.workspace_revisions
+        query = self.db.query(workspace_revisions) \
+            .where(workspace_revisions.id == revision_id) \
+            .fields(workspace_revisions.workspace_id)
+        row = self.db.first(query)
+        return None if row is None else row[0]
 
     # --- private methods below ---
 
