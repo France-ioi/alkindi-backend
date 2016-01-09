@@ -127,15 +127,15 @@
 		</li>
 		<li>
 			<p>
-			Une grille de 5x5 cases a été remplie avec les lettres de l’alphabet sauf le W. Dans notre cas, considérez que les lettres ont été placées au hasard.
-			</p>
-		</li>
-		<li>
-			<p>
 			Le texte a ensuite été découpé en paires de lettres successives, appelées <strong>bigrammes</strong>. Ainsi le texte “MON TEXTE” est découpé en 4 bigrammes, “MO”, “NT, “EX”, “TE”.
 			</p>
 			<p>
 			Pour éviter des bigrammes consitués de deux fois la même lettre, des X sont insérés dans le texte entre certaines lettres doubles. Ainsi, le texte “BELLE” devient “BE”, “LX”, “LE”. Par contre le texte “ELLE” devient “EL” “LE” car les deux L ne tombent pas dans le même bigramme donc il n’est pas utile d’insérer un X..
+			</p>
+		</li>
+		<li>
+			<p>
+			Une grille de 5x5 cases a été remplie avec les lettres de l’alphabet sauf le W. Dans notre cas, considérez que les lettres ont été placées au hasard.
 			</p>
 		</li>
 		<li>
