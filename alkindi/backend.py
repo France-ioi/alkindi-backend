@@ -79,6 +79,8 @@ def set_session_factory(config):
 
 
 def set_renderer_context(event):
+    if not event['renderer_name'].endswith('.mako'):
+        return
     event['g'] = app
     event['h'] = helpers
     event['front_min'] = '.min' if front_min else ''
