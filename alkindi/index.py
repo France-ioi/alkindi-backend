@@ -9,6 +9,7 @@ from alkindi.contexts import (
 from alkindi.globals import app
 from alkindi.model import ModelError
 import alkindi.views as views
+from alkindi_r2_front import version as front_version
 
 
 def includeme(config):
@@ -88,6 +89,7 @@ def index_view(request):
         .replace('%7B%7D', '{}')
     csrf_token = request.session.get_csrf_token()
     frontend_config = {
+        'front_version': front_version,
         'assets_template': assets_template,
         'csrf_token': csrf_token,
         'api_url': request.resource_url(get_api(request)),
