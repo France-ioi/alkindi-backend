@@ -246,8 +246,23 @@ ALTER TABLE workspace_revisions ADD CONSTRAINT fk_workspace_revisions__creator_i
 
 ALTER TABLE tasks ADD COLUMN task_dir TEXT NOT NULL;
 
-#--- v-alkindi, epix2, prod
-
 ALTER TABLE rounds DROP COLUMN pre_task_html;
 ALTER TABLE rounds DROP COLUMN post_task_html;
 ALTER TABLE rounds ADD COLUMN task_url TEXT NOT NULL;
+
+--- prod
+
+CREATE TABLE errors (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    user_id BIGINT NULL,
+    created_at DATETIME NOT NULL,
+    request_url TEXT NOT NULL,
+    request_body BLOB NOT NULL,
+    request_headers TEXT NOT NULL,
+    context TEXT NOT NULL,
+    response_body TEXT NOT NULL,
+    PRIMARY KEY (id)
+) CHARACTER SET utf8 ENGINE=InnoDB;
+-- no foreign keys on table errors, for performance reasons
+
+-- v-alkindi, epix2
