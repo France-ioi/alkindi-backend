@@ -700,6 +700,9 @@ class Model:
                                   primary_key=tasks.attempt_id)
         return count
 
+    def log_error(self, error):
+        self.__insert_row(self.db.tables.errors, error)
+
     # --- private methods below ---
 
     def __load_row(self, table, id, keys, primary_key=None):
