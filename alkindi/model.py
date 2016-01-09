@@ -567,10 +567,10 @@ class Model:
     def get_user_task_hint(self, user_id, query):
         attempt_id = self.get_user_current_attempt_id(user_id)
         if attempt_id is None:
-            return False
+            raise ModelError('no current attempt')
         task = self.load_task(attempt_id)
         if task is None:
-            return False
+            raise ModelError('no task')
         # get_hint updates task in-place
         success = playfair.get_hint(task, query)
         if not success:
@@ -581,6 +581,24 @@ class Model:
             'team_data': json.dumps(task['team_data'])
         }, primary_key=tasks.attempt_id)
         return True
+
+    def reset_user_task_hints(self, user_id):
+        attempt_id = self.get_user_current_attempt_id(user_id)
+        if attempt_id is None:
+            raise ModelError('no current attempt')
+        attempt = self.load_attempt(attempt_id)
+        if not attempt['is_training']:
+            raise ModelError('forbidden')
+        task = self.load_task(attempt_id)
+        if task is None:
+            raise ModelError('no task')
+        # reset_hints updates task in-place
+        playfair.reset_hints(task)
+        tasks = self.db.tables.tasks
+        self.__update_row(tasks, attempt_id, {
+            'score': task['score'],
+            'team_data': json.dumps(task['team_data'])
+        }, primary_key=tasks.attempt_id)
 
     def get_user_workspace_id(self, user_id):
         users = self.db.tables.users
@@ -598,7 +616,7 @@ class Model:
             raise ModelError('user has not workspace')
         # If set, the parent revision must belong to the same workspace.
         if parent_id is not None:
-            other_workspace_id = get_revision_workspace_id(parent_id)
+            other_workspace_id = self.get_revision_workspace_id(parent_id)
             if other_workspace_id != workspace_id:
                 parent_id = None
         revisions = self.db.tables.workspace_revisions
@@ -651,6 +669,16 @@ class Model:
             .fields(workspaces.team_id, workspace_revisions.creator_id)
         row = self.db.first(query)
         return None if row is None else row
+
+    def get_revision_workspace_id(self, revision_id):
+        """ Return the revision's workspace_id.
+        """
+        workspace_revisions = self.db.tables.workspace_revisions
+        query = self.db.query(workspace_revisions) \
+            .where(workspace_revisions.id == revision_id) \
+            .fields(workspace_revisions.workspace_id)
+        row = self.db.first(query)
+        return None if row is None else row[0]
 
     # --- private methods below ---
 
