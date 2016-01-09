@@ -33,8 +33,14 @@ class ApiContextBase:
         for key, value in kwargs.items():
             setattr(self, key, value)
 
+    def __str__(self):
+        return "{}()".format(self.__class__.__name__)
+
 
 class UserApiContext(ApiContextBase):
+
+    def __str__(self):
+        return "{}({})".format(self.__class__.__name__, self.user_id)
 
     @property
     def __acl__(self):
@@ -58,9 +64,13 @@ class TeamApiContext(ApiContextBase):
 
     def __init__(self, parent, team):
         self.__parent__ = parent
-        self.team_id = team['id']
         self.team = team
+        # XXX call super^
+        self.team_id = team['id']
         self._members = None
+
+    def __str__(self):
+        return "{}({})".format(self.__class__.__name__, self.team_id)
 
     @property
     def __acl__(self):
@@ -87,6 +97,10 @@ class TeamsApiContext(ApiContextBase):
 
 
 class WorkspaceRevisionApiContext(ApiContextBase):
+
+    def __str__(self):
+        return "{}({})".format(self.__class__.__name__,
+                               self.workspace_revision_id)
 
     @property
     def __acl__(self):
