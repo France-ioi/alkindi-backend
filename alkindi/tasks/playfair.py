@@ -67,7 +67,7 @@ def parse_grid(text):
     indices = [ALPHABET.find(c) for c in chars]
     objects = [
         {'q': 'unknown'} if i == -1 else
-        {'q': 'confirmed', 'l': i} for i in indices
+        {'q': 'hint', 'l': i} for i in indices
     ]
     span = 5
     return [objects[i:i+span] for i in range(0, len(chars), span)]
@@ -129,10 +129,28 @@ def reset_hints(task):
     task['team_data']['hints'] = task['full_data']['initial_hints']
 
 
+def fix_hints(hints):
+    for row_cells in hints:
+        for cell in row_cells:
+            q = cell.get('q')
+            if q == 'hint':
+                return False
+            if q == 'confirmed':
+                cell['q'] = 'hint'
+    return True
+
+
+def fix_task(task):
+    # Use a binary or to always check all three grids.
+    return (fix_hints(task['full_data']['hints']) |
+            fix_hints(task['full_data']['initial_hints']) |
+            fix_hints(task['team_data']['hints']))
+
+
 if __name__ == '__main__':
     task = get_task('/home/sebc/alkindi/tasks/playfair/INDEX')
-    print(task)
-    print("\n\nHints:")
+    print('fixed? {}'.format(fix_task(task)))
+    print('fixed again? {}'.format(fix_task(task)))
     print_hints(task['team_data']['hints'])
     print("Initial score={}\n".format(task['score']))
 

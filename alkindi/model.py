@@ -305,7 +305,6 @@ class Model:
             result[key] = json.loads(result[key])
         return result
 
-
     def load_team_members(self, team_id, users=False):
         team_members = self.db.tables.team_members
         if users:
@@ -682,6 +681,26 @@ class Model:
             .fields(workspace_revisions.workspace_id)
         row = self.db.first(query)
         return None if row is None else row[0]
+
+    def fix_tasks(self):
+        keys = [
+            'attempt_id', 'created_at', 'full_data', 'team_data', 'score'
+        ]
+        tasks = self.db.tables.tasks
+        query = self.db.query(tasks)
+        query = query.fields(*[getattr(tasks, key) for key in keys])
+        count = 0
+        for row in list(self.db.all(query)):
+            task = {key: row[i] for i, key in enumerate(keys)}
+            for key in ['full_data', 'team_data']:
+                task[key] = json.loads(task[key])
+            if playfair.fix_task(task):
+                count += 1
+                for key in ['full_data', 'team_data']:
+                    task[key] = json.dumps(task[key])
+                self.__update_row(tasks, task['attempt_id'], task,
+                                  primary_key=tasks.attempt_id)
+        return count
 
     # --- private methods below ---
 
