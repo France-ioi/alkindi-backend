@@ -7,12 +7,14 @@ from alkindi.contexts import (
     ApiContext, UserApiContext, TeamApiContext,
     WorkspaceRevisionApiContext)
 from alkindi.globals import app
-from alkindi.model import ModelError
+from alkindi.errors import ApiError, ModelError
 import alkindi.views as views
 from alkindi_r2_front import version as front_version
 
 
 def includeme(config):
+    config.add_view(model_error_view, context=ModelError, renderer='json')
+    config.add_view(api_error_view, context=ApiError, renderer='json')
     config.add_route('index', '/', request_method='GET')
     config.add_view(
         index_view, route_name='index', renderer='templates/index.mako')
@@ -21,7 +23,6 @@ def includeme(config):
     config.add_view(
         ancient_browser_view, route_name='ancient_browser',
         renderer='templates/ancient_browser.mako')
-    config.add_view(model_error_view, context=ModelError, renderer='json')
     api_get(config, UserApiContext, '', read_user)
     api_post(config, UserApiContext, 'create_team', create_team)
     api_post(config, UserApiContext, 'join_team', join_team)
@@ -68,8 +69,13 @@ def check_etag(request, etag):
 
 
 def model_error_view(error, request):
-    # This view handles alkindi.model.ModelError.
+    # This view handles alkindi.errors.ModelError.
     return {'success': False, 'error': str(error), 'source': 'model'}
+
+
+def api_error_view(error, request):
+    # This view handles alkindi.errors.ApiError.
+    return {'success': False, 'error': str(error), 'source': 'API'}
 
 
 def ancient_browser_view(request):
@@ -149,12 +155,11 @@ def create_team(request):
     update_user_profile(request, request.context.user_id)
     # Create the team.
     user_id = request.context.user_id
-    success = app.model.create_team(user_id)
-    if success:
-        app.db.commit()
-        # Ensure the user gets team credentials.
-        reset_user_principals(request)
-    return {'success': success}
+    app.model.create_team(user_id)
+    app.db.commit()
+    # Ensure the user gets team credentials.
+    reset_user_principals(request)
+    return {'success': True}
 
 
 def join_team(request):
@@ -174,15 +179,13 @@ def join_team(request):
         code = data['code']
         team_id = app.model.find_team_by_code(code)
     if team_id is None:
-        return {'success': False}
+        raise ApiError('unknown code')
     user = request.context.user
     # Verify that the user does not already belong to a team.
     if user['team_id'] is not None:
-        return {'success': False}
+        raise ApiError('already in a team')
     # Add the user to the team.
-    success = app.model.join_team(user, team_id)
-    if not success:
-        return {'success': False, 'error': 'bad code'}
+    app.model.join_team(user, team_id)
     # Joining a team cancels its attempts.
     app.model.cancel_current_team_attempt(team_id)
     app.db.commit()
@@ -208,11 +211,11 @@ def update_team(request):
     user = app.model.load_user(user_id)
     team_id = user['team_id']
     if team_id is None:
-        return {'success': False}
+        raise ApiError('no team')
     # If the user is not an admin, they must be the team's creator.
     if request.by_admin:
         if user_id != app.model.get_team_creator(team_id):
-            return {'success': False, 'error': 'denied'}
+            raise ApiError('not team creator')
         # The creator can only change some settings.
         allowed_keys = ['is_open']
         body = request.json_body
@@ -230,7 +233,7 @@ def start_attempt(request):
     user = app.model.load_user(user_id)
     team_id = user['team_id']
     if team_id is None:
-        return {'success': False}
+        raise ApiError('no team')
     # Load team, team members, round.
     team = app.model.load_team(team_id)
     members = app.model.load_team_members(team_id)
@@ -246,7 +249,7 @@ def start_attempt(request):
         # Check that the team is valid for the round.
         causes = views.validate_members_for_round(members, round_)
         if len(causes) != 0:
-            return {'success': False, 'error': 'invalid team'}
+            raise ApiError('invalid team')
         # Create a training attempt.
         # The team is not locked at this time, but any change to the
         # team should cancel the attempt.
@@ -256,7 +259,7 @@ def start_attempt(request):
             # Current attempt is training.  Team must pass training to
             # create a timed attempt.
             if attempt['is_unsolved']:
-                return {'success': False, 'error': 'must pass training'}
+                raise ApiError('must pass training')
         else:
             # XXX Current attempt is timed, do we allow the team to
             # start a new attempt before the time has elapsed?
@@ -267,7 +270,7 @@ def start_attempt(request):
         # Limit the number of timed attempts.
         n_attempts = app.model.count_team_timed_attempts(team_id)
         if n_attempts == round_['max_attempts']:
-            return {'success': False, 'error': 'too many attempts'}
+            raise ApiError('too many attempts')
         # Reset the is_current flag on the current attempt.
         app.model.set_attempt_not_current(attempt['id'])
         # Create a timed attempt.
@@ -281,12 +284,12 @@ def cancel_attempt(request):
     user = app.model.load_user(user_id)
     team_id = user['team_id']
     if team_id is None:
-        return {'success': False, 'error': 'no team'}
+        raise ApiError('no team')
     attempt = app.model.load_team_current_attempt(team_id)
     if attempt is None:
-        return {'success': False, 'error': 'no attempt'}
+        raise ApiError('no attempt')
     if attempt['started_at'] is not None:
-        return {'success': False, 'error': 'attempt already started'}
+        raise ApiError('attempt already started')
     app.model.cancel_current_team_attempt(team_id)
     app.db.commit()
     return {'success': True}
@@ -296,7 +299,7 @@ def view_access_code(request):
     user_id = request.context.user_id
     code = app.model.get_current_attempt_access_code(user_id)
     if code is None:
-        return {'success': False}
+        raise ApiError('no current attempt')
     return {'success': True, 'code': code}
 
 
@@ -305,13 +308,13 @@ def enter_access_code(request):
     user = app.model.load_user(user_id)
     team_id = user['team_id']
     if team_id is None:
-        return {'success': False, 'error': 'no team'}
+        raise ApiError('no team')
     data = request.json_body
     code = data['code']
     success = app.model.unlock_current_attempt_access_code(user_id, code)
     app.db.commit()
     if not success:
-        return {'success': False, 'error': 'bad code'}
+        raise ApiError('bad code')
     return {'success': success}
 
 
@@ -322,7 +325,7 @@ def assign_attempt_task(request):
     # It is therefore safe to assume that the team is valid.
     attempt_id = app.model.get_user_current_attempt_id(user_id)
     if attempt_id is None:
-        return {'success': False, 'error': 'no current attempt'}
+        raise ApiError('no current attempt')
     app.model.assign_attempt_task(attempt_id)
     app.db.commit()
     return {'success': True}

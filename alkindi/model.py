@@ -4,13 +4,9 @@ import json
 
 from alkindi.utils import generate_access_code
 from alkindi.tasks import playfair
-
+from alkindi.errors import ModelError
 # TODO: add started_at to attempts
 # TODO: when the first attempt starts, *lock* the team.
-
-
-class ModelError(RuntimeError):
-    pass
 
 
 class Model:
@@ -97,12 +93,12 @@ class Model:
         user = self.load_user(user_id)
         if user['team_id'] is not None:
             # User is already in a team.
-            return False
+            raise ModelError('already in a team')
         # Select a round based on the user's badges.
         round_id = self.select_round_with_badges(user['badges'])
         if round_id is None:
             # The user does not have access to any open round.
-            return False
+            raise ModelError('not qualified for any round')
         # Generate an unused code.
         code = generate_access_code()
         while self.find_team_by_code(code) is not None:
@@ -122,7 +118,6 @@ class Model:
             team_id, user_id, is_qualified=True, is_creator=True)
         # Update the user's team_id.
         self.__set_user_team_id(user_id, team_id)
-        return True
 
     def join_team(self, user, team_id):
         """ Add a user to a team.
@@ -132,19 +127,19 @@ class Model:
         # Verify that the user does not already belong to a team.
         if user['team_id'] is not None:
             # User is already in a team.
-            return False
+            raise ModelError('already in a team')
         # Verify that the team exists, is open, and not locked.
         team = self.load_team(team_id)
         if team['is_locked']:
             # Team is locked (an attempt was started).
-            return False
+            raise ModelError('team is locked')
         if not team['is_open']:
             # Team is closed (by its creator).
-            return False
+            raise ModelError('team is closed')
         round_id = team['round_id']
         # Verify that the round is open for registration.
         if not self.__is_round_registration_open(round_id):
-            return False
+            raise ModelError('registration is closed')
         # Look up the badges that grant access to the team's round, to
         # figure out whether the user is qualified for that round.
         user_badges = user['badges']
@@ -163,7 +158,6 @@ class Model:
         self.__add_team_member(team_id, user_id, is_qualified=is_qualified)
         # Update the user's team_id.
         self.__set_user_team_id(user_id, team_id)
-        return True
 
     def leave_team(self, user):
         """ Remove a user from their team.
@@ -500,7 +494,7 @@ class Model:
     def unlock_current_attempt_access_code(self, user_id, code):
         attempt_id = self.get_user_current_attempt_id(user_id)
         if attempt_id is None:
-            return False
+            raise ModelError('no current attempt')
         # Mark the access code as unlocked.
         access_codes = self.db.tables.access_codes
         query = self.db.query(access_codes) \
