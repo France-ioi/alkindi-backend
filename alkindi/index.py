@@ -193,14 +193,13 @@ def join_team(request):
 def leave_team(request):
     user_id = request.context.user_id
     user = app.model.load_user(user_id)
-    success = app.model.leave_team(user)
-    if success:
-        # Leaving a team cancels its attempts.
-        app.model.cancel_current_team_attempt(user['team_id'])
-        app.db.commit()
-        # Clear the user's team credentials.
-        reset_user_principals(request)
-    return {'success': success}
+    app.model.leave_team(user)
+    # Leaving a team cancels its attempts.
+    app.model.cancel_current_team_attempt(user['team_id'])
+    app.db.commit()
+    # Clear the user's team credentials.
+    reset_user_principals(request)
+    return {'success': True}
 
 
 def update_team(request):
