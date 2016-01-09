@@ -89,6 +89,7 @@ def index_view(request):
         .replace('%7B%7D', '{}')
     csrf_token = request.session.get_csrf_token()
     frontend_config = {
+        'nocdn': 'nocdn' in request.params,
         'front_version': front_version,
         'assets_template': assets_template,
         'csrf_token': csrf_token,
