@@ -121,11 +121,11 @@ def validate_members_for_round(members, round_):
 
 
 def view_user_attempt(attempt):
-    keys = ['id', 'created_at', 'closes_at', 'is_current', 'is_training', 'is_unsolved']
-    result = {key: attempt[key] for key in keys}
-    # TODO: add info on which user has submitted their code.
-    result['needs_codes'] = True
-    return result
+    keys = [
+        'id', 'created_at', 'closes_at',
+        'is_current', 'is_training', 'is_unsolved'
+    ]
+    return {key: attempt[key] for key in keys}
 
 
 def view_user_round(round_):
@@ -140,7 +140,6 @@ def view_user_round(round_):
 
 
 def have_one_code(members):
-    n_members = len(members)
     n_codes = len([m for m in members if 'access_code' in m])
     return n_codes >= 1
 
