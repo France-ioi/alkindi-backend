@@ -218,13 +218,20 @@ class Model:
         return team_id
 
     def load_user(self, user_id):
+        results = self.load_users((user_id,))
+        if len(results) == 0:
+            raise ModelError('no such user')
+        return results[0]
+
+    def load_users(self, user_ids):
         keys = [
             'id', 'created_at', 'foreign_id', 'team_id',
             'username', 'firstname', 'lastname', 'badges'
         ]
-        result = self.__load_row(self.db.tables.users, user_id, keys)
-        result['badges'] = result['badges'].split(' ')
-        return result
+        results = self.__load_rows(self.db.tables.users, user_ids, keys)
+        for result in results:
+            result['badges'] = result['badges'].split(' ')
+        return results
 
     def load_team(self, team_id):
         if team_id is None:
