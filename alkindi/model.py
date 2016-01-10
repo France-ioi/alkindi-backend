@@ -341,6 +341,19 @@ class Model:
             raise ModelError('team has no creator')
         return row[0]
 
+    def get_team_stats(self, team_id):
+        """ Return (n_members, n_qualified) for the given team.
+        """
+        team_members = self.db.tables.team_members
+        tm_query = self.db.query(team_members) \
+            .where(team_members.team_id == team_id)
+        n_members = self.db.scalar(
+            tm_query.fields(team_members.user_id.count()))
+        n_qualified = self.db.scalar(
+            tm_query.where(team_members.is_qualified)
+            .fields(team_members.user_id.count()))
+        return (n_members, n_qualified)
+
     def select_round_with_badges(self, badges):
         """ Select a round (active, registration open) for which the
             badges qualify, and return its id.
@@ -739,16 +752,3 @@ class Model:
 
     def __set_user_team_id(self, user_id, team_id):
         self.__update_row(self.db.tables.users, user_id, {'team_id': team_id})
-
-    def get_team_stats(self, team_id):
-        """ Return (n_members, n_qualified) for the given team.
-        """
-        team_members = self.db.tables.team_members
-        tm_query = self.db.query(team_members) \
-            .where(team_members.team_id == team_id)
-        n_members = self.db.scalar(
-            tm_query.fields(team_members.user_id.count()))
-        n_qualified = self.db.scalar(
-            tm_query.where(team_members.is_qualified)
-            .fields(team_members.user_id.count()))
-        return (n_members, n_qualified)
