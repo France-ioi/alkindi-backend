@@ -7,7 +7,7 @@ import json
 from alkindi.auth import get_user_profile, reset_user_principals
 from alkindi.contexts import (
     ApiContext, UserApiContext, TeamApiContext,
-    WorkspaceRevisionApiContext)
+    WorkspaceRevisionApiContext, AttemptApiContext)
 from alkindi.globals import app
 from alkindi.errors import ApiError, ModelError
 import alkindi.views as views
@@ -42,6 +42,7 @@ def includeme(config):
     api_post(config, UserApiContext, 'store_revision', store_revision)
     api_get(config, WorkspaceRevisionApiContext, '', read_workspace_revision)
     api_get(config, TeamApiContext, '', read_team)
+    api_get(config, AttemptApiContext, 'revisions', list_attempt_revisions)
     config.add_view(
         view_task, context=UserApiContext, name='task.html',
         request_method='GET', permission='read',
@@ -390,6 +391,14 @@ def store_revision(request):
         workspace_id=workspace_id)
     app.db.commit()
     return {'success': True, 'revision_id': revision_id}
+
+
+def list_attempt_revisions(request):
+    attempt_id = request.context.attempt_id
+    revisions = app.model.load_attempt_revisions(attempt_id)
+    revision_views = views.view_revisions(revisions)
+    return {'success': True, 'revisions': revision_views}
+
 
 def getInt(input, defaultValue=None):
     if input is None:
