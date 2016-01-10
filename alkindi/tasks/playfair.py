@@ -166,20 +166,20 @@ def grade(task, data):
 
     # Scores above score_threshold are considered solutions.
     score_threshold = Decimal('0.1')
-    hints_score = task['team_data']['score']
+    hints_score = task['score']
 
     in_n1 = canon_number(data.get('n1', ''))
     in_n2 = canon_number(data.get('n2', ''))
     in_ad = canon_address(data.get('a', ''))
 
-    (ex_n1, ex_n2, ex_ad) = task['full_data']['answer.txt'].split('\n')
+    (ex_n1, ex_n2, ex_ad) = task['full_data']['answer_txt'].split('\n')
     ex_n1 = canon_number(ex_n1)
     ex_n2 = canon_number(ex_n2)
     ex_ad = canon_address(ex_ad)
 
     numbers_equal = Decimal(int(ex_n1 == in_n1 and ex_n2 == in_n2))
     address_ratio = Decimal(str(SequenceMatcher(None, ex_ad, in_ad).ratio()))
-    address_errors = address_ratio * Decimal(len(ex_ad))
+    address_errors = round((Decimal(len(ex_ad)) - address_ratio * Decimal(len(ex_ad))) * Decimal(2))
 
     grading = {
         'input': {'n1': in_n1, 'n2': in_n2, 'ad': in_ad},
