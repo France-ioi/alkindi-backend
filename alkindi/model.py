@@ -166,7 +166,7 @@ class Model:
         user_id = user['id']
         team_id = user['team_id']
         if user['team_id'] is None:
-            raise ModelError('no such user')
+            raise ModelError('no such team')
         # The team must not be locked.
         team = self.load_team(team_id)
         if team['is_locked']:
@@ -223,15 +223,11 @@ class Model:
         return team_id
 
     def load_user(self, user_id):
-        if user_id is None:
-            raise ModelError('no such user')
         keys = [
             'id', 'created_at', 'foreign_id', 'team_id',
             'username', 'firstname', 'lastname', 'badges'
         ]
         result = self.__load_row(self.db.tables.users, user_id, keys)
-        if result is None:
-            raise ModelError('no such user')
         result['badges'] = result['badges'].split(' ')
         return result
 
@@ -248,8 +244,6 @@ class Model:
         return result
 
     def load_round(self, round_id):
-        if round_id is None:
-            return None
         keys = [
             'id', 'created_at', 'updated_at', 'title',
             'registration_opens_at', 'training_opens_at',
@@ -259,8 +253,6 @@ class Model:
         return self.__load_row(self.db.tables.rounds, round_id, keys)
 
     def load_attempt(self, attempt_id):
-        if attempt_id is None:
-            return None
         keys = [
             'id', 'team_id', 'round_id',
             'created_at', 'started_at', 'closes_at',
@@ -269,8 +261,6 @@ class Model:
         return self.__load_row(self.db.tables.attempts, attempt_id, keys)
 
     def load_task(self, attempt_id):
-        if attempt_id is None:
-            return None
         keys = [
             'attempt_id', 'created_at', 'full_data', 'team_data', 'score'
         ]
@@ -282,8 +272,6 @@ class Model:
         return result
 
     def load_workspace_revision(self, workspace_revision_id):
-        if workspace_revision_id is None:
-            return None
         keys = [
             'id', 'title', 'workspace_id', 'created_at', 'creator_id',
             'parent_id', 'is_active', 'is_precious', 'state'
@@ -511,8 +499,6 @@ class Model:
         row = self.__load_row(
             tasks, attempt_id, ['score', 'team_data'],
             primary_key=tasks.attempt_id)
-        if row is None:
-            raise ModelError('no task')
         result = json.loads(row['team_data'])
         result['score'] = row['score']
         return result
@@ -707,7 +693,7 @@ class Model:
         query = query.where(primary_key == id)
         row = self.db.first(query)
         if row is None:
-            return None
+            raise ModelError('no such row')
         return {key: row[i] for i, key in enumerate(keys)}
 
     def __insert_row(self, table, attrs):
