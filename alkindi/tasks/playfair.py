@@ -190,10 +190,9 @@ def grade(task, data):
         'address_errors': str(address_errors)
     }
 
-    score = ((Decimal(hints_score) *
-              (numbers_equal * Decimal('0.5') +
-               Decimal(int(in_ad == ex_ad)) * Decimal('0.5'))) /
-             Decimal(INITIAL_SCORE))
+    score = (Decimal(hints_score) *
+             (numbers_equal * Decimal('0.5') +
+              Decimal(int(in_ad == ex_ad)) * Decimal('0.5')))
 
     is_solution = score >= score_threshold
 
