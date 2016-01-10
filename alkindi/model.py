@@ -542,7 +542,7 @@ class Model:
         attempts = self.db.tables.attempts
         self.__update_row(attempts, attempt_id, attempt_attrs)
         # Create the team's workspace.
-        self.create_team_workspace(team_id, round_id)
+        self.create_attempt_workspace(attempt_id)
 
     def get_user_task_hint(self, user_id, query):
         attempt_id = self.get_user_current_attempt_id(user_id)
@@ -580,21 +580,25 @@ class Model:
             'team_data': json.dumps(task['team_data'])
         }, primary_key=tasks.attempt_id)
 
-    def get_user_workspace_id(self, user_id):
-        users = self.db.tables.users
+    def get_attempt_workspace_id(self, attempt_id):
         workspaces = self.db.tables.workspaces
-        query = self.db.query(users & workspaces) \
-            .where(users.id == user_id) \
-            .where(workspaces.team_id == users.team_id) \
+        query = self.db.query(workspaces) \
+            .where(workspaces.attempt_id == attempt_id) \
             .fields(workspaces.id)
         row = self.db.first(query)
         return None if row is None else row[0]
 
-    def store_revision(self, user_id, parent_id, title, state):
-        workspace_id = self.get_user_workspace_id(user_id)
+    def store_revision(self, user_id, parent_id, title, state,
+                       workspace_id=None):
+        # Default to the user's current attempt's workspace.
         if workspace_id is None:
-            raise ModelError('user has not workspace')
-        # If set, the parent revision must belong to the same workspace.
+            attempt_id = self.get_user_current_attempt_id(user_id)
+            if attempt_id is None:
+                raise ModelError('no current attempt')
+            workspace_id = self.get_attempt_workspace_id(attempt_id)
+            if workspace_id is None:
+                raise ModelError('attempt has no workspace')
+        # The parent revision, if set, must belong to the same workspace.
         if parent_id is not None:
             other_workspace_id = self.get_revision_workspace_id(parent_id)
             if other_workspace_id != workspace_id:
@@ -612,25 +616,22 @@ class Model:
         })
         return revision_id
 
-    def create_team_workspace(self, team_id, round_id, title='None'):
+    def create_attempt_workspace(self, attempt_id, title='None'):
         workspaces = self.db.tables.workspaces
         now = datetime.utcnow()
         workspace_id = self.__insert_row(workspaces, {
             'created_at': now,
             'updated_at': now,
-            'team_id': team_id,
-            'round_id': round_id,
+            'attempt_id': attempt_id,
             'title': title,
         })
         return workspace_id
 
-    def load_user_latest_revision_id(self, user_id):
-        users = self.db.tables.users
+    def load_user_latest_revision_id(self, user_id, attempt_id):
         workspaces = self.db.tables.workspaces
         workspace_revisions = self.db.tables.workspace_revisions
-        query = self.db.query(users & workspaces & workspace_revisions) \
-            .where(users.id == user_id) \
-            .where(workspaces.team_id == users.team_id) \
+        query = self.db.query(workspaces & workspace_revisions) \
+            .where(workspaces.attempt_id == attempt_id) \
             .where(workspace_revisions.workspace_id == workspaces.id) \
             .where(workspace_revisions.creator_id == user_id) \
             .order_by(workspace_revisions.created_at.desc()) \
@@ -641,12 +642,14 @@ class Model:
     def get_workspace_revision_ownership(self, revision_id):
         """ Return the revision's (team_id, creator_id).
         """
+        attempts = self.db.tables.attempts
         workspace_revisions = self.db.tables.workspace_revisions
         workspaces = self.db.tables.workspaces
-        query = self.db.query(workspace_revisions & workspaces) \
+        query = self.db.query(workspace_revisions & workspaces & attempts) \
             .where(workspace_revisions.id == revision_id) \
             .where(workspaces.id == workspace_revisions.workspace_id) \
-            .fields(workspaces.team_id, workspace_revisions.creator_id)
+            .where(attempts.id == workspaces.attempt_id) \
+            .fields(attempts.team_id, workspace_revisions.creator_id)
         row = self.db.first(query)
         return None if row is None else row
 

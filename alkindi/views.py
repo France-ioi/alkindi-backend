@@ -42,23 +42,26 @@ def view_user_seed(user_id):
     init['team'] = view_user_team(team, round_, attempt)
     init['round'] = view_user_round(round_)
     if attempt is not None:
+        attempt_id = attempt['id']
         init['attempt'] = view_user_attempt(attempt)
         if attempt['is_training']:
-            need_codes = not have_one_code(init['team']['members'])
+            needs_codes = not have_one_code(init['team']['members'])
         else:
-            need_codes = not have_code_majority(init['team']['members'])
-        init['attempt']['needs_codes'] = need_codes
+            needs_codes = not have_code_majority(init['team']['members'])
+        init['attempt']['needs_codes'] = needs_codes
         # Add task data, if available.
         try:
-            task = app.model.load_task_team_data(attempt['id'])
+            task = app.model.load_task_team_data(attempt_id)
         except ModelError:
             task = None
         if task is not None:
             init['task'] = task
             init['task']['url'] = safe_html(round_['task_url'])
-            # Give the user the id of their latest revision, to be loaded
-            # into the crypto tab on first access.
-            revision_id = app.model.load_user_latest_revision_id(user_id)
+            # Give the user the id of their latest revision for the
+            # current attempt, to be loaded into the crypto tab on
+            # first access.
+            revision_id = app.model.load_user_latest_revision_id(
+                user_id, attempt_id)
             init['my_latest_revision_id'] = revision_id
     return init
 

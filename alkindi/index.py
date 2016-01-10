@@ -347,7 +347,7 @@ def enter_access_code(request):
     success = app.model.unlock_current_attempt_access_code(user_id, code)
     app.db.commit()
     if not success:
-        raise ApiError('bad access code')
+        raise ApiError('unknown access code')
     return {'success': success}
 
 
@@ -384,8 +384,11 @@ def store_revision(request):
     query = request.json_body
     state = query['state']
     title = getStr(query.get('title'))
+    workspace_id = getStr(query.get('workspace_id'))
     parent_id = getInt(query.get('parent_id'))
-    revision_id = app.model.store_revision(user_id, parent_id, title, state)
+    revision_id = app.model.store_revision(
+        user_id, parent_id, title, state,
+        workspace_id=workspace_id)
     app.db.commit()
     return {'success': True, 'revision_id': revision_id}
 

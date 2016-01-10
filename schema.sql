@@ -250,8 +250,6 @@ ALTER TABLE rounds DROP COLUMN pre_task_html;
 ALTER TABLE rounds DROP COLUMN post_task_html;
 ALTER TABLE rounds ADD COLUMN task_url TEXT NOT NULL;
 
---- prod
-
 CREATE TABLE errors (
     id BIGINT NOT NULL AUTO_INCREMENT,
     user_id BIGINT NULL,
@@ -265,4 +263,16 @@ CREATE TABLE errors (
 ) CHARACTER SET utf8 ENGINE=InnoDB;
 -- no foreign keys on table errors, for performance reasons
 
--- v-alkindi, epix2
+-- v-alkindi, epix2, prod
+
+ALTER TABLE workspaces ADD COLUMN attempt_id BIGINT NULL;
+ALTER TABLE workspaces ADD INDEX ix_workspaces__attempt_id (attempt_id) USING BTREE;
+ALTER TABLE workspaces ADD CONSTRAINT fk_workspaces__attempt_id FOREIGN KEY (attempt_id) REFERENCES attempts (id) ON DELETE CASCADE;
+UPDATE workspaces, attempts SET workspaces.attempt_id = attempts.id WHERE attempts.team_id = workspaces.team_id;
+
+-- update backend
+
+ALTER TABLE workspaces DROP FOREIGN KEY fk_workspaces__team_id;
+ALTER TABLE workspaces DROP FOREIGN KEY fk_workspaces__round_id;
+ALTER TABLE workspaces DROP COLUMN team_id;
+ALTER TABLE workspaces DROP COLUMN round_id;
