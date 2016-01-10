@@ -314,7 +314,7 @@ def enter_access_code(request):
     success = app.model.unlock_current_attempt_access_code(user_id, code)
     app.db.commit()
     if not success:
-        raise ApiError('bad code')
+        raise ApiError('bad access code')
     return {'success': success}
 
 
