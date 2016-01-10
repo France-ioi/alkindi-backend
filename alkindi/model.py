@@ -250,7 +250,7 @@ class Model:
             'id', 'created_at', 'updated_at', 'title',
             'registration_opens_at', 'training_opens_at',
             'min_team_size', 'max_team_size', 'min_team_ratio',
-            'max_attempts', 'tasks_path', 'task_url'
+            'max_attempts', 'max_answers', 'tasks_path', 'task_url'
         ]
         return self.__load_row(self.db.tables.rounds, round_id, keys)
 
@@ -771,11 +771,11 @@ class Model:
         (grading, score, is_solution) = playfair.grade(task, data)
         # Store the answer.
         answers = self.db.tables.answers
-        self.__insert_row(answers, {
+        answer_id = self.__insert_row(answers, {
             'attempt_id': attempt_id,
             'ordinal': ordinal,
             'created_at': now,
-            'data': data,
+            'answer': json.dumps(data),
             'grading': json.dumps(grading),
             'score': score,
             'is_solution': is_solution
@@ -785,6 +785,7 @@ class Model:
             self.__update_row(self.db.tables.attempts, attempt_id, {
                 'is_unsolved': False
             })
+        return answer_id
 
     def get_attempt_answer_greatest_ordinal(self, attempt_id):
         answers = self.db.tables.answers
