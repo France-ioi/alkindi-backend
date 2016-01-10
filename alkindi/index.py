@@ -212,7 +212,7 @@ def join_team(request):
         code = data['code']
         team_id = app.model.find_team_by_code(code)
     if team_id is None:
-        raise ApiError('unknown code')
+        raise ApiError('unknown team code')
     user = request.context.user
     # Verify that the user does not already belong to a team.
     if user['team_id'] is not None:
