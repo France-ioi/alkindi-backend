@@ -43,6 +43,7 @@ def includeme(config):
     api_get(config, WorkspaceRevisionApiContext, '', read_workspace_revision)
     api_get(config, TeamApiContext, '', read_team)
     api_get(config, AttemptApiContext, 'revisions', list_attempt_revisions)
+    api_post(config, AttemptApiContext, 'answers', submit_attempt_answer)
     config.add_view(
         view_task, context=UserApiContext, name='task.html',
         request_method='GET', permission='read',
@@ -401,10 +402,18 @@ def list_attempt_revisions(request):
     return view
 
 
+def submit_attempt_answer(request):
+    attempt_id = request.context.attempt_id
+    answer_id = app.model.grade_answer(attempt_id, request.json_body)
+    app.db.commit()
+    return {'success': True, 'answer_id': answer_id}
+
+
 def getInt(input, defaultValue=None):
     if input is None:
         return defaultValue
     return int(input)
+
 
 def getStr(input, defaultValue=None):
     if input is None:
