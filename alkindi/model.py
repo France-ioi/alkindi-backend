@@ -715,7 +715,7 @@ class Model:
     def log_error(self, error):
         self.__insert_row(self.db.tables.errors, error)
 
-    def list_attempt_revisions(self, attempt_id):
+    def load_attempt_revisions(self, attempt_id):
         # Load the revisions.
         workspaces = self.db.tables.workspaces
         revisions = self.db.tables.workspace_revisions
@@ -726,7 +726,8 @@ class Model:
             (revisions, 'created_at'),
             (revisions, 'creator_id'),
             (revisions, 'is_precious'),
-            (workspaces, 'attempt_id')
+            (revisions, 'is_active'),
+            (revisions, 'workspace_id')
         ]
         query = self.db.query(revisions & workspaces) \
             .where(workspaces.attempt_id == attempt_id) \
@@ -736,7 +737,7 @@ class Model:
         results = []
         for row in list(self.db.all(query)):
             result = {c: row[i] for i, (t, c) in enumerate(cols)}
-            for key in ['is_precious']:
+            for key in ['is_active', 'is_precious']:
                 result[key] = self.db.view_bool(result[key])
             results.append(result)
         return results
