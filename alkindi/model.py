@@ -587,6 +587,11 @@ class Model:
             'team_data': json.dumps(task['team_data'])
         }, key=tasks.attempt_id)
 
+    def get_attempt_team_id(self, attempt_id):
+        attempts = self.db.tables.attempts
+        return self.__load_scalar(
+            table=attempts, value=attempt_id, column='team_id')
+
     def get_attempt_workspace_id(self, attempt_id):
         workspaces = self.db.tables.workspaces
         query = self.db.query(workspaces) \
