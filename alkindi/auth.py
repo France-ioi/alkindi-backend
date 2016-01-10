@@ -104,10 +104,11 @@ def logout_view(request):
 # Public definitions
 #
 
-def get_user_profile(request, user_id=None, refresh=True):
-    """ Query the identity provider for the specified (foreign) user_id,
-        authenticating using the access token from the given request's session.
-        If user_id is None, the profile of the authenticated user is queried.
+def get_user_profile(request, foreign_id=None, refresh=True):
+    """ Query the identity provider for the specified foreign_id,
+        authenticating using the access token from the request's session.
+        If foreign_id is None, the profile of the authenticated user will
+        be obtained.
         Set refresh to False to disable automatic access token refresh.
         If the query fails or if the access token has expired and cannot
         be refreshed, None is returned.
@@ -115,8 +116,8 @@ def get_user_profile(request, user_id=None, refresh=True):
     access_token = get_oauth2_token(request, refresh)
     idp_uri = app['identity_provider_uri']
     params = {}
-    if user_id is not None:
-        params['user_id'] = user_id
+    if foreign_id is not None:
+        params['idUser'] = foreign_id
     headers = {
         'Accept': 'application/json',
         'Authorization': 'Bearer {}'.format(access_token)
