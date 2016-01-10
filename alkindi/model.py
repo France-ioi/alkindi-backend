@@ -744,6 +744,18 @@ class Model:
             raise ModelError('no such row')
         return {key: row[i] for i, key in enumerate(columns)}
 
+    def __load_rows(self, table, values, columns, key=None):
+        if len(values) == 0:
+            return []
+        key_column = table.id if key is None else getattr(table, key)
+        query = self.db.query(table) \
+            .where(key_column.in_(list(values))) \
+            .fields(*[getattr(table, col) for col in columns])
+        return [
+            {key: row[i] for i, key in enumerate(columns)}
+            for row in self.db.all(query)
+        ]
+
     def __insert_row(self, table, attrs):
         query = self.db.query(table)
         query = query.insert({
