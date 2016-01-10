@@ -22,13 +22,8 @@ class Model:
             or None if no such user exists.
         """
         users = self.db.tables.users
-        row = self.db.first(
-            self.db.query(users)
-                .fields(users.id)
-                .where(users.foreign_id == foreign_id))
-        if row is None:
-            return None
-        return row[0]
+        return self.__load_scalar(
+            table=users, key='foreign_id', value=foreign_id, column='id')
 
     def import_user(self, profile):
         foreign_id = profile['idUser']
@@ -669,11 +664,9 @@ class Model:
         """ Return the revision's workspace_id.
         """
         workspace_revisions = self.db.tables.workspace_revisions
-        query = self.db.query(workspace_revisions) \
-            .where(workspace_revisions.id == revision_id) \
-            .fields(workspace_revisions.workspace_id)
-        row = self.db.first(query)
-        return None if row is None else row[0]
+        return self.__load_scalar(
+            table=workspace_revisions, value=revision_id,
+            column='workspace_id')
 
     def fix_tasks(self):
         keys = [
@@ -725,6 +718,17 @@ class Model:
         return results
 
     # --- private methods below ---
+
+    def __load_scalar(self, table, value, column, key=None):
+        """ Load the specified `column` from the first row in `table`
+            where `by`=`value`.
+        """
+        key_column = table.id if key is None else getattr(table, key)
+        query = self.db.query(table) \
+            .where(key_column == value) \
+            .fields(getattr(table, column))
+        row = self.db.first(query)
+        return None if row is None else row[0]
 
     def __load_row(self, table, value, columns, key=None):
         key_column = table.id if key is None else getattr(table, key)
