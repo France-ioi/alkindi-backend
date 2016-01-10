@@ -278,6 +278,13 @@ class Model:
             result[key] = json.loads(result[key])
         return result
 
+    def load_workspaces(self, workspace_ids):
+        keys = [
+            'id', 'attempt_id',
+            'created_at', 'updated_at', 'title'
+        ]
+        return self.__load_rows(self.db.tables.workspaces, workspace_ids, keys)
+
     def load_workspace_revision(self, workspace_revision_id):
         keys = [
             'id', 'title', 'workspace_id', 'created_at', 'creator_id',
