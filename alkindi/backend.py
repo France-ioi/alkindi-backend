@@ -84,6 +84,7 @@ def set_renderer_context(event):
         return
     event['g'] = app
     event['h'] = helpers
+    event['front_version'] = front_version
     event['front_min'] = '.min' if front_min else ''
 
 
