@@ -1,7 +1,9 @@
 import os
 import random
 import re
-
+from unidecode import unidecode
+from difflib import SequenceMatcher
+from decimal import Decimal
 
 INITIAL_SCORE = 500
 
@@ -145,6 +147,62 @@ def fix_task(task):
     return (fix_hints(task['full_data']['hints']) |
             fix_hints(task['full_data']['initial_hints']) |
             fix_hints(task['team_data']['hints']))
+
+
+def canon_number(input):
+    return re.sub('[^0-9]*', '', input)
+
+
+def canon_address(input):
+    # Map to ASCII, strip, uppercase.
+    input = unidecode(input).strip().upper()
+    # Remove all non-alphanum characters.
+    input = re.sub('[^0-9A-Z]*', '', input)
+    input = re.sub('W', 'V', input)
+    return input
+
+
+def grade(task, data):
+
+    # Scores above score_threshold are considered solutions.
+    score_threshold = Decimal('0.5')
+    hints_score = task['team_data']['score']
+
+    in_n1 = canon_number(data.get('n1', ''))
+    in_n2 = canon_number(data.get('n2', ''))
+    in_ad = canon_address(data.get('a', ''))
+
+    (ex_n1, ex_n2, ex_ad) = task['full_data']['answer.txt'].split('\n')
+    ex_n1 = canon_number(ex_n1)
+    ex_n2 = canon_number(ex_n2)
+    ex_ad = canon_address(ex_ad)
+
+    numbers_equal = Decimal(int(ex_n1 == in_n1 and ex_n2 == in_n2))
+    address_ratio = Decimal(str(SequenceMatcher(None, ex_ad, in_ad).ratio()))
+    address_errors = address_ratio * Decimal(len(ex_ad))
+
+    grading = {
+        'input': {'n1': in_n1, 'n2': in_n2, 'ad': in_ad},
+        'expected': {'n1': ex_n1, 'n2': ex_n2, 'ad': ex_ad},
+        'numbers_equal': str(numbers_equal),
+        'address_ratio': str(address_ratio),
+        'address_errors': str(address_errors)
+    }
+
+    score = (Decimal(hints_score) *
+             (numbers_equal * Decimal('0.5') +
+              Decimal(int(in_ad == ex_ad)) * Decimal('0.5')))
+
+    is_solution = score >= score_threshold
+
+    return (grading, score, is_solution)
+
+
+def test_grader():
+    print(grade(
+        {'full_data': {'answer.txt': "14\n449\n134 rue Nicomeede"},
+         'team_data': {'score': 490}},
+        {"n1": '14', "n2": '449', 'a': "134 rue Nicomèede"}))
 
 
 if __name__ == '__main__':
