@@ -396,8 +396,9 @@ def store_revision(request):
 def list_attempt_revisions(request):
     attempt_id = request.context.attempt_id
     revisions = app.model.load_attempt_revisions(attempt_id)
-    revision_views = views.view_revisions(revisions)
-    return {'success': True, 'revisions': revision_views}
+    view = views.view_revisions(revisions)
+    view['success'] = True
+    return view
 
 
 def getInt(input, defaultValue=None):
