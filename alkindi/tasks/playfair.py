@@ -165,7 +165,7 @@ def canon_address(input):
 def grade(task, data):
 
     # Scores above score_threshold are considered solutions.
-    score_threshold = Decimal('0.5')
+    score_threshold = Decimal('0.1')
     hints_score = task['team_data']['score']
 
     in_n1 = canon_number(data.get('n1', ''))
@@ -189,9 +189,10 @@ def grade(task, data):
         'address_errors': str(address_errors)
     }
 
-    score = (Decimal(hints_score) *
-             (numbers_equal * Decimal('0.5') +
-              Decimal(int(in_ad == ex_ad)) * Decimal('0.5')))
+    score = ((Decimal(hints_score) *
+              (numbers_equal * Decimal('0.5') +
+               Decimal(int(in_ad == ex_ad)) * Decimal('0.5'))) /
+             Decimal(INITIAL_SCORE))
 
     is_solution = score >= score_threshold
 
@@ -200,9 +201,9 @@ def grade(task, data):
 
 def test_grader():
     print(grade(
-        {'full_data': {'answer.txt': "14\n449\n134 rue Nicomeede"},
+        {'full_data': {'answer.txt': "14\n449\n134 avenue de Wagram"},
          'team_data': {'score': 490}},
-        {"n1": '14', "n2": '449', 'a': "134 rue Nicomèede"}))
+        {"n1": '14', "n2": '449', 'a': "134 avenue de Vagram"}))
 
 
 if __name__ == '__main__':
