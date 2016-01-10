@@ -255,12 +255,18 @@ class Model:
         return self.__load_row(self.db.tables.rounds, round_id, keys)
 
     def load_attempt(self, attempt_id):
+        results = self.load_attempts((attempt_id,))
+        if len(results) == 0:
+            raise ModelError('no such attempt')
+        return results[0]
+
+    def load_attempts(self, attempt_ids):
         keys = [
             'id', 'team_id', 'round_id',
             'created_at', 'started_at', 'closes_at',
             'is_current', 'is_training', 'is_unsolved'
         ]
-        return self.__load_row(self.db.tables.attempts, attempt_id, keys)
+        return self.__load_rows(self.db.tables.attempts, attempt_ids, keys)
 
     def load_task(self, attempt_id):
         keys = [
