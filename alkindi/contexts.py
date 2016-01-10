@@ -128,6 +128,33 @@ class WorkspaceRevisionsApiContext(ApiContextBase):
             team_id=team_id, creator_id=creator_id)
 
 
+class AttemptApiContext(ApiContextBase):
+
+    def __str__(self):
+        return "{}({})".format(self.__class__.__name__, self.attempt_id)
+
+    @property
+    def __acl__(self):
+        return [
+            (Allow, ADMIN_GROUP, ['read', 'change']),
+            (Allow, 't:{}'.format(self.team_id), ['read', 'change'])
+        ]
+
+    @property
+    def attempt(self):
+        return app.model.load_attempt(self.attempt_id)
+
+
+class AttemptsApiContext(ApiContextBase):
+
+    def __getitem__(self, path_element):
+        attempt_id = int(path_element)
+        team_id = app.model.get_attempt_team_id(attempt_id)
+        if team_id is None:
+            raise KeyError()
+        return AttemptApiContext(self, attempt_id=attempt_id, team_id=team_id)
+
+
 class ApiContext(ApiContextBase):
 
     __name__ = 'api'
@@ -138,6 +165,7 @@ class ApiContext(ApiContextBase):
     FACTORIES = {
         'users': UsersApiContext,
         'teams': TeamsApiContext,
+        'attempts': AttemptsApiContext,
         'workspace_revisions': WorkspaceRevisionsApiContext,
     }
 
