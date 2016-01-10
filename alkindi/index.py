@@ -1,6 +1,9 @@
 
 from pyramid.httpexceptions import HTTPNotModified, HTTPFound
 from ua_parser import user_agent_parser
+import requests
+import json
+import re
 
 from alkindi.auth import get_user_profile, reset_user_principals
 from alkindi.contexts import (
@@ -24,6 +27,7 @@ def includeme(config):
         ancient_browser_view, route_name='ancient_browser',
         renderer='templates/ancient_browser.mako')
     api_get(config, UserApiContext, '', read_user)
+    api_post(config, UserApiContext, 'qualify', qualify_user)
     api_post(config, UserApiContext, 'create_team', create_team)
     api_post(config, UserApiContext, 'join_team', join_team)
     api_post(config, UserApiContext, 'leave_team', leave_team)
@@ -144,6 +148,39 @@ def read_workspace_revision(request):
     return {
         'success': True,
         'workspace_revision': views.view_user_workspace_revision(revision)
+    }
+
+
+def qualify_user(request):
+    user = request.context.user
+    foreign_id = user['foreign_id']
+    data = request.json_body
+    url = 'http://www.france-ioi.org/alkindi/apiQualificationAlkindi.php'
+    payload = {
+        'userID': foreign_id,
+        'qualificationCode': data.get('code')
+    }
+    headers = {'Accept': 'application/json'}
+    req = requests.post(url, data=payload, headers=headers)
+    req.raise_for_status()
+    try:
+        body = json.loads(req.text)
+    except:
+        body = {}
+    codeStatus = body.get('codeStatus')
+    userIDStatus = body.get('userIDStatus')
+    profileUpdated = False
+    if codeStatus == 'registered' and userIDStatus == 'registered':
+        profile = get_user_profile(request, foreign_id)
+        if profile is not None:
+            app.model.update_user(user['id'], profile)
+            app.db.commit()
+            profileUpdated = True
+    return {
+        'success': True,
+        'codeStatus': codeStatus,
+        'userIDStatus': userIDStatus,
+        'profileUpdated': profileUpdated
     }
 
 
