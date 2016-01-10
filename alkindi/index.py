@@ -3,7 +3,6 @@ from pyramid.httpexceptions import HTTPNotModified, HTTPFound
 from ua_parser import user_agent_parser
 import requests
 import json
-import re
 
 from alkindi.auth import get_user_profile, reset_user_principals
 from alkindi.contexts import (
