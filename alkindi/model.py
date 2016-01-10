@@ -612,6 +612,8 @@ class Model:
             table=attempts, value=attempt_id, column='team_id')
 
     def get_attempt_workspace_id(self, attempt_id):
+        # XXX This code is temporary, and valid only because we currently
+        # have a single workspace created for each attempt.
         workspaces = self.db.tables.workspaces
         query = self.db.query(workspaces) \
             .where(workspaces.attempt_id == attempt_id) \
