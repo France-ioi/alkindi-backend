@@ -112,10 +112,7 @@ def get_user_profile(request, user_id=None, refresh=True):
         If the query fails or if the access token has expired and cannot
         be refreshed, None is returned.
     """
-    try:
-        access_token = get_oauth2_token(request, refresh)
-    except AuthenticationError:
-        return None
+    access_token = get_oauth2_token(request, refresh)
     idp_uri = app['identity_provider_uri']
     params = {}
     if user_id is not None:
@@ -126,14 +123,11 @@ def get_user_profile(request, user_id=None, refresh=True):
     }
     req = requests.get(
         idp_uri, headers=headers, verify='/etc/ssl/certs/ca-certificates.crt')
-    try:
-        req.raise_for_status()
-        profile = req.json()
-        if 'idUser' not in profile:
-            raise RuntimeError('profile object has no idUser key')
-        return profile
-    except requests.exceptions.HTTPError:
-        return None
+    req.raise_for_status()
+    profile = req.json()
+    if 'idUser' not in profile:
+        raise RuntimeError('profile object has no idUser key')
+    return profile
 
 
 def get_user_principals(userid, request):
