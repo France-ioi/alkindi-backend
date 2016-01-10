@@ -744,6 +744,57 @@ class Model:
             results.append(result)
         return results
 
+    def grade_answer(self, attempt_id, data, now=None):
+        if now is None:
+            now = datetime.utcnow()
+        # Fail if attempt is timed(not training) and solved(not unsolved).
+        attempt = self.load_attempt(attempt_id)
+        is_training = attempt['is_training']
+        is_unsolved = attempt['is_unsolved']
+        if not is_training and not is_unsolved:
+            raise ModelError('already solved')
+        # Fail if the attempt has a close datetime in the past.
+        closes_at = attempt['closes_at']
+        if closes_at is not None and closes_at < now:
+            raise ModelError('attempt is closed')
+        # Fail if timed(not training) and there are more answers than
+        # allowed.
+        round = self.load_round(attempt['round_id'])
+        max_answers = round['max_answers']
+        prev_ordinal = self.get_attempt_answer_greatest_ordinal(attempt_id)
+        ordinal = prev_ordinal + 1
+        if (not is_training and max_answers is not None and
+                prev_ordinal >= max_answers):
+            raise ModelError('too many answers')
+        # Perform grading.
+        task = self.load_task(attempt_id)
+        (grading, score, is_solution) = playfair.grade(task, data)
+        # Store the answer.
+        answers = self.db.tables.answers
+        self.__insert_row(answers, {
+            'attempt_id': attempt_id,
+            'ordinal': ordinal,
+            'created_at': now,
+            'data': data,
+            'grading': json.dumps(grading),
+            'score': score,
+            'is_solution': is_solution
+        })
+        if is_solution:
+            # Mark the attempt as solved.
+            self.__update_row(self.db.tables.attempts, attempt_id, {
+                'is_unsolved': False
+            })
+
+    def get_attempt_answer_greatest_ordinal(self, attempt_id):
+        answers = self.db.tables.answers
+        query = self.db.query(answers) \
+            .where(answers.attempt_id == attempt_id) \
+            .order_by(answers.ordinal.desc()) \
+            .fields(answers.ordinal)
+        row = self.db.first(query)
+        return 0 if row is None else row[0]
+
     # --- private methods below ---
 
     def __load_scalar(self, table, value, column, key=None):
