@@ -590,7 +590,7 @@ class Model:
         self.__update_row(tasks, attempt_id, {
             'score': task['score'],
             'team_data': json.dumps(task['team_data'])
-        }, primary_key=tasks.attempt_id)
+        }, key=tasks.attempt_id)
 
     def get_attempt_workspace_id(self, attempt_id):
         workspaces = self.db.tables.workspaces
@@ -692,7 +692,7 @@ class Model:
                 for key in ['full_data', 'team_data']:
                     task[key] = json.dumps(task[key])
                 self.__update_row(tasks, task['attempt_id'], task,
-                                  primary_key=tasks.attempt_id)
+                                  key=tasks.attempt_id)
         return count
 
     def log_error(self, error):
@@ -743,15 +743,14 @@ class Model:
         })
         return self.db.insert(query)
 
-    def __update_row(self, table, id, attrs, primary_key=None):
-        if primary_key is None:
-            primary_key = table.id
-        query = self.db.query(table).where(primary_key == id)
-        query = query.update({
-            getattr(table, key): attrs[key] for key in attrs
-        })
+    def __update_row(self, table, value, attrs, key=None):
+        key_column = table.id if key is None else getattr(table, key)
+        query = self.db.query(table) \
+            .where(key_column == value) \
+            .update({getattr(table, key): attrs[key] for key in attrs})
         cursor = self.db.execute(query)
         cursor.close()
+        return cursor
 
     def __add_team_member(self, team_id, user_id,
                           is_qualified=False, is_creator=False):
