@@ -24,8 +24,8 @@ def application(_global_config, **settings):
     """
 
     print(
-        "=== {} worker {} starting (front {}{})".format(
-            datetime.now().isoformat(), os.getpid(),
+        "=== {}Z worker {} starting (front {}{})".format(
+            datetime.utcnow().isoformat(), os.getpid(),
             front_version, 'min' if front_min else ''))
 
     config = Configurator(settings=settings)
@@ -107,7 +107,7 @@ def log_api_failure(event):
     # committed when the error is inserted.
     app.db.rollback()
     app.model.log_error({
-        'created_at': datetime.now(),
+        'created_at': datetime.utcnow(),
         'request_url': request.url,
         'request_body': request.body,
         'request_headers': json.dumps(dict(request.headers)),

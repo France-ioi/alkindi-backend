@@ -377,7 +377,7 @@ class Model:
         if len(badges) == 0:
             return None
         badges_table = self.db.tables.badges
-        now = datetime.now()
+        now = datetime.utcnow()
         row = self.db.first(
             self.db.query(rounds & badges_table)
                 .fields(rounds.id)
@@ -813,7 +813,7 @@ class Model:
             self.db.query(rounds)
                 .fields(rounds.registration_opens_at)
                 .where(rounds.id == round_id))
-        now = datetime.now()
+        now = datetime.utcnow()
         return (registration_opens_at <= now)
 
     def __set_user_team_id(self, user_id, team_id):
