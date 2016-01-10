@@ -260,7 +260,7 @@ class Model:
             'attempt_id', 'created_at', 'full_data', 'team_data', 'score'
         ]
         tasks = self.db.tables.tasks
-        result = self.__load_row(tasks, attempt_id, keys, key=tasks.attempt_id)
+        result = self.__load_row(tasks, attempt_id, keys, key='attempt_id')
         for key in ['full_data', 'team_data']:
             result[key] = json.loads(result[key])
         return result
@@ -504,8 +504,7 @@ class Model:
     def load_task_team_data(self, attempt_id):
         tasks = self.db.tables.tasks
         row = self.__load_row(
-            tasks, attempt_id, ['score', 'team_data'],
-            key=tasks.attempt_id)
+            tasks, attempt_id, ['score', 'team_data'], key='attempt_id')
         result = json.loads(row['team_data'])
         result['score'] = row['score']
         return result
@@ -566,7 +565,7 @@ class Model:
         self.__update_row(tasks, attempt_id, {
             'score': task['score'],
             'team_data': json.dumps(task['team_data'])
-        }, key=tasks.attempt_id)
+        }, key='attempt_id')
         return True
 
     def reset_user_task_hints(self, user_id):
@@ -585,7 +584,7 @@ class Model:
         self.__update_row(tasks, attempt_id, {
             'score': task['score'],
             'team_data': json.dumps(task['team_data'])
-        }, key=tasks.attempt_id)
+        }, key='attempt_id')
 
     def get_attempt_team_id(self, attempt_id):
         attempts = self.db.tables.attempts
@@ -690,7 +689,7 @@ class Model:
                 for key in ['full_data', 'team_data']:
                     task[key] = json.dumps(task[key])
                 self.__update_row(tasks, task['attempt_id'], task,
-                                  key=tasks.attempt_id)
+                                  key='attempt_id')
         return count
 
     def log_error(self, error):
