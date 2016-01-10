@@ -763,7 +763,7 @@ class Model:
         max_answers = round['max_answers']
         (prev_ordinal, submitted_at) = \
             self.get_attempt_latest_answer_infos(attempt_id)
-        # Fail if answer was submitted less than 1 minute ago.
+        # Fail if answer was submitted too recently.
         if submitted_at is not None:
             if now < submitted_at + timedelta(minutes=1):
                 raise ModelError('too soon')
@@ -797,9 +797,13 @@ class Model:
         query = self.db.query(answers) \
             .where(answers.attempt_id == attempt_id) \
             .order_by(answers.ordinal.desc()) \
-            .fields(answers.ordinal, answers.created_at)
-        row = self.db.first(query)
-        return (0, None) if row is None else row
+            .fields(answers.ordinal, answers.created_at)[0:2]
+        rows = list(self.db.all(query))
+        if len(rows) == 0:
+            return (0, None)
+        if len(rows) == 1:
+            return (rows[0][0], None)
+        return (rows[0][0], rows[1][1])
 
     def load_attempt_answers(self, attempt_id):
         answers = self.db.tables.answers
