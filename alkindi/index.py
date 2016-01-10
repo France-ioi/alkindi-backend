@@ -151,8 +151,6 @@ def create_team(request):
     """ Create a team for the context's user.
         An administrator can also perform the action on a user's behalf.
     """
-    # Refresh the user profile in case their badges changed.
-    update_user_profile(request, request.context.user_id)
     # Create the team.
     user_id = request.context.user_id
     app.model.create_team(user_id)
@@ -166,8 +164,6 @@ def join_team(request):
     """ Add the context's user to an existing team.
         An administrator can also perform the action on a user's behalf.
     """
-    # Refresh the user profile in case their badges changed.
-    update_user_profile(request, request.context.user_id)
     # Find the team corresponding to the provided code.
     data = request.json_body
     team_id = None
@@ -365,14 +361,6 @@ def getStr(input, defaultValue=None):
     if input is None:
         return defaultValue
     return str(input)
-
-
-def update_user_profile(request, user_id=None):
-    profile = get_user_profile(request, user_id)
-    if profile is None:
-        raise RuntimeError("failed to get the user's profile")
-    app.model.update_user(user_id, profile)
-    app.db.commit()
 
 
 MinimumFamilyVersion = {
