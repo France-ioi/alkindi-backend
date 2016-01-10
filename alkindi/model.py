@@ -737,7 +737,7 @@ class Model:
             .order_by(revisions.created_at.desc())
         query = query.fields(*[getattr(t, c) for (t, c) in cols])
         results = []
-        for row in list(self.db.all(query)):
+        for row in self.db.all(query):
             result = {c: row[i] for i, (t, c) in enumerate(cols)}
             for key in ['is_active', 'is_precious']:
                 result[key] = self.db.view_bool(result[key])
@@ -795,6 +795,23 @@ class Model:
             .fields(answers.ordinal)
         row = self.db.first(query)
         return 0 if row is None else row[0]
+
+    def load_attempt_answers(self, attempt_id):
+        answers = self.db.tables.answers
+        cols = [
+            'id', 'ordinal', 'created_at', 'answer', 'score', 'is_solution'
+        ]
+        query = self.db.query(answers) \
+            .where(answers.attempt_id == attempt_id) \
+            .order_by(answers.ordinal.desc())
+        query = query.fields(*[getattr(answers, c) for c in cols])
+        results = []
+        for row in self.db.all(query):
+            result = {c: row[i] for i, c in enumerate(cols)}
+            for key in ['is_solution']:
+                result[key] = self.db.view_bool(result[key])
+            results.append(result)
+        return results
 
     # --- private methods below ---
 
