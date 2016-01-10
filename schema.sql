@@ -286,11 +286,11 @@ CREATE TABLE answers (
     created_at DATETIME NOT NULL,
     answer TEXT NOT NULL,
     grading TEXT NOT NULL,
-    score DECIMAL(7,6) NOT NULL,
+    score DECIMAL(6,0) NOT NULL,
     is_solution BOOLEAN NOT NULL,
     PRIMARY KEY (id)
 ) CHARACTER SET utf8 ENGINE=InnoDB;
 ALTER TABLE answers ADD INDEX ix_answers__attempt_id_ordinal (attempt_id, ordinal) USING BTREE;
 ALTER TABLE answers ADD CONSTRAINT fk_answers__attempt_id FOREIGN KEY (attempt_id) REFERENCES attempts (id) ON DELETE CASCADE;
 
-ALTER TABLE rounds CHANGE COLUMN max_attempts max_answers INTEGER NOT NULL;
+ALTER TABLE rounds ADD COLUMN max_answers INTEGER NULL;
