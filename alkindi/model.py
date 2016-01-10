@@ -265,8 +265,7 @@ class Model:
             'attempt_id', 'created_at', 'full_data', 'team_data', 'score'
         ]
         tasks = self.db.tables.tasks
-        result = self.__load_row(
-            tasks, attempt_id, keys, primary_key=tasks.attempt_id)
+        result = self.__load_row(tasks, attempt_id, keys, key=tasks.attempt_id)
         for key in ['full_data', 'team_data']:
             result[key] = json.loads(result[key])
         return result
@@ -511,7 +510,7 @@ class Model:
         tasks = self.db.tables.tasks
         row = self.__load_row(
             tasks, attempt_id, ['score', 'team_data'],
-            primary_key=tasks.attempt_id)
+            key=tasks.attempt_id)
         result = json.loads(row['team_data'])
         result['score'] = row['score']
         return result
@@ -572,7 +571,7 @@ class Model:
         self.__update_row(tasks, attempt_id, {
             'score': task['score'],
             'team_data': json.dumps(task['team_data'])
-        }, primary_key=tasks.attempt_id)
+        }, key=tasks.attempt_id)
         return True
 
     def reset_user_task_hints(self, user_id):
@@ -727,16 +726,15 @@ class Model:
 
     # --- private methods below ---
 
-    def __load_row(self, table, id, keys, primary_key=None):
-        query = self.db.query(table)
-        query = query.fields(*[getattr(table, key) for key in keys])
-        if primary_key is None:
-            primary_key = table.id
-        query = query.where(primary_key == id)
+    def __load_row(self, table, value, columns, key=None):
+        key_column = table.id if key is None else getattr(table, key)
+        query = self.db.query(table) \
+            .where(key_column == value) \
+            .fields(*[getattr(table, col) for col in columns])
         row = self.db.first(query)
         if row is None:
             raise ModelError('no such row')
-        return {key: row[i] for i, key in enumerate(keys)}
+        return {key: row[i] for i, key in enumerate(columns)}
 
     def __insert_row(self, table, attrs):
         query = self.db.query(table)
