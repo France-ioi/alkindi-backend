@@ -200,3 +200,9 @@ def view_revisions(revisions):
         'workspaces': workspace_views,
         'attempts': attempt_views,
     }
+
+
+def view_answers(answers):
+    return {
+        'answers': answers
+    }

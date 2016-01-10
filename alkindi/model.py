@@ -810,6 +810,8 @@ class Model:
             result = {c: row[i] for i, c in enumerate(cols)}
             for key in ['is_solution']:
                 result[key] = self.db.view_bool(result[key])
+            for key in ['answer']:
+                result[key] = json.loads(result[key])
             results.append(result)
         return results
 
