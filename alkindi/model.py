@@ -699,6 +699,32 @@ class Model:
     def log_error(self, error):
         self.__insert_row(self.db.tables.errors, error)
 
+    def list_attempt_revisions(self, attempt_id):
+        # Load the revisions.
+        workspaces = self.db.tables.workspaces
+        revisions = self.db.tables.workspace_revisions
+        cols = [
+            (revisions, 'id'),
+            (revisions, 'title'),
+            (revisions, 'parent_id'),
+            (revisions, 'created_at'),
+            (revisions, 'creator_id'),
+            (revisions, 'is_precious'),
+            (workspaces, 'attempt_id')
+        ]
+        query = self.db.query(revisions & workspaces) \
+            .where(workspaces.attempt_id == attempt_id) \
+            .where(revisions.workspace_id == workspaces.id) \
+            .order_by(revisions.created_at.desc())
+        query = query.fields(*[getattr(t, c) for (t, c) in cols])
+        results = []
+        for row in list(self.db.all(query)):
+            result = {c: row[i] for i, (t, c) in enumerate(cols)}
+            for key in ['is_precious']:
+                result[key] = self.db.view_bool(result[key])
+            results.append(result)
+        return results
+
     # --- private methods below ---
 
     def __load_row(self, table, id, keys, primary_key=None):
