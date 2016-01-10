@@ -279,3 +279,18 @@ ALTER TABLE workspaces DROP COLUMN round_id;
 
 -- v-alkindi, epix2, prod
 
+CREATE TABLE answers (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    attempt_id BIGINT NOT NULL,
+    ordinal INT NOT NULL,
+    created_at DATETIME NOT NULL,
+    answer TEXT NOT NULL,
+    grading TEXT NOT NULL,
+    score DECIMAL(7,6) NOT NULL,
+    is_solution BOOLEAN NOT NULL,
+    PRIMARY KEY (id)
+) CHARACTER SET utf8 ENGINE=InnoDB;
+ALTER TABLE answers ADD INDEX ix_answers__attempt_id_ordinal (attempt_id, ordinal) USING BTREE;
+ALTER TABLE answers ADD CONSTRAINT fk_answers__attempt_id FOREIGN KEY (attempt_id) REFERENCES attempts (id) ON DELETE CASCADE;
+
+ALTER TABLE rounds CHANGE COLUMN max_attempts max_answers INTEGER NOT NULL;
