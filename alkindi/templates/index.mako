@@ -8,7 +8,8 @@
     <div class='wrapper'>
       En cas de difficultés techniques, contactez
         info@concours-alkindi.fr
-      en décrivant précisément la situation.
+      en décrivant précisément la situation et en
+      indiquant votre login.
       <span class="pull-right">
         v${front_version}
       </span>
