@@ -159,6 +159,7 @@ def canon_address(input):
     # Remove all non-alphanum characters.
     input = re.sub('[^0-9A-Z]*', '', input)
     input = re.sub('W', 'V', input)
+    input = re.sub('X', '', input)
     return input
 
 
