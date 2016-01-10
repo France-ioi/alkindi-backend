@@ -159,3 +159,44 @@ def view_user_task(user_id):
     team_id = user['team_id']
     attempt = app.model.load_team_current_attempt(team_id)
     return app.model.load_task_team_data(attempt['id'])
+
+
+def view_revision(revision):
+    keys = [
+        'id', 'parent_id', 'creator_id', 'workspace_id',
+        'created_at', 'title', 'is_active', 'is_precious',
+    ]
+    return {key: revision[key] for key in keys}
+
+
+def view_workspace(workspace):
+    keys = [
+        'id', 'created_at', 'updated_at', 'title'
+        # 'attempt_id' omitted
+    ]
+    return {key: workspace[key] for key in keys}
+
+
+def view_revisions(revisions):
+    # Load related entities.
+    user_ids = set()
+    workspace_ids = set()
+    attempt_ids = set()
+    for revision in revisions:
+        user_ids.add(revision['creator_id'])
+        workspace_ids.add(revision['workspace_id'])
+    users = app.model.load_users(user_ids)
+    workspaces = app.model.load_workspaces(workspace_ids)
+    for workspace in workspaces:
+        attempt_ids.add(workspace['attempt_id'])
+    attempts = app.model.load_attempts(attempt_ids)
+    # Prepare views.
+    user_views = [view_user(user) for user in users]
+    workspace_views = [view_workspace(workspace) for workspace in workspaces]
+    attempt_views = [view_user_attempt(attempt) for attempt in attempts]
+    return {
+        'revisions': revisions,
+        'users': user_views,
+        'workspaces': workspace_views,
+        'attempts': attempt_views,
+    }
