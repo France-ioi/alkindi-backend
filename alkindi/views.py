@@ -203,6 +203,12 @@ def view_revisions(revisions):
 
 
 def view_answers(answers):
+    user_ids = set()
+    for answer in answers:
+        user_ids.add(answer['submitter_id'])
+    users = app.model.load_users(user_ids)
+    user_views = [view_user(user) for user in users]
     return {
-        'answers': answers
+        'answers': answers,
+        'users': user_views
     }
