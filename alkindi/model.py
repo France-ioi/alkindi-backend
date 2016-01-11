@@ -5,8 +5,6 @@ import json
 from alkindi.utils import generate_access_code
 from alkindi.tasks import playfair
 from alkindi.errors import ModelError
-# TODO: add started_at to attempts
-# TODO: when the first attempt starts, *lock* the team.
 
 
 class Model:
