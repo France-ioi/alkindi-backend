@@ -53,6 +53,25 @@ class UserApiContext(ApiContextBase):
     def user(self):
         return app.model.load_user(self.user_id)
 
+    def __getitem__(self, path_element):
+        if path_element == 'attempts':
+            return UserAttemptsApiContext(self, user_id=self.user_id)
+
+
+class UserAttemptsApiContext(ApiContextBase):
+
+    def __str__(self):
+        return "{}({}, {})".format(self.__class__.__name__, self.user_id)
+
+    def __getitem__(self, path_element):
+        attempt_id = int(path_element)
+        team_id = app.model.get_attempt_team_id(attempt_id)
+        user_team_id = app.model.get_user_team_id(self.user_id)
+        if team_id is None or team_id != user_team_id:
+            raise KeyError()
+        return UserAttemptApiContext(
+            self, user_id=self.user_id, attempt_id=attempt_id)
+
 
 class UsersApiContext(ApiContextBase):
 
@@ -126,6 +145,28 @@ class WorkspaceRevisionsApiContext(ApiContextBase):
         return WorkspaceRevisionApiContext(
             self, workspace_revision_id=revision_id,
             team_id=team_id, creator_id=creator_id)
+
+
+class UserAttemptApiContext(ApiContextBase):
+
+    def __str__(self):
+        return "{}({})".format(
+            self.__class__.__name__, self.user_id, self.attempt_id)
+
+    @property
+    def __acl__(self):
+        return [
+            (Allow, ADMIN_GROUP, ['read', 'change']),
+            (Allow, 'u:{}'.format(self.user_id), ['read', 'change'])
+        ]
+
+    @property
+    def user(self):
+        return app.model.load_user(self.user_id)
+
+    @property
+    def attempt(self):
+        return app.model.load_attempt(self.attempt_id)
 
 
 class AttemptApiContext(ApiContextBase):
