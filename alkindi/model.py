@@ -269,7 +269,7 @@ class Model:
         keys = [
             'id', 'team_id', 'round_id',
             'created_at', 'started_at', 'closes_at',
-            'is_current', 'is_training', 'is_unsolved'
+            'is_current', 'is_training', 'is_unsolved', 'is_fully_solved'
         ]
         return self.__load_rows(self.db.tables.attempts, attempt_ids, keys)
 
@@ -429,8 +429,10 @@ class Model:
         keys = [
             'id', 'team_id', 'round_id',
             'created_at', 'started_at', 'closes_at',
-            'is_current', 'is_training', 'is_unsolved'
+            'is_current', 'is_training', 'is_unsolved', 'is_fully_solved'
         ]
+        bool_cols = [
+            'is_current', 'is_training', 'is_unsolved', 'is_fully_solved']
         query = self.db.query(attempts) \
             .where(attempts.team_id == team_id) \
             .where(attempts.is_current) \

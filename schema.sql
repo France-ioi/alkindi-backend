@@ -277,8 +277,6 @@ ALTER TABLE workspaces DROP FOREIGN KEY fk_workspaces__round_id;
 ALTER TABLE workspaces DROP COLUMN team_id;
 ALTER TABLE workspaces DROP COLUMN round_id;
 
--- v-alkindi, epix2, prod
-
 ALTER TABLE rounds ADD COLUMN max_answers INTEGER NULL;
 
 CREATE TABLE answers (
@@ -298,3 +296,9 @@ ALTER TABLE answers ADD CONSTRAINT fk_answers__attempt_id FOREIGN KEY (attempt_i
 CREATE INDEX ix_answers__user_id USING btree ON answers (submitter_id);
 ALTER TABLE answers ADD CONSTRAINT fk_answers__submitter_id
   FOREIGN KEY (submitter_id) REFERENCES users(id) ON DELETE CASCADE;
+
+-- prod
+
+ALTER TABLE attempts ADD COLUMN is_fully_solved BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- v-alkindi, epix2
