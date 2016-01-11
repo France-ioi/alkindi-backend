@@ -43,6 +43,8 @@ def includeme(config):
     api_post(config, UserApiContext, 'store_revision', store_revision)
     api_get(config, WorkspaceRevisionApiContext, '', read_workspace_revision)
     api_get(config, TeamApiContext, '', read_team)
+    api_post(config, TeamApiContext, 'reset_to_training',
+             reset_team_to_training)
     api_get(config, AttemptApiContext, 'revisions', list_attempt_revisions)
     api_post(config, UserAttemptApiContext, 'answers',
              submit_user_attempt_answer)
@@ -144,6 +146,13 @@ def read_team(request):
     team = request.context.team
     check_etag(request, team['revision'])
     return {'team': views.view_user_team(team)}
+
+
+def reset_team_to_training(request):
+    team_id = request.context.team_id
+    app.model.reset_team_to_training_attempt(team_id)
+    app.db.commit()
+    return {'success': True}
 
 
 def read_workspace_revision(request):
