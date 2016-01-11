@@ -319,9 +319,7 @@ def start_attempt(request):
             if attempt['is_unsolved']:
                 raise ApiError('must pass training')
         else:
-            # XXX Current attempt is timed, do we allow the team to
-            # start a new attempt before the time has elapsed?
-            pass
+            raise ApiError('timed attempt in progress')
         # Load the attempt's round.
         round_id = attempt['round_id']
         round_ = app.model.load_round(round_id)
