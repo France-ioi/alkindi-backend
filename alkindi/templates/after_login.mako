@@ -10,10 +10,11 @@
 
 %if user_id:
 <script type="text/javascript">
-window.opener.postMessage(JSON.stringify({
+window.opener.postMessage(${h.double_json({
   'action': 'afterLogin',
-  'user_id': ${h.to_json(user_id)}
-}), window.location.origin);
+  'user_id': user_id,
+  'csrf_token': csrf_token,
+})}, window.location.origin);
 window.close();
 </script>;
 %endif
