@@ -447,7 +447,7 @@ class Model:
         if row is None:
             raise ModelError('no current attempt')
         result = {key: row[i] for i, key in enumerate(keys)}
-        for key in ['is_current', 'is_training', 'is_unsolved']:
+        for key in bool_cols:
             result[key] = self.db.view_bool(result[key])
         return result
 
