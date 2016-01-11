@@ -271,7 +271,13 @@ class Model:
             'created_at', 'started_at', 'closes_at',
             'is_current', 'is_training', 'is_unsolved', 'is_fully_solved'
         ]
-        return self.__load_rows(self.db.tables.attempts, attempt_ids, keys)
+        rows = self.__load_rows(self.db.tables.attempts, attempt_ids, keys)
+        bool_cols = [
+            'is_current', 'is_training', 'is_unsolved', 'is_fully_solved']
+        for row in rows:
+            for key in bool_cols:
+                row[key] = self.db.view_bool(row[key])
+        return rows
 
     def load_task(self, attempt_id):
         keys = [
