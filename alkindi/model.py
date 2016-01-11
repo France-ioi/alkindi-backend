@@ -850,6 +850,25 @@ class Model:
             results.append(result)
         return results
 
+    def reset_team_to_training_attempt(self, team_id, now=None):
+        if now is None:
+            now = datetime.utcnow()
+        attempt = self.load_team_current_attempt(team_id)
+        is_fully_solved = attempt['is_fully_solved']
+        is_closed = (attempt['closes_at'] is not None and
+                     attempt['closes_at'] < now)
+        if not (is_fully_solved or is_closed):
+            raise ModelError('timed attempt not completed')
+        self.__update_row(self.db.tables.attempts, attempt['id'], {
+            'is_current': False
+        })
+        new_attempt_id = self.get_team_latest_training_attempt(
+            team_id, attempt['round_id'])
+        if new_attempt_id is not None:
+            self.__update_row(self.db.tables.attempts, new_attempt_id, {
+                'is_current': True
+            })
+
     # --- private methods below ---
 
     def __load_scalar(self, table, value, column, key=None):
