@@ -569,7 +569,7 @@ class Model:
         (tasks_path, duration, training_opens_at) = self.db.first(query)
         if now < training_opens_at:
             raise ModelError('training is not open')
-        task = playfair.get_task(tasks_path)  # XXX playfair
+        task = self.get_new_team_task(tasks_path, team_id)
         task_attrs = {
             'attempt_id': attempt_id,
             'created_at': now,
@@ -593,6 +593,21 @@ class Model:
         self.__update_row(attempts, attempt_id, attempt_attrs)
         # Create the team's workspace.
         self.create_attempt_workspace(attempt_id)
+
+    def get_new_team_task(self, tasks_path, team_id):
+        tasks = self.db.tables.tasks
+        attempts = self.db.tables.attempts
+        for i in range(0, 15):
+            task = playfair.get_task(tasks_path)
+            task_dir = task['task_dir']
+            query = self.db.query(tasks & attempts) \
+                .where(tasks.attempt_id == attempts.id) \
+                .where(attempts.team_id == team_id) \
+                .where(tasks.task_dir == task_dir) \
+                .fields(tasks.attempt_id)
+            row = self.db.first(query)
+            if row is None:
+                return task
 
     def get_user_task_hint(self, user_id, query):
         attempt_id = self.get_user_current_attempt_id(user_id)
