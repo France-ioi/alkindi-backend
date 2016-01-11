@@ -817,7 +817,8 @@ class Model:
     def load_attempt_answers(self, attempt_id):
         answers = self.db.tables.answers
         cols = [
-            'id', 'ordinal', 'created_at', 'answer', 'score', 'is_solution'
+            'id', 'submitter_id', 'ordinal', 'created_at', 'answer',
+            'score', 'is_solution'
         ]
         query = self.db.query(answers) \
             .where(answers.attempt_id == attempt_id) \
