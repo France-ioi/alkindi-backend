@@ -82,8 +82,6 @@
 		<p class="title">Annonces :</p>
 		<ul>
 			<li>Le concours est prolongé jusqu'au samedi 23 janvier à 20h</li>
-			<li>La validation des réponses est désormais disponible</li>
-			<li>La documentation des outils est <a href="http://concours-alkindi.fr/docs/tour2-outils.pdf" title="documentation des outils au format .PDF" target="new">disponible en téléchargement</a></li>
 		</ul>
 	</div>
 	<p>
