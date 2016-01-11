@@ -28,6 +28,15 @@ def to_json(value):
     return HtmlSafeStr(render('json', value))
 
 
+def double_json(value):
+    print("before first render: {}".format(value))
+    value = render('json', value)
+    print("before second render: {}".format(value))
+    value = render('json', value)
+    print("after third: {}".format(value))
+    return HtmlSafeStr(value)
+
+
 def localize_date(value, locale='fr_FR'):
     """
     Formats a date object or an iso8601 string with the given locale.
