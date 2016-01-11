@@ -24,11 +24,8 @@ def to_json(value):
 
 
 def double_json(value):
-    print("before first render: {}".format(value))
     value = render('json', value)
-    print("before second render: {}".format(value))
     value = render('json', value)
-    print("after third: {}".format(value))
     return HtmlSafeStr(value)
 
 
