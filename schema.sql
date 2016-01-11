@@ -293,7 +293,7 @@ CREATE TABLE answers (
 ) CHARACTER SET utf8 ENGINE=InnoDB;
 ALTER TABLE answers ADD INDEX ix_answers__attempt_id_ordinal (attempt_id, ordinal) USING BTREE;
 ALTER TABLE answers ADD CONSTRAINT fk_answers__attempt_id FOREIGN KEY (attempt_id) REFERENCES attempts (id) ON DELETE CASCADE;
-CREATE INDEX ix_answers__user_id USING btree ON answers (submitter_id);
+CREATE INDEX ix_answers__submitter_id USING btree ON answers (submitter_id);
 ALTER TABLE answers ADD CONSTRAINT fk_answers__submitter_id
   FOREIGN KEY (submitter_id) REFERENCES users(id) ON DELETE CASCADE;
 
