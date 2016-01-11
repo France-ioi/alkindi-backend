@@ -755,9 +755,6 @@ class Model:
         # Fail if attempt is timed(not training) and solved(not unsolved).
         attempt = self.load_attempt(attempt_id)
         is_training = attempt['is_training']
-        is_unsolved = attempt['is_unsolved']
-        if not is_training and not is_unsolved:
-            raise ModelError('already solved')
         # Fail if the attempt has a close datetime in the past.
         closes_at = attempt['closes_at']
         if closes_at is not None and closes_at < now:
