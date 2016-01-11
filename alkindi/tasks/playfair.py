@@ -173,6 +173,11 @@ def grade(task, data):
     in_n2 = canon_number(data.get('n2', ''))
     in_ad = canon_address(data.get('a', ''))
 
+    if len(in_ad) > 100 or len(in_n1) > 2 or len(in_n2) > 3:
+        return None
+    if len(in_ad) == 0 and len(in_n1) == 0 and len(in_n2) == 0:
+        return None
+
     (ex_n1, ex_n2, ex_ad) = task['full_data']['answer_txt'].split('\n')
     ex_n1 = canon_number(ex_n1)
     ex_n2 = canon_number(ex_n2)
