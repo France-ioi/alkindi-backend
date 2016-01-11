@@ -118,7 +118,7 @@ def index_view(request):
     csrf_token = request.session.get_csrf_token()
     frontend_config = {
         'nocdn': 'nocdn' in request.params,
-        'front_version': front_version,
+        'frontend_version': front_version,
         'assets_template': assets_template,
         'csrf_token': csrf_token,
         'api_url': request.resource_url(get_api(request)),
