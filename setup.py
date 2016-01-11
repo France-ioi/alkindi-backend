@@ -34,6 +34,7 @@ requires = [
     'sqlbuilder >= 0.7.9.34',  # must run: pip install sqlbuilder
     'ua-parser >= 0.6.1',
     'bleach >= 1.4.2',
+    'unidecode >= 0.03',
     'alkindi-r2-front'
 ]
 
