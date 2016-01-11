@@ -430,6 +430,17 @@ class Model:
         row = self.db.first(query)
         return None if row is None else row[0]
 
+    def get_team_latest_training_attempt(self, team_id, round_id):
+        attempts = self.db.tables.attempts
+        query = self.db.query(attempts) \
+            .where(attempts.team_id == team_id) \
+            .where(attempts.round_id == round_id) \
+            .where(attempts.is_training) \
+            .order_by(attempts.created_at.desc()) \
+            .fields(attempts.id)
+        row = self.db.first(query)
+        return None if row is None else row[0]
+
     def load_team_current_attempt(self, team_id):
         attempts = self.db.tables.attempts
         keys = [
