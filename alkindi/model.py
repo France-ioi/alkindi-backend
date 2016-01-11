@@ -866,6 +866,11 @@ class Model:
     def reset_team_to_training_attempt(self, team_id, now=None):
         attempt = self.load_team_current_attempt(team_id)
         if not self.is_attempt_completed(attempt, now=now):
+            # Handle case where several users click the reset button,
+            # avoid giving a confusing error message when the outcome
+            # is correct.
+            if attempt['is_training']:
+                return
             raise ModelError('timed attempt not completed')
         # Clear 'is_current' flag on current attempt.
         self.__update_row(self.db.tables.attempts, attempt['id'], {
