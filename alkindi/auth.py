@@ -80,8 +80,11 @@ def oauth_callback_view(request):
     # The view template posts the result (encoded as JSON) to the parent
     # window, causing the frontend to update its state.
     # The Origin header is passed to the template to limit recipients.
+    # Pass the CSRF token to the login window so that it can send it to
+    # the front.
     return {
         'user_id': user_id,
+        'csrf_token': request.session.get_csrf_token(),
         'origin': request.headers.get('Origin')
     }
 
