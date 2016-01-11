@@ -25,6 +25,11 @@ class Model:
         return self.__load_scalar(
             table=users, key='foreign_id', value=foreign_id, column='id')
 
+    def get_user_team_id(self, user_id):
+        users = self.db.tables.users
+        return self.__load_scalar(
+            table=users, value=user_id, column='team_id')
+
     def import_user(self, profile):
         foreign_id = profile['idUser']
         users = self.db.tables.users
