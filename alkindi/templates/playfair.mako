@@ -81,8 +81,8 @@
 	<div class="annonces">
 		<p class="title">Annonces :</p>
 		<ul>
-			<li>Seul le sujet d’entraînement est disponible pour l’instant, l’accès aux sujets en temps limité sera ouvert à partir de lundi matin</li>
-			<li>La validation des réponses sur le sujet d’entraînement sera disponible dans le courant du week-end</li>
+			<li>Le concours est prolongé jusqu'au samedi 23 janvier à 20h</li>
+			<li>La validation des réponses est désormais disponible</li>
 			<li>La documentation des outils est <a href="http://concours-alkindi.fr/docs/tour2-outils.pdf" title="documentation des outils au format .PDF" target="new">disponible en téléchargement</a></li>
 		</ul>
 	</div>
