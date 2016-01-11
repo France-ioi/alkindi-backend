@@ -136,7 +136,8 @@ def view_user_round(round_):
     keys = [
         'id', 'title',
         'registration_opens_at', 'training_opens_at',
-        'min_team_size', 'max_team_size', 'min_team_ratio'
+        'min_team_size', 'max_team_size', 'min_team_ratio',
+        'max_attempts', 'max_answers'
     ]
     return {key: round_[key] for key in keys}
 
