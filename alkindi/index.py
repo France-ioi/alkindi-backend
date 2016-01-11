@@ -295,6 +295,7 @@ def start_attempt(request):
     # Load team, team members, round.
     team = app.model.load_team(team_id)
     members = app.model.load_team_members(team_id)
+    # TODO: check number of access codes entered
     # Get the team's current attempt.
     try:
         attempt = app.model.load_team_current_attempt(team_id)
