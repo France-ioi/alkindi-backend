@@ -33,7 +33,7 @@ def application(_global_config, **settings):
     config.include(set_session_factory)
     config.include('pyramid_mako')
 
-    config.add_subscriber(add_cors_headers, NewRequest)
+    config.add_subscriber(add_headers, NewRequest)
     config.add_subscriber(log_api_failure, BeforeRender)
     config.add_subscriber(set_renderer_context, BeforeRender)
 
@@ -56,14 +56,15 @@ def application(_global_config, **settings):
     return app.wrap_middleware(config.make_wsgi_app())
 
 
-def add_cors_headers(event):
-    def cors_headers(request, response):
+def add_headers(event):
+    def callback(request, response):
         response.headers.update({
             'Access-Control-Allow-Origin': 'https://suite.concours-alkindi.fr',
             'Access-Control-Allow-Methods': 'GET',
             'Access-Control-Max-Age': '1728000',
+            'X-Frontend-Version': front_version
         })
-    event.request.add_response_callback(cors_headers)
+    event.request.add_response_callback(callback)
 
 
 def get_redis(request, **kwargs):
