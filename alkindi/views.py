@@ -125,7 +125,9 @@ def view_user_attempt(attempt):
         'id', 'created_at', 'closes_at',
         'is_current', 'is_training', 'is_unsolved'
     ]
-    return {key: attempt[key] for key in keys}
+    view = {key: attempt[key] for key in keys}
+    view['is_completed'] = app.model.is_attempt_completed(attempt)
+    return view
 
 
 def view_user_round(round_):
