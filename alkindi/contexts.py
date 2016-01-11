@@ -56,6 +56,7 @@ class UserApiContext(ApiContextBase):
     def __getitem__(self, path_element):
         if path_element == 'attempts':
             return UserAttemptsApiContext(self, user_id=self.user_id)
+        raise KeyError()
 
 
 class UserAttemptsApiContext(ApiContextBase):
