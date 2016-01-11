@@ -749,7 +749,7 @@ class Model:
             results.append(result)
         return results
 
-    def grade_answer(self, attempt_id, data, now=None):
+    def grade_answer(self, attempt_id, submitter_id, data, now=None):
         if now is None:
             now = datetime.utcnow()
         # Fail if attempt is timed(not training) and solved(not unsolved).
@@ -778,11 +778,15 @@ class Model:
             raise ModelError('too many answers')
         # Perform grading.
         task = self.load_task(attempt_id)
-        (grading, score, is_solution) = playfair.grade(task, data)
+        result = playfair.grade(task, data)
+        if result is None:
+            raise ModelError('invalid input')
+        (grading, score, is_solution) = result
         # Store the answer.
         answers = self.db.tables.answers
         answer_id = self.__insert_row(answers, {
             'attempt_id': attempt_id,
+            'submitter_id': submitter_id,
             'ordinal': ordinal,
             'created_at': now,
             'answer': json.dumps(data),

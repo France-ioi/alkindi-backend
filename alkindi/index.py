@@ -7,7 +7,8 @@ import json
 from alkindi.auth import get_user_profile, reset_user_principals
 from alkindi.contexts import (
     ApiContext, UserApiContext, TeamApiContext,
-    WorkspaceRevisionApiContext, AttemptApiContext)
+    WorkspaceRevisionApiContext, AttemptApiContext,
+    UserAttemptApiContext)
 from alkindi.globals import app
 from alkindi.errors import ApiError, ModelError
 import alkindi.views as views
@@ -43,7 +44,8 @@ def includeme(config):
     api_get(config, WorkspaceRevisionApiContext, '', read_workspace_revision)
     api_get(config, TeamApiContext, '', read_team)
     api_get(config, AttemptApiContext, 'revisions', list_attempt_revisions)
-    api_post(config, AttemptApiContext, 'answers', submit_attempt_answer)
+    api_post(config, UserAttemptApiContext, 'answers',
+             submit_user_attempt_answer)
     api_get(config, AttemptApiContext, 'answers', list_attempt_answer)
     config.add_view(
         view_task, context=UserApiContext, name='task.html',
@@ -403,9 +405,11 @@ def list_attempt_revisions(request):
     return view
 
 
-def submit_attempt_answer(request):
+def submit_user_attempt_answer(request):
     attempt_id = request.context.attempt_id
-    answer_id = app.model.grade_answer(attempt_id, request.json_body)
+    submitter_id = request.context.user_id
+    answer_id = app.model.grade_answer(
+        attempt_id, submitter_id, request.json_body)
     app.db.commit()
     return {'success': True, 'answer_id': answer_id}
 
