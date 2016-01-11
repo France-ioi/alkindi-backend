@@ -1,5 +1,8 @@
 
-from pyramid.httpexceptions import HTTPNotModified, HTTPFound
+from pyramid.httpexceptions import (
+    HTTPNotModified, HTTPFound, HTTPForbidden, HTTPNotFound)
+from pyramid.exceptions import PredicateMismatch
+from pyramid.session import check_csrf_token
 from ua_parser import user_agent_parser
 import requests
 import json
@@ -18,6 +21,7 @@ from alkindi_r2_front import version as front_version
 def includeme(config):
     config.add_view(model_error_view, context=ModelError, renderer='json')
     config.add_view(api_error_view, context=ApiError, renderer='json')
+    config.add_view(not_found_view, context=HTTPNotFound)
     config.add_route('index', '/', request_method='GET')
     config.add_view(
         index_view, route_name='index', renderer='templates/index.mako')
@@ -53,6 +57,14 @@ def includeme(config):
         view_task, context=UserApiContext, name='task.html',
         request_method='GET', permission='read',
         renderer='templates/playfair.mako')  # XXX
+
+
+def not_found_view(error, request):
+    if request.method == 'POST' and isinstance(error, PredicateMismatch):
+        # Return a 403 error on CSRF token mismatch.
+        if not check_csrf_token(request, raises=False):
+            return HTTPForbidden()
+    return error
 
 
 def api_get(config, context, name, view):
