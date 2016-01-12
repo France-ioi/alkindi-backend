@@ -502,8 +502,16 @@ class Model:
 
     def create_attempt(self, round_id, team_id, members, is_training=True):
         attempts = self.db.tables.attempts
+        # Find the greatest attempt ordinal for the team.
+        query = self.db.query(attempts) \
+            .where(attempts.team_id == team_id) \
+            .order_by(attempts.ordinal.desc()) \
+            .fields(attempts.ordinal)
+        row = self.db.first(query)
+        ordinal = 0 if row is None else (row[0] + 1)
         attempt_id = self.__insert_row(attempts, {
             'team_id': team_id,
+            'ordinal': ordinal,
             'round_id': round_id,
             'created_at': datetime.utcnow(),
             'started_at': None,   # set when enough codes have been entered
@@ -917,12 +925,15 @@ class Model:
             })
 
     def is_attempt_completed(self, attempt, now=None):
-        if now is None:
-            now = datetime.utcnow()
-        is_fully_solved = attempt['is_fully_solved']
-        is_closed = (attempt['closes_at'] is not None and
-                     attempt['closes_at'] < now)
-        return is_fully_solved or is_closed
+        if attempt['is_training']:
+            return not attempt['is_unsolved']
+        else:
+            if now is None:
+                now = datetime.utcnow()
+            is_fully_solved = attempt['is_fully_solved']
+            is_closed = (attempt['closes_at'] is not None and
+                         attempt['closes_at'] < now)
+            return is_fully_solved or is_closed
 
     # --- private methods below ---
 

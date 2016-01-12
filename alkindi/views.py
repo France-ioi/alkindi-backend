@@ -214,7 +214,9 @@ def view_attempts(attempts, team, round_):
                 needs_codes = not have_one_code(team_view['members'])
             else:
                 needs_codes = not have_code_majority(team_view['members'])
-            if not attempt['is_unsolved']:
+            is_completed = app.model.is_attempt_completed(attempt)
+            attempt['is_completed'] = is_completed
+            if is_completed:
                 openNext = True
             attempt['needs_codes'] = needs_codes
             attempt['round'] = view_user_round(round_)  # XXX
