@@ -562,7 +562,6 @@ class Model:
     def get_attempt_user_access_code(self, user_id, attempt_id):
         access_codes = self.db.tables.access_codes
         query = self.db.query(access_codes) \
-            .where(access_codes.id == attempt_id) \
             .where(access_codes.attempt_id == attempt_id) \
             .where(access_codes.user_id == user_id) \
             .fields(access_codes.code)
