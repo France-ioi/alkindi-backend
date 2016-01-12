@@ -312,3 +312,7 @@ UPDATE attempts AS t, (SELECT id, @ordinal := CASE WHEN @team_id = team_id THEN 
 DELETE FROM attempts WHERE round_id = 1;
 
 ALTER TABLE attempts ADD UNIQUE INDEX ix_attempts__team_id_round_id_ordinal (team_id, round_id, ordinal) USING BTREE;
+
+---
+
+ALTER TABLE answers ADD COLUMN is_full_solution BOOLEAN NOT NULL;

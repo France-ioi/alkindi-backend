@@ -165,9 +165,10 @@ def canon_address(input):
 
 def grade(task, data):
 
+    base_score = task['score']
+
     # Scores above score_threshold are considered solutions.
-    score_threshold = Decimal('0.1')
-    hints_score = task['score']
+    score_threshold = Decimal('0')
 
     in_n1 = canon_number(data.get('n1', ''))
     in_n2 = canon_number(data.get('n2', ''))
@@ -187,21 +188,28 @@ def grade(task, data):
     address_ratio = Decimal(str(SequenceMatcher(None, ex_ad, in_ad).ratio()))
     address_errors = round((Decimal(len(ex_ad)) - address_ratio * Decimal(len(ex_ad))) * Decimal(2))
 
-    grading = {
+    score_factor = (numbers_equal * Decimal('0.5') +
+                    Decimal(int(in_ad == ex_ad)) * Decimal('0.5'))
+    score = Decimal(base_score) * score_factor
+    is_solution = score > score_threshold
+    is_full_solution = score_factor == Decimal('1')
+
+    return {
         'input': {'n1': in_n1, 'n2': in_n2, 'ad': in_ad},
         'expected': {'n1': ex_n1, 'n2': ex_n2, 'ad': ex_ad},
+        'hints': task['team_data']['hints'],
+        'base_score': str(base_score),
+        'actual_score': str(score),
+        'is_solution': score >= score_threshold,
+        'is_full_solution': is_full_solution,
         'numbers_equal': str(numbers_equal),
         'address_ratio': str(address_ratio),
-        'address_errors': str(address_errors)
+        'address_errors': str(address_errors),
+        'feedback': {
+            'address': address_errors == Decimal(0),
+            'numbers': numbers_equal == Decimal(1)
+        }
     }
-
-    score = (Decimal(hints_score) *
-             (numbers_equal * Decimal('0.5') +
-              Decimal(int(in_ad == ex_ad)) * Decimal('0.5')))
-
-    is_solution = score >= score_threshold
-
-    return (grading, score, is_solution)
 
 
 def test_grader():

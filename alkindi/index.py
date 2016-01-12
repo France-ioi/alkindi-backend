@@ -428,10 +428,14 @@ def store_revision(request):
 def submit_user_attempt_answer(request):
     attempt_id = request.context.attempt_id
     submitter_id = request.context.user_id
-    answer_id = app.model.grade_answer(
+    answer = app.model.grade_answer(
         attempt_id, submitter_id, request.json_body)
+    answer
     app.db.commit()
-    return {'success': True, 'answer_id': answer_id}
+    return {
+        'success': True, 'answer_id': answer['id'],
+        'feedback': json.loads(answer['grading'])['feedback']
+    }
 
 
 def getInt(input, defaultValue=None):

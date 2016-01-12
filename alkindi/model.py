@@ -868,28 +868,34 @@ class Model:
             raise ModelError('too many answers')
         # Perform grading.
         task = self.load_task(attempt_id)
-        result = playfair.grade(task, data)
-        if result is None:
+        grading = playfair.grade(task, data)
+        if grading is None:
             raise ModelError('invalid input')
-        (grading, score, is_solution) = result
         # Store the answer.
         answers = self.db.tables.answers
-        answer_id = self.__insert_row(answers, {
+        answer = {
             'attempt_id': attempt_id,
             'submitter_id': submitter_id,
             'ordinal': ordinal,
             'created_at': now,
             'answer': json.dumps(data),
             'grading': json.dumps(grading),
-            'score': score,
-            'is_solution': is_solution
-        })
-        if is_solution:
-            # Mark the attempt as solved.
-            self.__update_row(self.db.tables.attempts, attempt_id, {
-                'is_unsolved': False
-            })
-        return answer_id
+            'score': grading['actual_score'],
+            'is_solution': grading['is_solution'],
+            'is_full_solution': grading['is_full_solution']
+        }
+        self.post_grading(attempt_id, grading)
+        answer['id'] = self.__insert_row(answers, answer)
+        return answer
+
+    def post_grading(self, attempt_id, grading):
+        attrs = {}
+        if grading['is_solution']:
+            attrs['is_unsolved'] = False
+        if grading['is_full_solution']:
+            attrs['is_fully_solved'] = True
+        if len(attrs) > 0:
+            self.__update_row(self.db.tables.attempts, attempt_id, attrs)
 
     def get_attempt_latest_answer_infos(self, attempt_id):
         answers = self.db.tables.answers
