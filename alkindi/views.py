@@ -111,7 +111,7 @@ def view_team(team, round_=None):
     }
     if round_ is not None:
         causes = validate_members_for_round(members, round_)
-        result['round_access'] = causes
+        result['round_access'] = list(causes.keys())
         result['is_invalid'] = len(causes) != 0
     return result
 
