@@ -37,6 +37,77 @@ class ApiContextBase:
         return "{}()".format(self.__class__.__name__)
 
 
+########################################################################
+#
+# /c1/n1/c2/n2
+#
+
+class UserAttemptApiContext(ApiContextBase):
+
+    def __str__(self):
+        return "{}({}, {})".format(
+            self.__class__.__name__, self.user_id, self.attempt_id)
+
+    @property
+    def __acl__(self):
+        return [
+            (Allow, ADMIN_GROUP, ['read', 'change']),
+            (Allow, 'u:{}'.format(self.user_id), ['read', 'change'])
+        ]
+
+    @property
+    def user(self):
+        return app.model.load_user(self.user_id)
+
+    @property
+    def attempt(self):
+        return app.model.load_attempt(self.attempt_id)
+
+
+class WorkspaceRevisionApiContext(ApiContextBase):
+
+    def __str__(self):
+        return "{}({})".format(self.__class__.__name__,
+                               self.workspace_revision_id)
+
+    @property
+    def __acl__(self):
+        return [
+            (Allow, ADMIN_GROUP, ['read', 'change']),
+            (Allow, 't:{}'.format(self.team_id), ['read']),
+            (Allow, 'u:{}'.format(self.creator_id), ['read', 'change']),
+        ]
+
+    @property
+    def workspace_revision(self):
+        return app.model.load_workspace_revision(self.workspace_revision_id)
+
+
+########################################################################
+#
+# /c1/n1/c2
+#
+
+class UserAttemptsApiContext(ApiContextBase):
+
+    def __str__(self):
+        return "{}({})".format(self.__class__.__name__, self.user_id)
+
+    def __getitem__(self, path_element):
+        attempt_id = int(path_element)
+        team_id = app.model.get_attempt_team_id(attempt_id)
+        user_team_id = app.model.get_user_team_id(self.user_id)
+        if team_id is None or team_id != user_team_id:
+            raise KeyError()
+        return UserAttemptApiContext(
+            self, user_id=self.user_id, attempt_id=attempt_id)
+
+
+########################################################################
+#
+# /c1/n1
+#
+
 class UserApiContext(ApiContextBase):
 
     def __str__(self):
@@ -57,27 +128,6 @@ class UserApiContext(ApiContextBase):
         if path_element == 'attempts':
             return UserAttemptsApiContext(self, user_id=self.user_id)
         raise KeyError()
-
-
-class UserAttemptsApiContext(ApiContextBase):
-
-    def __str__(self):
-        return "{}({}, {})".format(self.__class__.__name__, self.user_id)
-
-    def __getitem__(self, path_element):
-        attempt_id = int(path_element)
-        team_id = app.model.get_attempt_team_id(attempt_id)
-        user_team_id = app.model.get_user_team_id(self.user_id)
-        if team_id is None or team_id != user_team_id:
-            raise KeyError()
-        return UserAttemptApiContext(
-            self, user_id=self.user_id, attempt_id=attempt_id)
-
-
-class UsersApiContext(ApiContextBase):
-
-    def __getitem__(self, path_element):
-        return UserApiContext(self, user_id=int(path_element))
 
 
 class TeamApiContext(ApiContextBase):
@@ -107,69 +157,6 @@ class TeamApiContext(ApiContextBase):
         return self._members
 
 
-class TeamsApiContext(ApiContextBase):
-
-    def __getitem__(self, path_element):
-        team = app.model.load_team(int(path_element))
-        if team is None:
-            raise KeyError()
-        return TeamApiContext(self, team=team)
-
-
-class WorkspaceRevisionApiContext(ApiContextBase):
-
-    def __str__(self):
-        return "{}({})".format(self.__class__.__name__,
-                               self.workspace_revision_id)
-
-    @property
-    def __acl__(self):
-        return [
-            (Allow, ADMIN_GROUP, ['read', 'change']),
-            (Allow, 't:{}'.format(self.team_id), ['read']),
-            (Allow, 'u:{}'.format(self.creator_id), ['read', 'change']),
-        ]
-
-    @property
-    def workspace_revision(self):
-        return app.model.load_workspace_revision(self.workspace_revision_id)
-
-
-class WorkspaceRevisionsApiContext(ApiContextBase):
-
-    def __getitem__(self, path_element):
-        revision_id = int(path_element)
-        ownership = app.model.get_workspace_revision_ownership(revision_id)
-        if ownership is None:
-            raise KeyError()
-        team_id, creator_id = ownership
-        return WorkspaceRevisionApiContext(
-            self, workspace_revision_id=revision_id,
-            team_id=team_id, creator_id=creator_id)
-
-
-class UserAttemptApiContext(ApiContextBase):
-
-    def __str__(self):
-        return "{}({})".format(
-            self.__class__.__name__, self.user_id, self.attempt_id)
-
-    @property
-    def __acl__(self):
-        return [
-            (Allow, ADMIN_GROUP, ['read', 'change']),
-            (Allow, 'u:{}'.format(self.user_id), ['read', 'change'])
-        ]
-
-    @property
-    def user(self):
-        return app.model.load_user(self.user_id)
-
-    @property
-    def attempt(self):
-        return app.model.load_attempt(self.attempt_id)
-
-
 class AttemptApiContext(ApiContextBase):
 
     def __str__(self):
@@ -187,6 +174,26 @@ class AttemptApiContext(ApiContextBase):
         return app.model.load_attempt(self.attempt_id)
 
 
+########################################################################
+#
+# /c1
+#
+
+class UsersApiContext(ApiContextBase):
+
+    def __getitem__(self, path_element):
+        return UserApiContext(self, user_id=int(path_element))
+
+
+class TeamsApiContext(ApiContextBase):
+
+    def __getitem__(self, path_element):
+        team = app.model.load_team(int(path_element))
+        if team is None:
+            raise KeyError()
+        return TeamApiContext(self, team=team)
+
+
 class AttemptsApiContext(ApiContextBase):
 
     def __getitem__(self, path_element):
@@ -196,6 +203,24 @@ class AttemptsApiContext(ApiContextBase):
             raise KeyError()
         return AttemptApiContext(self, attempt_id=attempt_id, team_id=team_id)
 
+
+class WorkspaceRevisionsApiContext(ApiContextBase):
+
+    def __getitem__(self, path_element):
+        revision_id = int(path_element)
+        ownership = app.model.get_workspace_revision_ownership(revision_id)
+        if ownership is None:
+            raise KeyError()
+        team_id, creator_id = ownership
+        return WorkspaceRevisionApiContext(
+            self, workspace_revision_id=revision_id,
+            team_id=team_id, creator_id=creator_id)
+
+
+########################################################################
+#
+# 0
+#
 
 class ApiContext(ApiContextBase):
 
