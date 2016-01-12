@@ -1,4 +1,6 @@
 
+from datetime import datetime
+
 from alkindi.globals import app
 from alkindi.model import ModelError
 
@@ -15,65 +17,72 @@ AllowHtmlTags = [
 
 
 def view_requesting_user(user_id):
-    init = {}
+    view = {}
+    view['now'] = now = datetime.utcnow()
     user = app.model.load_user(user_id)
     if user is None:
         return None
-    init['user'] = view_user(user)
+    view['user'] = view_user(user)
     team_id = user['team_id']
+
     if team_id is None:
         # If the user has no team, we look for a round to which a
         # badge grants access.
         badges = user['badges']
         round_id = app.model.select_round_with_badges(badges)
         if round_id is not None:
-            round_ = app.model.load_round(round_id)
-            init['round'] = view_user_round(round_)
-        return init
-    # Lead team, round, attempt.
+            round_ = app.model.load_round(round_id, now)
+            view['round'] = view_round(round_)
+        return view
+
+    # View team, round, attempt.
     team = app.model.load_team(team_id)
-    round_ = app.model.load_round(team['round_id'])
+    round_ = app.model.load_round(team['round_id'], now)
     attempts = app.model.load_team_attempts(team_id)
-    init['team'] = view_team(team, round_)
-    init['round'] = view_user_round(round_)
-    init['attempts'] = view_round_attempts(round_, attempts)
+    view['team'] = view_team(team, round_)
+    view['round'] = view_round(round_)
+    view['attempts'] = view_round_attempts(round_, attempts)
     # Find the team's current attempt, and the current attempt's view.
     current_attempt = None
     for attempt in attempts:
         if attempt['is_current']:
             current_attempt = attempt
-    if current_attempt is not None:
-        current_attempt_view = None
-        for attempt_view in init['attempts']:
-            if current_attempt['id'] == attempt_view.get('id'):
-                current_attempt_view = attempt_view
-        attempt_id = current_attempt['id']
-        init['current_attempt_id'] = attempt_id
-        members_view = init['team']['members']
-        access_codes = app.model.load_unlocked_access_codes(attempt_id)
-        add_members_access_codes(members_view, access_codes)
-        if current_attempt['is_training']:
-            needs_codes = not have_one_code(members_view)
-        else:
-            needs_codes = not have_code_majority(members_view)
-        current_attempt_view['needs_codes'] = needs_codes
-        print('current attempt {}', current_attempt)
-        # Add task data, if available.
-        try:
-            task = app.model.load_task_team_data(attempt_id)
-        except ModelError:
-            task = None
-        if task is not None:
-            init['task'] = task
-            init['task']['url'] = round_['task_url']
-            current_attempt_view['has_task'] = True
-            # Give the user the id of their latest revision for the
-            # current attempt, to be loaded into the crypto tab on
-            # first access.
-            revision_id = app.model.load_user_latest_revision_id(
-                user_id, attempt_id)
-            init['my_latest_revision_id'] = revision_id
-    return init
+    if current_attempt is None:
+        return view
+
+    # Focus on the current attempt.
+    current_attempt_view = None
+    for attempt_view in view['attempts']:
+        if current_attempt['id'] == attempt_view.get('id'):
+            current_attempt_view = attempt_view
+    attempt_id = current_attempt['id']
+    view['current_attempt_id'] = attempt_id
+    members_view = view['team']['members']
+    access_codes = app.model.load_unlocked_access_codes(attempt_id)
+    add_members_access_codes(members_view, access_codes)
+    if current_attempt['is_training']:
+        needs_codes = not have_one_code(members_view)
+    else:
+        needs_codes = not have_code_majority(members_view)
+    current_attempt_view['needs_codes'] = needs_codes
+    print('current attempt {}', current_attempt)
+    # Add task data, if available.
+    try:
+        task = app.model.load_task_team_data(attempt_id)
+    except ModelError:
+        task = None
+    if task is not None:
+        view['task'] = task
+        view['task']['url'] = round_['task_url']
+        current_attempt_view['has_task'] = True
+        # Give the user the id of their latest revision for the
+        # current attempt, to be loaded into the crypto tab on
+        # first access.
+        revision_id = app.model.load_user_latest_revision_id(
+            user_id, attempt_id)
+        view['my_latest_revision_id'] = revision_id
+
+    return view
 
 
 def view_user(user):
@@ -138,12 +147,13 @@ def validate_members_for_round(members, round_):
     return result
 
 
-def view_user_round(round_):
+def view_round(round_):
     """ Return the user-view for a round.
     """
     keys = [
         'id', 'title',
         'registration_opens_at', 'training_opens_at',
+        'is_registration_open', 'is_training_open',
         'min_team_size', 'max_team_size', 'min_team_ratio',
         'max_attempts', 'max_answers'
     ]

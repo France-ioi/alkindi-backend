@@ -249,14 +249,23 @@ class Model:
             result[key] = self.db.view_bool(result[key])
         return result
 
-    def load_round(self, round_id):
+    def load_round(self, round_id, now=None):
+        if now is None:
+            now = datetime.utcnow()
         keys = [
             'id', 'created_at', 'updated_at', 'title',
             'registration_opens_at', 'training_opens_at',
             'min_team_size', 'max_team_size', 'min_team_ratio',
             'max_attempts', 'max_answers', 'tasks_path', 'task_url'
         ]
-        return self.__load_row(self.db.tables.rounds, round_id, keys)
+        row = self.__load_row(self.db.tables.rounds, round_id, keys)
+        # datetime_cols = [
+        #     'registration_opens_at', 'training_opens_at']
+        # for key in datetime_cols:
+        #     row[key] = self.db.view_datetime(row[key])
+        row['is_registration_open'] = row['registration_opens_at'] <= now
+        row['is_training_open'] = row['training_opens_at'] <= now
+        return row
 
     def load_attempt(self, attempt_id):
         keys = [
@@ -591,8 +600,9 @@ class Model:
         result['score'] = row['score']
         return result
 
-    def assign_attempt_task(self, attempt_id):
-        now = datetime.utcnow()
+    def assign_attempt_task(self, attempt_id, now=None):
+        if now is None:
+            now = datetime.utcnow()
         attempt = self.load_attempt(attempt_id)
         if attempt['started_at'] is not None:
             return ModelError('already have a task')
@@ -833,7 +843,7 @@ class Model:
             raise ModelError('attempt is closed')
         # Fail if timed(not training) and there are more answers than
         # allowed.
-        round = self.load_round(attempt['round_id'])
+        round = self.load_round(attempt['round_id'], now)
         max_answers = round['max_answers']
         (prev_ordinal, submitted_at) = \
             self.get_attempt_latest_answer_infos(attempt_id)
