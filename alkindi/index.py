@@ -1,7 +1,7 @@
 
-from pyramid.httpexceptions import (
-    HTTPNotModified, HTTPFound, HTTPForbidden, HTTPNotFound)
+from pyramid.httpexceptions import HTTPFound, HTTPForbidden, HTTPNotFound
 from pyramid.exceptions import PredicateMismatch
+from pyramid.request import Request
 from pyramid.session import check_csrf_token
 from ua_parser import user_agent_parser
 import requests
@@ -9,9 +9,7 @@ import json
 
 from alkindi.auth import get_user_profile, reset_user_principals
 from alkindi.contexts import (
-    ApiContext, UserApiContext, TeamApiContext,
-    WorkspaceRevisionApiContext, AttemptApiContext,
-    UserAttemptApiContext)
+    ApiContext, UserApiContext, TeamApiContext, UserAttemptApiContext)
 from alkindi.globals import app
 from alkindi.errors import ApiError, ModelError
 import alkindi.views as views
@@ -22,15 +20,23 @@ def includeme(config):
     config.add_view(model_error_view, context=ModelError, renderer='json')
     config.add_view(api_error_view, context=ApiError, renderer='json')
     config.add_view(not_found_view, context=HTTPNotFound)
+
     config.add_route('index', '/', request_method='GET')
     config.add_view(
         index_view, route_name='index', renderer='templates/index.mako')
+
     config.add_route(
         'ancient_browser', '/ancient_browser', request_method='GET')
     config.add_view(
         ancient_browser_view, route_name='ancient_browser',
         renderer='templates/ancient_browser.mako')
-    api_get(config, UserApiContext, '', read_user)
+
+    config.add_view(
+        refresh_view, context=UserApiContext, name='refresh',
+        request_method='POST', check_csrf=True,
+        permission='refresh', renderer='json')
+    api_post(config, UserApiContext, '', refresh_view)
+
     api_post(config, UserApiContext, 'qualify', qualify_user)
     api_post(config, UserApiContext, 'create_team', create_team)
     api_post(config, UserApiContext, 'join_team', join_team)
@@ -38,26 +44,22 @@ def includeme(config):
     api_post(config, UserApiContext, 'update_team', update_team)
     api_post(config, UserApiContext, 'start_attempt', start_attempt)
     api_post(config, UserApiContext, 'cancel_attempt', cancel_attempt)
-    api_get(config, UserApiContext, 'access_code', view_access_code)
     api_post(config, UserApiContext, 'access_code', enter_access_code)
     api_post(
         config, UserApiContext, 'assign_attempt_task', assign_attempt_task)
     api_post(config, UserApiContext, 'get_hint', get_hint)
     api_post(config, UserApiContext, 'reset_hints', reset_hints)
     api_post(config, UserApiContext, 'store_revision', store_revision)
-    api_get(config, WorkspaceRevisionApiContext, '', read_workspace_revision)
-    api_get(config, TeamApiContext, '', read_team)
     api_post(config, TeamApiContext, 'reset_to_training',
              reset_team_to_training)
-    api_get(config, TeamApiContext, 'attempts', read_team_attempts)
-    api_get(config, AttemptApiContext, 'revisions', list_attempt_revisions)
     api_post(config, UserAttemptApiContext, 'answers',
              submit_user_attempt_answer)
-    api_get(config, AttemptApiContext, 'answers', list_attempt_answer)
+
+    # XXX playfair
     config.add_view(
         view_task, context=UserApiContext, name='task.html',
         request_method='GET', permission='read',
-        renderer='templates/playfair.mako')  # XXX
+        renderer='templates/playfair.mako')
 
 
 def not_found_view(error, request):
@@ -68,27 +70,11 @@ def not_found_view(error, request):
     return error
 
 
-def api_get(config, context, name, view):
-    config.add_view(
-        view, context=context, name=name,
-        request_method='GET',
-        permission='read', renderer='json')
-
-
 def api_post(config, context, name, view):
     config.add_view(
         view, context=context, name=name,
         request_method='POST', check_csrf=True,
         permission='change', renderer='json')
-
-
-def check_etag(request, etag):
-    etag = str(etag)
-    if etag in request.if_none_match:
-        raise HTTPNotModified()
-    request.response.vary = 'Cookie'
-    request.response.cache_control = 'max-age=3600, private, must-revalidate'
-    request.response.etag = etag
 
 
 def model_error_view(error, request):
@@ -132,11 +118,42 @@ def index_view(request):
             user_id = int(request.params['user_id'])
     # Add info about the logged-in user (if any) to the frontend config.
     if user_id is not None:
-        frontend_config['seed'] = views.view_user_seed(user_id)
+        frontend_config['seed'] = views.view_requesting_user(user_id)
     request.response.cache_control = 'max-age=0, private'
     return {
         'frontend_config': frontend_config
     }
+
+
+def internal_request(request, path):
+    subreq = Request.blank(path)
+    return request.invoke_subrequest(subreq)
+
+
+def refresh_view(request):
+    user_id = request.context.user_id
+    json_request = request.json_body
+    view = views.view_requesting_user(user_id)
+    print("\033[91mrequest\033[0m {}".format(json_request))
+    attempt_id = view.get('current_attempt_id')
+    if attempt_id is not None:
+        print("\033[91mcurrent_attempt\033[0m {}".format(attempt_id))
+        # Access code request.
+        access_code = json_request.get('access_code')
+        if attempt_id == access_code:
+            access_code = app.model.get_attempt_user_access_code(
+                attempt_id, user_id)
+            for attempt in view['attempts']:
+                if attempt['id'] == attempt_id:
+                    attempt['access_code'] = access_code
+        # History request.
+        history = json_request.get('history')
+        print("\033[91mhistory\033[0m {} {}".format(history, attempt_id))
+        if attempt_id == history:
+            views.add_revisions(view, attempt_id)
+    view['success'] = True
+    print("\033[92mresponse\033[0m {}".format(view))
+    return view
 
 
 def view_task(request):
@@ -155,36 +172,11 @@ def read_user(request):
     return views.view_user_seed(user_id)
 
 
-def read_team(request):
-    team = request.context.team
-    check_etag(request, team['revision'])
-    return {'team': views.view_user_team(team)}
-
-
 def reset_team_to_training(request):
     team_id = request.context.team_id
     app.model.reset_team_to_training_attempt(team_id)
     app.db.commit()
     return {'success': True}
-
-
-def read_team_attempts(request):
-    team_id = request.context.team_id
-    team = app.model.load_team(team_id)
-    print("team {}".format(team))
-    round_ = app.model.load_round(team['round_id'])
-    print("round_ {}".format(round_))
-    attempts = app.model.load_team_attempts(team_id)
-    return views.view_attempts(attempts, team, round_)
-
-
-def read_workspace_revision(request):
-    revision = request.context.workspace_revision
-    check_etag(request, revision['created_at'])
-    return {
-        'success': True,
-        'workspace_revision': views.view_user_workspace_revision(revision)
-    }
 
 
 def qualify_user(request):
@@ -307,6 +299,7 @@ def start_attempt(request):
     team = app.model.load_team(team_id)
     members = app.model.load_team_members(team_id)
     # TODO: check number of access codes entered
+    # XXX Too much model-related code here, move into model.py.
     # Get the team's current attempt.
     try:
         attempt = app.model.load_team_current_attempt(team_id)
@@ -428,14 +421,6 @@ def store_revision(request):
     return {'success': True, 'revision_id': revision_id}
 
 
-def list_attempt_revisions(request):
-    attempt_id = request.context.attempt_id
-    revisions = app.model.load_attempt_revisions(attempt_id)
-    view = views.view_revisions(revisions)
-    view['success'] = True
-    return view
-
-
 def submit_user_attempt_answer(request):
     attempt_id = request.context.attempt_id
     submitter_id = request.context.user_id
@@ -443,14 +428,6 @@ def submit_user_attempt_answer(request):
         attempt_id, submitter_id, request.json_body)
     app.db.commit()
     return {'success': True, 'answer_id': answer_id}
-
-
-def list_attempt_answer(request):
-    attempt_id = request.context.attempt_id
-    answers = app.model.load_attempt_answers(attempt_id)
-    view = views.view_answers(answers)
-    view['success'] = True
-    return view
 
 
 def getInt(input, defaultValue=None):

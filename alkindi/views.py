@@ -1,4 +1,3 @@
-import bleach
 
 from alkindi.globals import app
 from alkindi.model import ModelError
@@ -15,7 +14,7 @@ AllowHtmlTags = [
 ]
 
 
-def view_user_seed(user_id):
+def view_requesting_user(user_id):
     init = {}
     user = app.model.load_user(user_id)
     if user is None:
@@ -34,21 +33,27 @@ def view_user_seed(user_id):
     # Lead team, round, attempt.
     team = app.model.load_team(team_id)
     round_ = app.model.load_round(team['round_id'])
-    try:
-        attempt = app.model.load_team_current_attempt(team_id)
-    except ModelError:
-        attempt = None
-    # Find the team's current attempt.
-    init['team'] = view_user_team(team, round_, attempt)
+    attempts = app.model.load_team_attempts(team_id)
+    init['team'] = view_team(team, round_)
     init['round'] = view_user_round(round_)
-    if attempt is not None:
-        attempt_id = attempt['id']
-        init['attempt'] = view_user_attempt(attempt)
-        if attempt['is_training']:
-            needs_codes = not have_one_code(init['team']['members'])
+    init['attempts'] = view_round_attempts(round_, attempts)
+    # Find the team's current attempt.
+    current_attempt = None
+    for attempt in attempts:
+        if attempt['is_current']:
+            current_attempt = attempt
+    if current_attempt is not None:
+        attempt_id = current_attempt['id']
+        init['current_attempt_id'] = attempt_id
+        members_view = init['team']['members']
+        access_codes = app.model.load_unlocked_access_codes(attempt_id)
+        add_members_access_codes(members_view, access_codes)
+        if current_attempt['is_training']:
+            needs_codes = not have_one_code(members_view)
         else:
-            needs_codes = not have_code_majority(init['team']['members'])
-        init['attempt']['needs_codes'] = needs_codes
+            needs_codes = not have_code_majority(members_view)
+        current_attempt['needs_codes'] = needs_codes
+        print('current attempt {}', current_attempt)
         # Add task data, if available.
         try:
             task = app.model.load_task_team_data(attempt_id)
@@ -56,7 +61,7 @@ def view_user_seed(user_id):
             task = None
         if task is not None:
             init['task'] = task
-            init['task']['url'] = safe_html(round_['task_url'])
+            init['task']['url'] = round_['task_url']
             # Give the user the id of their latest revision for the
             # current attempt, to be loaded into the crypto tab on
             # first access.
@@ -66,10 +71,6 @@ def view_user_seed(user_id):
     return init
 
 
-def safe_html(text):
-    return bleach.clean(text, tags=AllowHtmlTags, attributes=AllowHtmlAttrs)
-
-
 def view_user(user):
     """ Return the user-view for a user.
     """
@@ -77,7 +78,7 @@ def view_user(user):
     return {key: user[key] for key in keys}
 
 
-def view_user_team(team, round_=None, attempt=None):
+def view_team(team, round_=None):
     """ Return the user-view for a team.
     """
     members = app.model.load_team_members(team['id'], users=True)
@@ -94,14 +95,26 @@ def view_user_team(team, round_=None, attempt=None):
         causes = validate_members_for_round(members, round_)
         result['round_access'] = causes
         result['is_invalid'] = len(causes) != 0
-    if attempt is not None:
-        access_codes = app.model.load_unlocked_access_codes(attempt['id'])
-        code_map = {code['user_id']: code for code in access_codes}
-        for member in members:
-            user_id = member['user_id']
-            if user_id in code_map:
-                member['access_code'] = code_map[user_id]['code']
     return result
+
+
+def add_members_access_codes(members, access_codes):
+    code_map = {code['user_id']: code for code in access_codes}
+    for member in members:
+        user_id = member['user_id']
+        if user_id in code_map:
+            member['access_code'] = code_map[user_id]['code']
+
+
+def have_one_code(members):
+    n_codes = len([m for m in members if 'access_code' in m])
+    return n_codes >= 1
+
+
+def have_code_majority(members):
+    n_members = len(members)
+    n_codes = len([m for m in members if 'access_code' in m])
+    return n_codes * 2 >= n_members
 
 
 def validate_members_for_round(members, round_):
@@ -120,16 +133,6 @@ def validate_members_for_round(members, round_):
     return result
 
 
-def view_user_attempt(attempt):
-    keys = [
-        'id', 'created_at', 'closes_at',
-        'is_current', 'is_training', 'is_unsolved'
-    ]
-    view = {key: attempt[key] for key in keys}
-    view['is_completed'] = app.model.is_attempt_completed(attempt)
-    return view
-
-
 def view_user_round(round_):
     """ Return the user-view for a round.
     """
@@ -140,17 +143,6 @@ def view_user_round(round_):
         'max_attempts', 'max_answers'
     ]
     return {key: round_[key] for key in keys}
-
-
-def have_one_code(members):
-    n_codes = len([m for m in members if 'access_code' in m])
-    return n_codes >= 1
-
-
-def have_code_majority(members):
-    n_members = len(members)
-    n_codes = len([m for m in members if 'access_code' in m])
-    return n_codes * 2 >= n_members
 
 
 def view_user_workspace_revision(workspace_revision):
@@ -180,60 +172,42 @@ def view_workspace(workspace):
     return {key: workspace[key] for key in keys}
 
 
-def view_revisions(revisions):
+def add_revisions(view, attempt_id):
+    # Load revisions.
+    revisions = app.model.load_attempt_revisions(attempt_id)
     # Load related entities.
     user_ids = set()
     workspace_ids = set()
-    attempt_ids = set()
     for revision in revisions:
         user_ids.add(revision['creator_id'])
         workspace_ids.add(revision['workspace_id'])
     users = app.model.load_users(user_ids)
     workspaces = app.model.load_workspaces(workspace_ids)
-    for workspace in workspaces:
-        attempt_ids.add(workspace['attempt_id'])
-    attempts = app.model.load_attempts(attempt_ids)
     # Prepare views.
-    user_views = [view_user(user) for user in users]
-    workspace_views = [view_workspace(workspace) for workspace in workspaces]
-    attempt_views = [view_user_attempt(attempt) for attempt in attempts]
-    return {
-        'revisions': revisions,
-        'users': user_views,
-        'workspaces': workspace_views,
-        'attempts': attempt_views,
-    }
+    view['users'] = [view_user(user) for user in users]
+    view['workspaces'] = \
+        [view_workspace(workspace) for workspace in workspaces]
+    view['revisions'] = revisions
 
 
-def view_attempts(attempts, team, round_):
+def view_round_attempts(round_, attempts):
     openNext = False
+    views = []
     for attempt in attempts:
-        if attempt['is_current']:
-            team_view = view_user_team(team, round_, attempt)
-            if attempt['is_training']:
-                needs_codes = not have_one_code(team_view['members'])
-            else:
-                needs_codes = not have_code_majority(team_view['members'])
-            is_completed = app.model.is_attempt_completed(attempt)
-            attempt['is_completed'] = is_completed
-            if is_completed:
-                openNext = True
-            attempt['needs_codes'] = needs_codes
-    if len(attempts) == 0:
-        attempts.append({
+        views.append(view_attempt(attempt))
+        if attempt['is_completed']:
+            openNext = True
+    if len(views) == 0:
+        views.append({
             'ordinal': 0, 'is_current': True, 'is_training': True})
-    while len(attempts) <= round_['max_attempts']:
-        attempts.append({
-            'ordinal': len(attempts), 'is_unsolved': True,
+    while len(views) <= round_['max_attempts']:
+        views.append({
+            'ordinal': len(views), 'is_unsolved': True,
             'is_current': openNext})
         openNext = False
-    while not attempts[0]['is_current']:
-        attempts = attempts[1:] + attempts[:1]
-    return {
-        'attempts': attempts,
-        'team': team_view,
-        'round': view_user_round(round_)
-    }
+    while not views[0]['is_current']:
+        views = views[1:] + views[:1]
+    return views
 
 
 def view_answers(answers):
@@ -246,3 +220,11 @@ def view_answers(answers):
         'answers': answers,
         'users': user_views
     }
+
+
+def view_attempt(attempt):
+    keys = [
+        'id', 'ordinal', 'created_at', 'started_at', 'closes_at',
+        'is_current', 'is_training', 'is_unsolved', 'is_fully_solved'
+    ]
+    return {key: attempt[key] for key in keys}

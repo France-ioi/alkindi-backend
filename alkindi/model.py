@@ -259,24 +259,17 @@ class Model:
         return self.__load_row(self.db.tables.rounds, round_id, keys)
 
     def load_attempt(self, attempt_id):
-        results = self.load_attempts((attempt_id,))
-        if len(results) == 0:
-            raise ModelError('no such attempt')
-        return results[0]
-
-    def load_attempts(self, attempt_ids):
         keys = [
             'id', 'team_id', 'round_id',
             'created_at', 'started_at', 'closes_at',
             'is_current', 'is_training', 'is_unsolved', 'is_fully_solved'
         ]
-        rows = self.__load_rows(self.db.tables.attempts, attempt_ids, keys)
+        row = self.__load_row(self.db.tables.attempts, attempt_id, keys)
         bool_cols = [
             'is_current', 'is_training', 'is_unsolved', 'is_fully_solved']
-        for row in rows:
-            for key in bool_cols:
-                row[key] = self.db.view_bool(row[key])
-        return rows
+        for key in bool_cols:
+            row[key] = self.db.view_bool(row[key])
+        return row
 
     def load_task(self, attempt_id):
         keys = [
@@ -490,7 +483,11 @@ class Model:
             .where(attempts.team_id == team_id) \
             .order_by(attempts.ordinal) \
             .group_by(attempts.id)
-        return self.__all_rows(query, cols)
+        attempts = self.__all_rows(query, cols)
+        for attempt in attempts:
+            is_completed = self.is_attempt_completed(attempt)
+            attempt['is_completed'] = is_completed
+        return attempts
 
     def count_team_timed_attempts(self, team_id):
         attempts = self.db.tables.attempts
@@ -554,15 +551,11 @@ class Model:
             for row in self.db.all(query)
         ]
 
-    def get_current_attempt_access_code(self, user_id):
-        users = self.db.tables.users
-        attempts = self.db.tables.attempts
+    def get_attempt_user_access_code(self, user_id, attempt_id):
         access_codes = self.db.tables.access_codes
-        query = self.db.query(users & attempts & access_codes) \
-            .where(users.id == user_id) \
-            .where(attempts.team_id == users.team_id) \
-            .where(attempts.is_current) \
-            .where(access_codes.attempt_id == attempts.id) \
+        query = self.db.query(access_codes) \
+            .where(access_codes.id == attempt_id) \
+            .where(access_codes.attempt_id == attempt_id) \
             .where(access_codes.user_id == user_id) \
             .fields(access_codes.code)
         row = self.db.first(query)
