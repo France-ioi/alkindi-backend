@@ -1,6 +1,7 @@
 
 from datetime import datetime, timedelta
 import json
+from sqlbuilder.smartsql import func
 
 from alkindi.utils import generate_access_code
 from alkindi.tasks import playfair
@@ -448,6 +449,7 @@ class Model:
         ]
         bool_cols = [
             'is_current', 'is_training', 'is_unsolved', 'is_fully_solved']
+        # XXX filter on round_id
         query = self.db.query(attempts) \
             .where(attempts.team_id == team_id) \
             .where(attempts.is_current) \
@@ -459,6 +461,36 @@ class Model:
         for key in bool_cols:
             result[key] = self.db.view_bool(result[key])
         return result
+
+    def load_team_attempts(self, team_id):
+        attempts = self.db.tables.attempts
+        tasks = self.db.tables.tasks
+        answers = self.db.tables.answers
+        cols = [
+            ('id', attempts.id),
+            ('round_id', attempts.round_id),
+            ('team_id', attempts.team_id),
+            ('ordinal', attempts.ordinal),
+            ('created_at', attempts.created_at),
+            ('started_at', attempts.started_at),
+            ('closes_at', attempts.closes_at),
+            ('is_current', attempts.is_current, 'bool'),
+            ('is_training', attempts.is_training, 'bool'),
+            ('is_unsolved', attempts.is_unsolved, 'bool'),
+            ('is_fully_solved', attempts.is_fully_solved, 'bool'),
+            # ('answer_id', answers.id),
+            ('task_id', tasks.attempt_id),
+            ('max_score', func.max(answers.score)),
+        ]
+        query = self.db.query(
+                attempts +
+                tasks.on(tasks.attempt_id == attempts.id) +
+                answers.on(answers.attempt_id == attempts.id)) \
+            .fields([col[1] for col in cols]) \
+            .where(attempts.team_id == team_id) \
+            .order_by(attempts.ordinal) \
+            .group_by(attempts.id)
+        return self.__all_rows(query, cols)
 
     def count_team_timed_attempts(self, team_id):
         attempts = self.db.tables.attempts
@@ -942,6 +974,17 @@ class Model:
         cursor = self.db.execute(query)
         cursor.close()
         return cursor
+
+    def __all_rows(self, query, cols):
+        rows = [{col[0]: row[i] for i, col in enumerate(cols)}
+                for row in self.db.all(query)]
+        for row in rows:
+            for col in cols:
+                if len(col) == 3:
+                    key = col[0]
+                    if col[2] == 'bool':
+                        row[key] = self.db.view_bool(row[key])
+        return rows
 
     def __add_team_member(self, team_id, user_id,
                           is_qualified=False, is_creator=False):
