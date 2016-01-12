@@ -11,6 +11,7 @@ from pyramid.events import NewRequest, BeforeRender
 from pyramid.config import Configurator
 from pyramid.renderers import JSON
 from pyramid.static import QueryStringConstantCacheBuster
+from pyramid.renderers import render
 
 from alkindi import helpers
 from alkindi.globals import app
@@ -114,7 +115,7 @@ def log_api_failure(event):
         'request_headers': json.dumps(dict(request.headers)),
         'context': str(event['context']),
         'user_id': request.unauthenticated_userid,
-        'response_body': json.dumps(value)  # FIXME
+        'response_body': render('json', value)
     })
     app.db.commit()
 
