@@ -39,18 +39,15 @@ def read_team(request):
 def read_team_attempts(request):
     team_id = request.context.team_id
     team = app.model.load_team(team_id)
-    print("team {}".format(team))
     round_ = app.model.load_round(team['round_id'])
-    print("round_ {}".format(round_))
     attempts = app.model.load_team_attempts(team_id)
-    return views.view_attempts(attempts, team, round_)
+    return views.view_round_attempts(round_, attempts)
 
 
 def list_attempt_revisions(request):
     attempt_id = request.context.attempt_id
-    revisions = app.model.load_attempt_revisions(attempt_id)
-    view = views.view_revisions(revisions)
-    view['success'] = True
+    view = {'success': True}
+    views.add_revisions(view, attempt_id)
     return view
 
 
