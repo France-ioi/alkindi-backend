@@ -278,6 +278,7 @@ class Model:
             'is_current', 'is_training', 'is_unsolved', 'is_fully_solved']
         for key in bool_cols:
             row[key] = self.db.view_bool(row[key])
+        enrich_attempt(row)
         return row
 
     def load_task(self, attempt_id):
@@ -442,7 +443,9 @@ class Model:
         row = self.db.first(query)
         return None if row is None else row[0]
 
-    def load_team_current_attempt(self, team_id):
+    def load_team_current_attempt(self, team_id, now=None):
+        if now is None:
+            now = datetime.utcnow()
         attempts = self.db.tables.attempts
         keys = [
             'id', 'team_id', 'round_id',
@@ -459,10 +462,11 @@ class Model:
         row = self.db.first(query)
         if row is None:
             raise ModelError('no current attempt')
-        result = {key: row[i] for i, key in enumerate(keys)}
+        attempt = {key: row[i] for i, key in enumerate(keys)}
         for key in bool_cols:
-            result[key] = self.db.view_bool(result[key])
-        return result
+            attempt[key] = self.db.view_bool(attempt[key])
+        self.enrich_attempt(attempt, now)
+        return attempt
 
     def load_team_attempts(self, team_id, now=None):
         if now is None:
@@ -496,15 +500,20 @@ class Model:
             .group_by(attempts.id)
         attempts = self.__all_rows(query, cols)
         for attempt in attempts:
-            is_closed = (attempt['closes_at'] is not None and
-                         attempt['closes_at'] < now)
-            attempt['is_closed'] = is_closed
-            if attempt['is_training']:
-                attempt['is_completed'] = not attempt['is_unsolved']
-            else:
-                is_fully_solved = attempt['is_fully_solved']
-                attempt['is_completed'] = is_closed or is_fully_solved
+            self.enrich_attempt(attempt, now)
         return attempts
+
+    def enrich_attempt(self, attempt, now):
+        is_closed = (attempt['closes_at'] is not None and
+                     attempt['closes_at'] < now)
+        attempt['is_closed'] = is_closed
+        if attempt['is_training']:
+            # A training attempt is completed by any amount of solving.
+            attempt['is_completed'] = not attempt['is_unsolved']
+        else:
+            # A timed attempt is completed when closed or fully solved.
+            is_fully_solved = attempt['is_fully_solved']
+            attempt['is_completed'] = is_closed or is_fully_solved
 
     def count_team_timed_attempts(self, team_id):
         attempts = self.db.tables.attempts
