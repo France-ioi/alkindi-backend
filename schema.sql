@@ -299,6 +299,16 @@ ALTER TABLE answers ADD CONSTRAINT fk_answers__submitter_id
 
 -- prod
 
+--?
 ALTER TABLE attempts ADD COLUMN is_fully_solved BOOLEAN NOT NULL DEFAULT FALSE;
 
--- v-alkindi, epix2
+
+ALTER TABLE attempts ADD COLUMN ordinal INT NOT NULL;
+
+SET @ordinal := 0;
+SET @team_id := 0;
+UPDATE attempts AS t, (SELECT id, @ordinal := CASE WHEN @team_id = team_id THEN @ordinal + 1 ELSE 0 END AS ordinal, @team_id := team_id AS team_id FROM attempts WHERE round_id = 2 ORDER BY team_id, id) AS s SET t.ordinal = s.ordinal WHERE t.id = s.id;
+
+DELETE FROM attempts WHERE round_id = 1;
+
+ALTER TABLE attempts ADD UNIQUE INDEX ix_attempts__team_id_round_id_ordinal (team_id, round_id, ordinal) USING BTREE;
