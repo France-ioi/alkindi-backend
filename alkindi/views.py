@@ -222,7 +222,7 @@ def view_attempts(attempts, team, round_):
     if len(attempts) == 0:
         attempts.append({
             'ordinal': 0, 'is_current': True, 'is_training': True})
-    while len(attempts) < round_['max_attempts']:
+    while len(attempts) <= round_['max_attempts']:
         attempts.append({
             'ordinal': len(attempts), 'is_unsolved': True,
             'is_current': openNext})
