@@ -143,7 +143,7 @@ def refresh_view(request):
         # Access code request.
         if json_request.get('access_code'):
             access_code = app.model.get_attempt_user_access_code(
-                attempt_id, user_id)
+                user_id, attempt_id)
             for attempt in view['attempts']:
                 if attempt['id'] == attempt_id:
                     attempt['access_code'] = access_code
