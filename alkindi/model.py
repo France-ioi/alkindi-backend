@@ -455,7 +455,9 @@ class Model:
             result[key] = self.db.view_bool(result[key])
         return result
 
-    def load_team_attempts(self, team_id):
+    def load_team_attempts(self, team_id, now=None):
+        if now is None:
+            now = datetime.utcnow()
         attempts = self.db.tables.attempts
         tasks = self.db.tables.tasks
         answers = self.db.tables.answers
@@ -485,8 +487,14 @@ class Model:
             .group_by(attempts.id)
         attempts = self.__all_rows(query, cols)
         for attempt in attempts:
-            is_completed = self.is_attempt_completed(attempt)
-            attempt['is_completed'] = is_completed
+            is_closed = (attempt['closes_at'] is not None and
+                         attempt['closes_at'] < now)
+            attempt['is_closed'] = is_closed
+            if attempt['is_training']:
+                attempt['is_completed'] = not attempt['is_unsolved']
+            else:
+                is_fully_solved = attempt['is_fully_solved']
+                attempt['is_completed'] = is_closed or is_fully_solved
         return attempts
 
     def count_team_timed_attempts(self, team_id):
