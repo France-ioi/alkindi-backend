@@ -225,8 +225,7 @@ def view_round_attempts(round_, attempts):
     views = []
     for attempt in attempts:
         views.append(view_attempt(attempt))
-        if attempt['is_completed']:
-            openNext = True
+        openNext = attempt['is_completed']
     if len(views) == 0:
         views.append({
             'ordinal': 0, 'is_current': True, 'is_training': True})
