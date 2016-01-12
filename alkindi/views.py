@@ -255,7 +255,7 @@ def view_attempt(attempt):
     keys = [
         'id', 'ordinal', 'created_at', 'started_at', 'closes_at',
         'is_current', 'is_training', 'is_unsolved', 'is_fully_solved',
-        'is_closed', 'is_completed'
+        'is_closed', 'is_completed', 'max_score'
     ]
     view = {key: attempt[key] for key in keys}
     if not attempt['is_training']:
