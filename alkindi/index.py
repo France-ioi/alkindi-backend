@@ -145,7 +145,7 @@ def refresh_view(request):
             access_code = app.model.get_attempt_user_access_code(
                 user_id, attempt_id)
             for attempt in view['attempts']:
-                if attempt['id'] == attempt_id:
+                if attempt.get('id') == attempt_id:
                     attempt['access_code'] = access_code
         # History request.
         if json_request.get('history'):
