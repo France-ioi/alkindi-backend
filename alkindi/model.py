@@ -267,7 +267,9 @@ class Model:
         row['is_training_open'] = row['training_opens_at'] <= now
         return row
 
-    def load_attempt(self, attempt_id):
+    def load_attempt(self, attempt_id, now=None):
+        if now is None:
+            now = datetime.utcnow()
         keys = [
             'id', 'team_id', 'round_id',
             'created_at', 'started_at', 'closes_at',
@@ -278,7 +280,7 @@ class Model:
             'is_current', 'is_training', 'is_unsolved', 'is_fully_solved']
         for key in bool_cols:
             row[key] = self.db.view_bool(row[key])
-        self.enrich_attempt(row)
+        self.enrich_attempt(row, now)
         return row
 
     def load_task(self, attempt_id):
