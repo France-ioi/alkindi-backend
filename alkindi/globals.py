@@ -50,6 +50,7 @@ class Globals:
     def after_request(self):
         # Perform post-request teardown here.
         app.db.rollback()
+        app.db.close()
 
     @property
     def redis_settings(self):
