@@ -175,7 +175,7 @@ def read_team_attempts(request):
     round_ = app.model.load_round(team['round_id'])
     print("round_ {}".format(round_))
     attempts = app.model.load_team_attempts(team_id)
-    return {'attempts': views.view_attempts(attempts, team, round_)}
+    return views.view_attempts(attempts, team, round_)
 
 
 def read_workspace_revision(request):

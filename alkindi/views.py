@@ -219,8 +219,6 @@ def view_attempts(attempts, team, round_):
             if is_completed:
                 openNext = True
             attempt['needs_codes'] = needs_codes
-            attempt['round'] = view_user_round(round_)  # XXX
-            attempt['team'] = team_view  # XXX
     if len(attempts) == 0:
         attempts.append({
             'ordinal': 0, 'is_current': True, 'is_training': True})
@@ -231,7 +229,11 @@ def view_attempts(attempts, team, round_):
         openNext = False
     while not attempts[0]['is_current']:
         attempts = attempts[1:] + attempts[:1]
-    return attempts
+    return {
+        'attempts': attempts,
+        'team': team_view,
+        'round': view_user_round(round_)
+    }
 
 
 def view_answers(answers):
