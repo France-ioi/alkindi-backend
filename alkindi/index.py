@@ -49,6 +49,7 @@ def includeme(config):
     api_get(config, TeamApiContext, '', read_team)
     api_post(config, TeamApiContext, 'reset_to_training',
              reset_team_to_training)
+    api_get(config, TeamApiContext, 'attempts', read_team_attempts)
     api_get(config, AttemptApiContext, 'revisions', list_attempt_revisions)
     api_post(config, UserAttemptApiContext, 'answers',
              submit_user_attempt_answer)
@@ -165,6 +166,16 @@ def reset_team_to_training(request):
     app.model.reset_team_to_training_attempt(team_id)
     app.db.commit()
     return {'success': True}
+
+
+def read_team_attempts(request):
+    team_id = request.context.team_id
+    team = app.model.load_team(team_id)
+    print("team {}".format(team))
+    round_ = app.model.load_round(team['round_id'])
+    print("round_ {}".format(round_))
+    attempts = app.model.load_team_attempts(team_id)
+    return {'attempts': views.view_attempts(attempts, team, round_)}
 
 
 def read_workspace_revision(request):
