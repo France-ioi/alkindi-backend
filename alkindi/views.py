@@ -229,7 +229,7 @@ def view_round_attempts(round_, attempts):
     while len(views) <= round_['max_attempts']:
         views.append({
             'ordinal': len(views), 'is_unsolved': True,
-            'is_current': openNext})
+            'is_current': openNext, 'duration': 60})  # XXX
         openNext = False
     while not views[0]['is_current']:
         views = views[1:] + views[:1]
@@ -254,4 +254,7 @@ def view_attempt(attempt):
         'is_current', 'is_training', 'is_unsolved', 'is_fully_solved',
         'is_closed', 'is_completed'
     ]
-    return {key: attempt[key] for key in keys}
+    view = {key: attempt[key] for key in keys}
+    if not attempt['is_training']:
+        view['duration'] = 60
+    return view
