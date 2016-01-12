@@ -227,6 +227,8 @@ def view_attempts(attempts, team, round_):
             'ordinal': len(attempts), 'is_unsolved': True,
             'is_current': openNext})
         openNext = False
+    while not attempts[0]['is_current']:
+        attempts = attempts[1:] + attempts[:1]
     return attempts
 
 
