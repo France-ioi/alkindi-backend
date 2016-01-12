@@ -35,7 +35,7 @@ def view_requesting_user(user_id):
             view['round'] = view_round(round_)
         return view
 
-    # View team, round, attempt.
+    # Load round, team, members.
     team = app.model.load_team(team_id)
     round_ = app.model.load_round(team['round_id'], now)
     attempts = app.model.load_team_attempts(team_id)
@@ -65,7 +65,6 @@ def view_requesting_user(user_id):
     else:
         needs_codes = not have_code_majority(members_view)
     current_attempt_view['needs_codes'] = needs_codes
-    print('current attempt {}', current_attempt)
     # Add task data, if available.
     try:
         task = app.model.load_task_team_data(attempt_id)
