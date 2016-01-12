@@ -205,6 +205,31 @@ def view_revisions(revisions):
     }
 
 
+def view_attempts(attempts, team, round_):
+    openNext = False
+    for attempt in attempts:
+        if attempt['is_current']:
+            team_view = view_user_team(team, round_, attempt)
+            if attempt['is_training']:
+                needs_codes = not have_one_code(team_view['members'])
+            else:
+                needs_codes = not have_code_majority(team_view['members'])
+            if not attempt['is_unsolved']:
+                openNext = True
+            attempt['needs_codes'] = needs_codes
+            attempt['round'] = view_user_round(round_)  # XXX
+            attempt['team'] = team_view  # XXX
+    if len(attempts) == 0:
+        attempts.append({
+            'ordinal': 0, 'is_current': True, 'is_training': True})
+    while len(attempts) < round_['max_attempts']:
+        attempts.append({
+            'ordinal': len(attempts), 'is_unsolved': True,
+            'is_current': openNext})
+        openNext = False
+    return attempts
+
+
 def view_answers(answers):
     user_ids = set()
     for answer in answers:
