@@ -195,6 +195,17 @@ def add_revisions(view, attempt_id):
     view['revisions'] = revisions
 
 
+def add_answers(view, attempt_id):
+    answers = app.model.load_limited_attempt_answers(attempt_id)
+    view['answers'] = answers
+    user_ids = set()
+    for answer in answers:
+        user_ids.add(answer['submitter_id'])
+    users = app.model.load_users(user_ids)
+    user_views = [view_user(user) for user in users]
+    view['users'] = user_views
+
+
 def view_round_attempts(round_, attempts):
     openNext = False
     views = []

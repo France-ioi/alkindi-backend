@@ -884,7 +884,7 @@ class Model:
             return (rows[0][0], None)
         return (rows[0][0], rows[1][1])
 
-    def load_attempt_answers(self, attempt_id):
+    def load_limited_attempt_answers(self, attempt_id):
         answers = self.db.tables.answers
         cols = [
             'id', 'submitter_id', 'ordinal', 'created_at', 'answer',

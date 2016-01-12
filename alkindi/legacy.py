@@ -56,7 +56,7 @@ def list_attempt_revisions(request):
 
 def list_attempt_answer(request):
     attempt_id = request.context.attempt_id
-    answers = app.model.load_attempt_answers(attempt_id)
+    answers = app.model.load_limited_attempt_answers(attempt_id)
     view = views.view_answers(answers)
     view['success'] = True
     return view

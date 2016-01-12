@@ -136,25 +136,24 @@ def refresh_view(request):
     user_id = request.context.user_id
     json_request = request.json_body
     view = views.view_requesting_user(user_id)
-    print("\033[91mrequest\033[0m {}".format(json_request))
+    # print("\033[91mrequest\033[0m {}".format(json_request))
     attempt_id = view.get('current_attempt_id')
     if attempt_id is not None:
-        print("\033[91mcurrent_attempt\033[0m {}".format(attempt_id))
+        # TODO: if json_request.get('attempt_id') != attempt_id: ...
         # Access code request.
-        access_code = json_request.get('access_code')
-        if attempt_id == access_code:
+        if json_request.get('access_code'):
             access_code = app.model.get_attempt_user_access_code(
                 attempt_id, user_id)
             for attempt in view['attempts']:
                 if attempt['id'] == attempt_id:
                     attempt['access_code'] = access_code
         # History request.
-        history = json_request.get('history')
-        print("\033[91mhistory\033[0m {} {}".format(history, attempt_id))
-        if attempt_id == history:
+        if json_request.get('history'):
             views.add_revisions(view, attempt_id)
+        # Answers request.
+        if json_request.get('answers'):
+            views.add_answers(view, attempt_id)
     view['success'] = True
-    print("\033[92mresponse\033[0m {}".format(view))
     return view
 
 
