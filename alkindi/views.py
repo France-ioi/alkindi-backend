@@ -38,9 +38,14 @@ def view_requesting_user(user_id):
     # Load round, team, members.
     team = app.model.load_team(team_id)
     round_ = app.model.load_round(team['round_id'], now)
-    attempts = app.model.load_team_attempts(team_id)
     view['team'] = view_team(team, round_)
     view['round'] = view_round(round_)
+
+    # Do not return attempts if the team is invalid.
+    if view['team']['is_invalid']:
+        return view
+
+    attempts = app.model.load_team_attempts(team_id)
     view['attempts'] = view_round_attempts(round_, attempts)
     # Find the team's current attempt, and the current attempt's view.
     current_attempt = None
