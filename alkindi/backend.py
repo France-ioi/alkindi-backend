@@ -114,7 +114,7 @@ def log_api_failure(event):
         'request_headers': json.dumps(dict(request.headers)),
         'context': str(event['context']),
         'user_id': request.unauthenticated_userid,
-        'response_body': json.dumps(value)
+        'response_body': json.dumps(value)  # FIXME
     })
     app.db.commit()
 
