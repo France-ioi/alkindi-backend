@@ -278,7 +278,7 @@ class Model:
             'is_current', 'is_training', 'is_unsolved', 'is_fully_solved']
         for key in bool_cols:
             row[key] = self.db.view_bool(row[key])
-        enrich_attempt(row)
+        self.enrich_attempt(row)
         return row
 
     def load_task(self, attempt_id):
