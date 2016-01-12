@@ -37,12 +37,16 @@ def view_requesting_user(user_id):
     init['team'] = view_team(team, round_)
     init['round'] = view_user_round(round_)
     init['attempts'] = view_round_attempts(round_, attempts)
-    # Find the team's current attempt.
+    # Find the team's current attempt, and the current attempt's view.
     current_attempt = None
     for attempt in attempts:
         if attempt['is_current']:
             current_attempt = attempt
     if current_attempt is not None:
+        current_attempt_view = None
+        for attempt_view in init['attempts']:
+            if current_attempt['id'] == attempt_view.get('id'):
+                current_attempt_view = attempt_view
         attempt_id = current_attempt['id']
         init['current_attempt_id'] = attempt_id
         members_view = init['team']['members']
@@ -52,7 +56,7 @@ def view_requesting_user(user_id):
             needs_codes = not have_one_code(members_view)
         else:
             needs_codes = not have_code_majority(members_view)
-        current_attempt['needs_codes'] = needs_codes
+        current_attempt_view['needs_codes'] = needs_codes
         print('current attempt {}', current_attempt)
         # Add task data, if available.
         try:
@@ -62,6 +66,7 @@ def view_requesting_user(user_id):
         if task is not None:
             init['task'] = task
             init['task']['url'] = round_['task_url']
+            current_attempt_view['has_task'] = True
             # Give the user the id of their latest revision for the
             # current attempt, to be loaded into the crypto tab on
             # first access.
@@ -225,6 +230,7 @@ def view_answers(answers):
 def view_attempt(attempt):
     keys = [
         'id', 'ordinal', 'created_at', 'started_at', 'closes_at',
-        'is_current', 'is_training', 'is_unsolved', 'is_fully_solved'
+        'is_current', 'is_training', 'is_unsolved', 'is_fully_solved',
+        'is_closed', 'is_completed'
     ]
     return {key: attempt[key] for key in keys}
