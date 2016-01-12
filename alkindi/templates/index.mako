@@ -21,4 +21,7 @@
     Alkindi.configure(${h.to_json(frontend_config)});
     Alkindi.install(document.getElementById('main'));
   </script>
+%if front_min == '':
+  <script type="text/javascript" src="http://127.0.0.1:5500/livereload.js"></script>
+%endif
 </%block>
