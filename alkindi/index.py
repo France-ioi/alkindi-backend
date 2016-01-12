@@ -31,6 +31,8 @@ def includeme(config):
         ancient_browser_view, route_name='ancient_browser',
         renderer='templates/ancient_browser.mako')
 
+    config.include('alkindi.legacy')
+
     config.add_view(
         refresh_view, context=UserApiContext, name='refresh',
         request_method='POST', check_csrf=True,
