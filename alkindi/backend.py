@@ -29,7 +29,7 @@ def application(_global_config, **settings):
             front_version, 'min' if front_min else ''))
 
     config = Configurator(settings=settings)
-    config.include('pyramid_debugtoolbar')
+    # config.include('pyramid_debugtoolbar')
     config.include(set_session_factory)
     config.include('pyramid_mako')
 
