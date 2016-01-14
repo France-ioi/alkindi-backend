@@ -12,7 +12,8 @@ import requests
 
 from alkindi.globals import app
 from alkindi.model.users import (
-    find_user, import_user, update_user, get_user_principals)
+    find_user_by_foreign_id, import_user, update_user,
+    get_user_principals)
 
 
 ADMIN_GROUP = 'g:admin'
@@ -70,7 +71,7 @@ def oauth_callback_view(request):
     # Get the user identity (refreshing the token should not be needed).
     profile = get_user_profile(request, refresh=False)
     # Make pyramid remember the user's id.
-    user_id = find_user(request.db, profile['idUser'])
+    user_id = find_user_by_foreign_id(request.db, profile['idUser'])
     if user_id is None:
         user_id = import_user(request.db, profile, now=datetime.utcnow())
     else:

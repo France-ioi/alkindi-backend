@@ -18,7 +18,7 @@ import alkindi.views as views
 from alkindi_r2_front import version as front_version
 
 from alkindi.model.users import (
-    load_user, update_user, get_user_team_id)
+    load_user, update_user, get_user_team_id, find_user_by_username)
 from alkindi.model.teams import (
     find_team_by_code, update_team)
 from alkindi.model.team_members import (
@@ -127,11 +127,15 @@ def index_view(request):
     }
     user_id = request.authenticated_userid
     if 'g:admin' in request.effective_principals:
+        if 'user' in request.params:
+            user_id = find_user_by_username(
+                request.db, request.params['user'])
         if 'user_id' in request.params:
             user_id = int(request.params['user_id'])
     # Add info about the logged-in user (if any) to the frontend config.
     if user_id is not None:
-        frontend_config['seed'] = views.view_requesting_user(request.db, user_id)
+        frontend_config['seed'] = views.view_requesting_user(
+            request.db, user_id)
     request.response.cache_control = 'max-age=0, private'
     return {
         'frontend_config': frontend_config

@@ -82,7 +82,16 @@ def load_users(db, user_ids, for_update=False):
     return results
 
 
-def find_user(db, foreign_id):
+def find_user_by_username(db, username):
+    """ Find the user with the given username and return their id,
+        or None if no such user exists.
+    """
+    users = db.tables.users
+    return db.load_scalar(
+        table=users, key='username', value=username, column='id')
+
+
+def find_user_by_foreign_id(db, foreign_id):
     """ Find the user with the given foreign_id and return their id,
         or None if no such user exists.
     """
