@@ -162,7 +162,7 @@ class TeamsApiContext(ApiContextBase):
         team_id = int(path_element)
         # We do not verify that the team exists, the user will get
         # a 403 error if the team is not in their credentials.
-        return TeamApiContext(self, team=team_id)
+        return TeamApiContext(self, team_id=team_id)
 
 
 class AttemptsApiContext(ApiContextBase):

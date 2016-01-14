@@ -140,6 +140,7 @@ def authentication_callback(userid, request):
     principals = request.session.get('principals')
     if principals is None:
         principals = get_user_principals(app.db, userid)
+        print("get_user_principals({}) = {}".format(userid, principals))
         request.session['principals'] = principals
     return principals
 
