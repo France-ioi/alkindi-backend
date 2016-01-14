@@ -168,7 +168,7 @@ def grade(task, data):
     base_score = task['score']
 
     # Scores above score_threshold are considered solutions.
-    score_threshold = Decimal('0')
+    score_threshold = Decimal('10')
 
     in_n1 = canon_number(data.get('n1', ''))
     in_n2 = canon_number(data.get('n2', ''))
