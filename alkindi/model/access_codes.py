@@ -34,6 +34,14 @@ def get_access_code(db, attempt_id, user_id):
     return db.scalar(query)
 
 
+def generate_user_access_code(db, attempt_id, team_id, user_id):
+    # If the team has a current attempt, generate an access code for
+    # the new user.
+    codes = load_access_codes(db, attempt_id)
+    used_codes = set([code['code'] for code in codes])
+    generate_access_code(db, attempt_id, user_id, used_codes)
+
+
 def generate_access_code(db, attempt_id, user_id, used_codes):
     # Generate a distinct code for each member.
     code = generate_code()

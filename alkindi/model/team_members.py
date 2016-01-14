@@ -56,8 +56,8 @@ def join_team(db, user_id, team_id, now):
     if not team['is_open']:
         # Team is closed (by its creator).
         raise ModelError('team is closed')
-    # If the team already has an attempt (is_locked=True), verify
-    # that the team remains valid if the user is added.
+    # If the team has already accessed a task (is_locked=True),
+    # verify that the team remains valid if the user is added.
     if team['is_locked']:
         validate_team(team, with_member=user, now=now)
     round_id = team['round_id']
@@ -82,6 +82,13 @@ def join_team(db, user_id, team_id, now):
     add_team_member(db, team_id, user_id, now=now, is_qualified=is_qualified)
     # Update the user's team_id.
     set_user_team_id(db, user_id, team_id)
+    # If the team has a current attempt, generate a code for the new
+    # member.
+    from alkindi.model.attempts import get_team_current_attempt_id
+    attempt_id = get_team_current_attempt_id(db, team_id)
+    if attempt_id is not None:
+        from alkindi.model.access_codes import generate_user_access_code
+        generate_user_access_code(db, attempt_id, team_id, user_id)
 
 
 def leave_team(db, user_id, team_id):

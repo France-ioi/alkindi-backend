@@ -145,16 +145,6 @@ def reset_team_to_training_attempt(db, team_id, now):
         })
 
 
-def generate_user_access_code(db, attempt_id, team_id, user_id):
-    # If the team has a current attempt, generate an access code for
-    # the new user.
-    attempt_id = get_team_current_attempt_id(db, team_id)
-    if attempt_id is not None:
-        codes = load_access_codes(attempt_id)
-        used_codes = set([code['code'] for code in codes])
-        generate_access_code(attempt_id, user_id, used_codes)
-
-
 #
 # Functions below this point are used internally by the model.
 #
