@@ -148,15 +148,19 @@ def transaction_manager_tween_factory(handler, registry):
     def tween(request):
 
         try:
+            # print("\033[93mTM begin\033[0m")
             app.db.ensure_connected()
             app.db.start_transaction()
             result = handler(request)
-            app.db.rollback()
+            app.db.commit()
+            # print("\033[92mTM commit\033[0m")
             return result
         except:
+            # print("\033[91mTM rollback\033[0m")
             app.db.rollback()
             raise
         finally:
+            # print("\033[94mTM close\033[0m")
             app.db.close()
 
     return tween

@@ -188,7 +188,6 @@ def user_view(request):
 def reset_team_to_training_action(request):
     team_id = request.context.team_id
     reset_team_to_training_attempt(app.db, team_id, now=datetime.utcnow())
-    app.db.commit()
     return {'success': True}
 
 
@@ -216,7 +215,6 @@ def qualify_user_action(request):
         profile = get_user_profile(request, foreign_id)
         if profile is not None:
             update_user(app.db, user['id'], profile)
-            app.db.commit()
             profileUpdated = True
     return {
         'success': True,
@@ -234,7 +232,6 @@ def create_team_action(request):
     now = datetime.utcnow()
     user_id = request.context.user_id
     create_team(user_id, now)
-    app.db.commit()
     # Ensure the user gets team credentials.
     reset_user_principals(request)
     return {'success': True}
@@ -259,7 +256,6 @@ def join_team_action(request):
     user_id = request.context.user_id
     # Add the user to the team.
     join_team(app.db, user_id, team_id, now=datetime.utcnow())
-    app.db.commit()
     # Ensure the user gets team credentials.
     reset_user_principals(request)
     return {'success': True}
@@ -272,7 +268,6 @@ def leave_team_action(request):
     leave_team(app.db, user_id=user_id, team_id=team_id)
     # Clear the user's access codes in all of the team's attempts.
     clear_access_codes(app.db, user_id=user_id, team_id=team_id)
-    app.db.commit()
     # Clear the user's team credentials.
     reset_user_principals(request)
     return {'success': True}
@@ -296,7 +291,6 @@ def update_team_action(request):
         # Admins can change all settings.
         settings = request.json_body
     update_team(app.db, team_id, settings)
-    app.db.commit()
     return {'success': True}
 
 
@@ -307,7 +301,6 @@ def start_attempt_action(request):
     if team_id is None:
         raise ApiError('no team')
     start_attempt(app.db, team_id, now=datetime.utcnow())
-    app.db.commit()
     return {'success': True}
 
 
@@ -319,7 +312,6 @@ def cancel_attempt_action(request):
         raise ApiError('no current attempt')
     cancel_attempt(app.db, attempt_id)
     reset_team_to_training_attempt(app.db, team_id, now=datetime.utcnow())
-    app.db.commit()
     return {'success': True}
 
 
@@ -331,7 +323,6 @@ def enter_access_code_action(request):
     if attempt_id is None:
         raise ApiError('no current attempt')
     success = unlock_access_code(app.db, attempt_id, user_id, code)
-    app.db.commit()
     if not success:
         raise ApiError('unknown access code')
     return {'success': success}
@@ -344,7 +335,6 @@ def assign_attempt_task_action(request):
         raise ApiError('no current attempt')
     # This will fail if the team is invalid.
     assign_task(app.db, attempt_id, now=datetime.utcnow())
-    app.db.commit()
     return {'success': True}
 
 
@@ -352,14 +342,12 @@ def get_hint_action(request):
     user_id = request.context.user_id
     query = request.json_body
     success = get_user_task_hint(app.db, user_id, query)
-    app.db.commit()
     return {'success': success}
 
 
 def reset_hints_action(request):
     user_id = request.context.user_id
     reset_user_task_hints(app.db, user_id)
-    app.db.commit()
     return {'success': True}
 
 
@@ -373,7 +361,6 @@ def store_revision_action(request):
     revision_id = store_revision(
         app.db, user_id, parent_id, title, state,
         now=datetime.utcnow(), workspace_id=workspace_id)
-    app.db.commit()
     return {'success': True, 'revision_id': revision_id}
 
 
@@ -384,7 +371,6 @@ def submit_user_attempt_answer_action(request):
         app.db, attempt_id, submitter_id, request.json_body,
         now=datetime.utcnow())
     answer
-    app.db.commit()
     return {
         'success': True, 'answer_id': answer['id'],
         'feedback': json.loads(answer['grading'])['feedback']
