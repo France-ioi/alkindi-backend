@@ -21,6 +21,7 @@ class Globals:
         that needs to be accessible outside of requests (such as in
         console tools).
         This includes mainly the connections to redis and postgresql.
+        TODO: put the Globals instance in thread-local storage.
     """
 
     def __init__(self):

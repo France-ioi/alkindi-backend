@@ -14,16 +14,16 @@ from alkindi.auth import get_user_profile, reset_user_principals
 from alkindi.contexts import (
     ApiContext, UserApiContext, TeamApiContext, UserAttemptApiContext)
 from alkindi.globals import app
-from alkindi.errors import ApiError, ModelError
+from alkindi.errors import ApiError, ApplicationError
 import alkindi.views as views
 from alkindi_r2_front import version as front_version
 
 from alkindi.model.users import (
     load_user, update_user, get_user_team_id)
 from alkindi.model.teams import (
-    create_team, find_team_by_code, update_team)
+    find_team_by_code, update_team)
 from alkindi.model.team_members import (
-    join_team, leave_team, get_team_creator)
+    create_user_team, join_team, leave_team, get_team_creator)
 from alkindi.model.attempts import (
     get_user_current_attempt_id, start_attempt, cancel_attempt,
     reset_team_to_training_attempt)
@@ -38,8 +38,8 @@ from alkindi.model.answers import (
 
 
 def includeme(config):
-    config.add_view(model_error_view, context=ModelError, renderer='json')
-    config.add_view(api_error_view, context=ApiError, renderer='json')
+    config.add_view(
+        application_error_view, context=ApplicationError, renderer='json')
     config.add_view(not_found_view, context=HTTPNotFound)
 
     config.add_route('index', '/', request_method='GET')
@@ -96,14 +96,9 @@ def api_post(config, context, name, view):
         permission='change', renderer='json')
 
 
-def model_error_view(error, request):
-    # This view handles alkindi.errors.ModelError.
+def application_error_view(error, request):
+    # This view handles alkindi.errors.ApplicationError.
     return {'success': False, 'error': str(error), 'source': 'model'}
-
-
-def api_error_view(error, request):
-    # This view handles alkindi.errors.ApiError.
-    return {'success': False, 'error': str(error), 'source': 'API'}
 
 
 def ancient_browser_view(request):
@@ -231,7 +226,7 @@ def create_team_action(request):
     # Create the team.
     now = datetime.utcnow()
     user_id = request.context.user_id
-    create_team(user_id, now)
+    create_user_team(app.db, user_id, now)
     # Ensure the user gets team credentials.
     reset_user_principals(request)
     return {'success': True}

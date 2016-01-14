@@ -36,16 +36,14 @@ class MysqlAdapter:
             cursor.execute(stmt, values)
             return cursor
         except mysql.IntegrityError as ex:
-            raise ModelError(ex)
+            raise ModelError('integrity error', ex)
         except mysql.OperationalError as ex:
-            print("Lost connection to mysql")
-            raise ModelError(ex)
+            raise ModelError('connection lost', ex)
         except (mysql.DataError,
                 mysql.ProgrammingError,
                 mysql.InternalError,
                 mysql.NotSupportedError) as ex:
-            print("Bad SQL statement: {}".format(stmt))
-            raise ModelError(ex)
+            raise ModelError('programming error', format(stmt))
 
     def scalar(self, query):
         cursor = self.execute(query.select())

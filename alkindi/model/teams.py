@@ -16,14 +16,14 @@ def load_team(db, team_id, for_update=False):
     return result
 
 
-def create_team(db, round_id, now):
+def create_empty_team(db, round_id, now):
     """ Creates a team for the specified round.
         Returns the team id.
     """
     # Generate an unused team access code.
     # XXX lock teams table
     code = generate_code()
-    while find_team_by_code(code) is not None:
+    while find_team_by_code(db, code) is not None:
         code = generate_code()
     # Create the team.
     teams = db.tables.teams

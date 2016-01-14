@@ -35,6 +35,7 @@ requires = [
     'ua-parser >= 0.6.1',
     'bleach >= 1.4.2',
     'unidecode >= 0.03',
+    'Pygments >= 2.0.2',
     'alkindi-r2-front'
 ]
 

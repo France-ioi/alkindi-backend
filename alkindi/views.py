@@ -1,9 +1,8 @@
 
 from datetime import datetime
 
-from alkindi.globals import app
 from alkindi.errors import ModelError
-from alkindi.model.rounds import load_round
+from alkindi.model.rounds import load_round, find_round_ids_with_badges
 from alkindi.model.users import load_user, load_users
 from alkindi.model.teams import load_team
 from alkindi.model.team_members import load_team_members
@@ -41,8 +40,12 @@ def view_requesting_user(db, user_id):
         # If the user has no team, we look for a round to which a
         # badge grants access.
         badges = user['badges']
-        round_id = app.model.select_round_with_badges(badges)
-        if round_id is not None:
+        round_ids = find_round_ids_with_badges(db, badges, now)
+        if len(round_ids) > 0:
+            # TODO: resolve this somehow, for example by returning
+            # the round views to the user and letting them choose.
+            # For now, pick the first one (which has the greatest id).
+            round_id = round_ids[0]
             round_ = load_round(db, round_id, now)
             view['round'] = view_round(round_)
         return view

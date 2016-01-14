@@ -38,5 +38,6 @@ def find_round_ids_with_badges(db, badges, now):
               .where(badges_table.round_id == rounds.id) \
               .where(badges_table.symbol.in_(badges)) \
               .where(badges_table.is_active) \
-              .where(rounds.registration_opens_at <= now)
+              .where(rounds.registration_opens_at <= now) \
+              .order_by(rounds.id.desc())  # XXX temporary fix
     return [row[0] for row in db.all(query)]

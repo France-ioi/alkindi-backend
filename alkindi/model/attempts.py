@@ -8,6 +8,9 @@ from alkindi.model.access_codes import (
     generate_access_codes, load_access_codes, generate_access_code)
 
 
+# TODO: make (team_id, ordinal) the primary key (rather than a unique index).
+# TODO: remove round_id and use that of the team (also remove from index).
+
 def get_user_current_attempt_id(db, user_id):
     users = db.tables.users
     attempts = db.tables.attempts

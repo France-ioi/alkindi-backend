@@ -6,6 +6,8 @@ from datetime import datetime, date
 import decimal
 import json
 import os
+import sys
+import traceback
 
 from pyramid.events import NewRequest, BeforeRender
 from pyramid.config import Configurator
@@ -19,6 +21,7 @@ from alkindi.globals import app
 from alkindi_r2_front import (
     version as front_version,
     min_build as front_min)
+from alkindi.errors import ApplicationError
 
 
 def application(_global_config, **settings):
@@ -111,13 +114,39 @@ def log_api_failure(event):
     # The transaction manager tween is inserted under the exception view
     # above (under=EXCVIEW), so the connection to the DB has been closed
     # when execution reaches this point.
+    ex = None
+    if isinstance(context, Exception):
+        ex = context
+    if app.get('error_log_target') != 'db':
+        print('\033[91mAPI Failure: \033[1m{}\033[0m'.format(context))
+        if ex is not None:
+            from pygments import highlight
+            from pygments.lexers import get_lexer_by_name
+            from pygments.formatters import TerminalFormatter
+            lines = traceback.format_exception(type(ex), ex, ex.__traceback__)
+            if isinstance(ex, ApplicationError) and type(ex.args) is tuple:
+                lines.append('full arguments: {}'.format(ex.args))
+            tbtext = ''.join(lines)
+            lexer = get_lexer_by_name("pytb", stripall=True)
+            formatter = TerminalFormatter()
+            sys.stderr.write(highlight(tbtext, lexer, formatter))
+        return
+    context_obj = {
+        'context': str(context)
+    }
+    if ex is not None:
+        context_obj['exception'] = \
+            traceback.format_exception_only(type(ex), ex)
+        context_obj['trace'] = traceback.format_tb(ex.__traceback__)
+        if isinstance(ex, ApplicationError) and type(ex.args) is tuple:
+            context_obj['args'] = ex.args
     app.db.ensure_connected()
     app.db.log_error({
         'created_at': datetime.utcnow(),
         'request_url': request.url,
         'request_body': request.body,
         'request_headers': json.dumps(dict(request.headers)),
-        'context': str(event['context']),
+        'context': json.dumps(context_obj),
         'user_id': request.unauthenticated_userid,
         'response_body': render('json', value)
     })

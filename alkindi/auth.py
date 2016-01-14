@@ -11,6 +11,8 @@ from pyramid.security import remember, forget
 import requests
 
 from alkindi.globals import app
+from alkindi.model.users import (
+    find_user, import_user, update_user, get_user_principals)
 
 
 ADMIN_GROUP = 'g:admin'
@@ -43,7 +45,7 @@ def set_authorization_policy(config):
 
 def set_authentication_policy(config):
     authentication_policy = SessionAuthenticationPolicy(
-        callback=get_user_principals)
+        callback=authentication_callback)
     config.set_authentication_policy(authentication_policy)
 
 
@@ -68,11 +70,11 @@ def oauth_callback_view(request):
     # Get the user identity (refreshing the token should not be needed).
     profile = get_user_profile(request, refresh=False)
     # Make pyramid remember the user's id.
-    user_id = app.model.find_user(profile['idUser'])
+    user_id = find_user(app.db, profile['idUser'])
     if user_id is None:
-        user_id = app.model.import_user(profile, now=datetime.utcnow())
+        user_id = import_user(app.db, profile, now=datetime.utcnow())
     else:
-        app.model.update_user(user_id, profile)
+        update_user(app.db, user_id, profile)
     app.db.commit()
     # Clear the user's cached principals to force them to be refreshed.
     reset_user_principals(request)
@@ -134,10 +136,10 @@ def get_user_profile(request, foreign_id=None, refresh=True):
     return profile
 
 
-def get_user_principals(userid, request):
+def authentication_callback(userid, request):
     principals = request.session.get('principals')
     if principals is None:
-        principals = app.model.get_user_principals(userid)
+        principals = get_user_principals(app.db, userid)
         request.session['principals'] = principals
     return principals
 
@@ -231,6 +233,8 @@ def accept_oauth2_code(request):
     state = request.params.get('state')
     saved_state = request.session.get('oauth_state')
     if saved_state != state:
+        forget(request)
+        request.session.clear()
         raise AuthenticationError('bad state')
     token = exchange_code_for_token(request, code, state)
     del request.session['oauth_state']
