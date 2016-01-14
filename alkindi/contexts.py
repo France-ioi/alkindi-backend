@@ -1,5 +1,5 @@
 
-from pyramid.security import DENY_ALL, Allow
+from pyramid.security import Allow
 
 from alkindi.auth import ADMIN_GROUP
 from alkindi.model.users import get_user_team_id
