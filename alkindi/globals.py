@@ -10,7 +10,6 @@ from redis import StrictRedis
 
 from .utils import as_int
 from .database_adapters import MysqlAdapter
-from .model import Model
 
 
 __all__ = ['app']
@@ -35,22 +34,6 @@ class Globals:
         self._assets_pregenerator = None
         mysql_connection = json.loads(self['mysql_connection'])
         self.db = MysqlAdapter(**mysql_connection)
-        self.model = Model(self.db)
-
-    def wrap_middleware(self, app):
-        """ Wrap our middleware around the given WSGI app, so that
-            our before_request and after_request hooks are called.
-        """
-        return GlobalsResetMiddleware(app, self)
-
-    def before_request(self):
-        # Perform pre-request setup here.
-        app.db.ensure_connected()
-
-    def after_request(self):
-        # Perform post-request teardown here.
-        app.db.rollback()
-        app.db.close()
 
     @property
     def redis_settings(self):
@@ -98,21 +81,6 @@ class Globals:
             return elements, kwargs
 
         return pregenerator
-
-
-class GlobalsResetMiddleware:
-    """ Reset the global state at the end of each request
-    """
-
-    def __init__(self, app, globals):
-        self.app = app
-        self.globals = globals
-
-    def __call__(self, environ, start_response):
-        self.globals.before_request()
-        result = self.app(environ, start_response)
-        self.globals.after_request()
-        return result
 
 
 app = Globals()

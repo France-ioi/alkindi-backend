@@ -2,7 +2,19 @@
 from datetime import datetime
 
 from alkindi.globals import app
-from alkindi.model import ModelError
+from alkindi.errors import ModelError
+from alkindi.model.rounds import load_round
+from alkindi.model.users import load_user, load_users
+from alkindi.model.teams import load_team
+from alkindi.model.team_members import load_team_members
+from alkindi.model.attempts import (
+    load_team_attempts, get_user_current_attempt_id)
+from alkindi.model.access_codes import load_unlocked_access_codes
+from alkindi.model.tasks import load_task_team_data
+from alkindi.model.answers import load_limited_attempt_answers
+from alkindi.model.workspace_revisions import (
+    load_user_latest_revision_id, load_attempt_revisions)
+from alkindi.model.workspaces import load_workspaces
 
 
 AllowHtmlAttrs = {
@@ -16,10 +28,10 @@ AllowHtmlTags = [
 ]
 
 
-def view_requesting_user(user_id):
+def view_requesting_user(db, user_id):
     view = {}
     view['now'] = now = datetime.utcnow()
-    user = app.model.load_user(user_id)
+    user = load_user(db, user_id)
     if user is None:
         return None
     view['user'] = view_user(user)
@@ -31,21 +43,21 @@ def view_requesting_user(user_id):
         badges = user['badges']
         round_id = app.model.select_round_with_badges(badges)
         if round_id is not None:
-            round_ = app.model.load_round(round_id, now)
+            round_ = load_round(db, round_id, now)
             view['round'] = view_round(round_)
         return view
 
     # Load round, team, members.
-    team = app.model.load_team(team_id)
-    round_ = app.model.load_round(team['round_id'], now)
-    view['team'] = view_team(team, round_)
+    team = load_team(db, team_id)
+    round_ = load_round(db, team['round_id'], now)
+    view['team'] = view_team(db, team, round_)
     view['round'] = view_round(round_)
 
     # Do not return attempts if the team is invalid.
     if view['team']['is_invalid']:
         return view
 
-    attempts = app.model.load_team_attempts(team_id)
+    attempts = load_team_attempts(db, team_id, now)
     view['attempts'] = view_round_attempts(round_, attempts)
     # Find the team's current attempt, and the current attempt's view.
     current_attempt = None
@@ -63,7 +75,7 @@ def view_requesting_user(user_id):
     attempt_id = current_attempt['id']
     view['current_attempt_id'] = attempt_id
     members_view = view['team']['members']
-    access_codes = app.model.load_unlocked_access_codes(attempt_id)
+    access_codes = load_unlocked_access_codes(db, attempt_id)
     add_members_access_codes(members_view, access_codes)
     if current_attempt['is_training']:
         needs_codes = not have_one_code(members_view)
@@ -72,7 +84,7 @@ def view_requesting_user(user_id):
     current_attempt_view['needs_codes'] = needs_codes
     # Add task data, if available.
     try:
-        task = app.model.load_task_team_data(attempt_id)
+        task = load_task_team_data(db, attempt_id)
     except ModelError:
         task = None
     if task is not None:
@@ -82,8 +94,8 @@ def view_requesting_user(user_id):
         # Give the user the id of their latest revision for the
         # current attempt, to be loaded into the crypto tab on
         # first access.
-        revision_id = app.model.load_user_latest_revision_id(
-            user_id, attempt_id)
+        revision_id = load_user_latest_revision_id(
+            db, user_id, attempt_id)
         view['my_latest_revision_id'] = revision_id
 
     return view
@@ -96,10 +108,10 @@ def view_user(user):
     return {key: user[key] for key in keys}
 
 
-def view_team(team, round_=None):
+def view_team(db, team, round_=None):
     """ Return the user-view for a team.
     """
-    members = app.model.load_team_members(team['id'], users=True)
+    members = load_team_members(db, team['id'], users=True)
     creator = [m for m in members if m['is_creator']]
     result = {
         'id': team['id'],
@@ -168,11 +180,9 @@ def view_user_workspace_revision(workspace_revision):
     return workspace_revision
 
 
-def view_user_task(user_id):
-    user = app.model.load_user(user_id)
-    team_id = user['team_id']
-    attempt = app.model.load_team_current_attempt(team_id)
-    return app.model.load_task_team_data(attempt['id'])
+def view_user_task(db, user_id):
+    attempt_id = get_user_current_attempt_id(user_id)
+    return load_task_team_data(db, attempt_id)
 
 
 def view_revision(revision):
@@ -191,17 +201,17 @@ def view_workspace(workspace):
     return {key: workspace[key] for key in keys}
 
 
-def add_revisions(view, attempt_id):
+def add_revisions(db, view, attempt_id):
     # Load revisions.
-    revisions = app.model.load_attempt_revisions(attempt_id)
+    revisions = load_attempt_revisions(db, attempt_id)
     # Load related entities.
     user_ids = set()
     workspace_ids = set()
     for revision in revisions:
         user_ids.add(revision['creator_id'])
         workspace_ids.add(revision['workspace_id'])
-    users = app.model.load_users(user_ids)
-    workspaces = app.model.load_workspaces(workspace_ids)
+    users = load_users(db, user_ids)
+    workspaces = load_workspaces(db, workspace_ids)
     # Prepare views.
     view['users'] = [view_user(user) for user in users]
     view['workspaces'] = \
@@ -209,13 +219,13 @@ def add_revisions(view, attempt_id):
     view['revisions'] = revisions
 
 
-def add_answers(view, attempt_id):
-    answers = app.model.load_limited_attempt_answers(attempt_id)
+def add_answers(db, view, attempt_id):
+    answers = load_limited_attempt_answers(db, attempt_id)
     view['answers'] = answers
     user_ids = set()
     for answer in answers:
         user_ids.add(answer['submitter_id'])
-    users = app.model.load_users(user_ids)
+    users = load_users(db, user_ids)
     user_views = [view_user(user) for user in users]
     view['users'] = user_views
 
@@ -239,11 +249,11 @@ def view_round_attempts(round_, attempts):
     return views
 
 
-def view_answers(answers):
+def view_answers(db, answers):
     user_ids = set()
     for answer in answers:
         user_ids.add(answer['submitter_id'])
-    users = app.model.load_users(user_ids)
+    users = load_users(db, user_ids)
     user_views = [view_user(user) for user in users]
     return {
         'answers': answers,

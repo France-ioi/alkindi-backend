@@ -3,6 +3,9 @@ from pyramid.security import DENY_ALL, Allow
 
 from alkindi.globals import app
 from alkindi.auth import ADMIN_GROUP
+from alkindi.model.users import get_user_team_id
+from alkindi.model.attempts import get_attempt_team_id
+from alkindi.model.workspace_revisions import get_workspace_revision_ownership
 
 
 def includeme(config):
@@ -55,14 +58,6 @@ class UserAttemptApiContext(ApiContextBase):
             (Allow, 'u:{}'.format(self.user_id), ['read', 'change'])
         ]
 
-    @property
-    def user(self):
-        return app.model.load_user(self.user_id)
-
-    @property
-    def attempt(self):
-        return app.model.load_attempt(self.attempt_id)
-
 
 class WorkspaceRevisionApiContext(ApiContextBase):
 
@@ -78,10 +73,6 @@ class WorkspaceRevisionApiContext(ApiContextBase):
             (Allow, 'u:{}'.format(self.creator_id), ['read', 'change']),
         ]
 
-    @property
-    def workspace_revision(self):
-        return app.model.load_workspace_revision(self.workspace_revision_id)
-
 
 ########################################################################
 #
@@ -94,9 +85,10 @@ class UserAttemptsApiContext(ApiContextBase):
         return "{}({})".format(self.__class__.__name__, self.user_id)
 
     def __getitem__(self, path_element):
+        # Users only see their team's attempts.
         attempt_id = int(path_element)
-        team_id = app.model.get_attempt_team_id(attempt_id)
-        user_team_id = app.model.get_user_team_id(self.user_id)
+        team_id = get_attempt_team_id(app.db, attempt_id)
+        user_team_id = get_user_team_id(app.db, self.user_id)
         if team_id is None or team_id != user_team_id:
             raise KeyError()
         return UserAttemptApiContext(
@@ -120,10 +112,6 @@ class UserApiContext(ApiContextBase):
             (Allow, 'u:{}'.format(self.user_id), ['read', 'change'])
         ]
 
-    @property
-    def user(self):
-        return app.model.load_user(self.user_id)
-
     def __getitem__(self, path_element):
         if path_element == 'attempts':
             return UserAttemptsApiContext(self, user_id=self.user_id)
@@ -131,13 +119,6 @@ class UserApiContext(ApiContextBase):
 
 
 class TeamApiContext(ApiContextBase):
-
-    def __init__(self, parent, team):
-        self.__parent__ = parent
-        self.team = team
-        # XXX call super^
-        self.team_id = team['id']
-        self._members = None
 
     def __str__(self):
         return "{}({})".format(self.__class__.__name__, self.team_id)
@@ -149,12 +130,6 @@ class TeamApiContext(ApiContextBase):
             (Allow, 'tc:{}'.format(self.team_id), ['read']),
             (Allow, 't:{}'.format(self.team_id), ['read', 'change']),
         ]
-
-    @property
-    def members(self):
-        if self._members is None:
-            self._members = app.model.load_team_members(self.team_id)
-        return self._members
 
 
 class AttemptApiContext(ApiContextBase):
@@ -168,10 +143,6 @@ class AttemptApiContext(ApiContextBase):
             (Allow, ADMIN_GROUP, ['read', 'change']),
             (Allow, 't:{}'.format(self.team_id), ['read', 'change'])
         ]
-
-    @property
-    def attempt(self):
-        return app.model.load_attempt(self.attempt_id)
 
 
 ########################################################################
@@ -188,17 +159,19 @@ class UsersApiContext(ApiContextBase):
 class TeamsApiContext(ApiContextBase):
 
     def __getitem__(self, path_element):
-        team = app.model.load_team(int(path_element))
-        if team is None:
-            raise KeyError()
-        return TeamApiContext(self, team=team)
+        team_id = int(path_element)
+        # We do not verify that the team exists, the user will get
+        # a 403 error if the team is not in their credentials.
+        return TeamApiContext(self, team=team_id)
 
 
 class AttemptsApiContext(ApiContextBase):
 
     def __getitem__(self, path_element):
         attempt_id = int(path_element)
-        team_id = app.model.get_attempt_team_id(attempt_id)
+        # We need to look up the attempt's team_id for AttemptApiContext
+        # to be able to build its ACL.
+        team_id = get_attempt_team_id(app.db, attempt_id)
         if team_id is None:
             raise KeyError()
         return AttemptApiContext(self, attempt_id=attempt_id, team_id=team_id)
@@ -208,7 +181,7 @@ class WorkspaceRevisionsApiContext(ApiContextBase):
 
     def __getitem__(self, path_element):
         revision_id = int(path_element)
-        ownership = app.model.get_workspace_revision_ownership(revision_id)
+        ownership = get_workspace_revision_ownership(app.db, revision_id)
         if ownership is None:
             raise KeyError()
         team_id, creator_id = ownership

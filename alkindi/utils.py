@@ -10,7 +10,7 @@ def as_int(s):
     return int(s)
 
 
-def generate_access_code():
+def generate_code():
     charsAllowed = "23456789abcdefghijkmnpqrstuvwxyz"
     code = ""
     for pos in range(0, 8):

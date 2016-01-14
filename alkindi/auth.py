@@ -70,7 +70,7 @@ def oauth_callback_view(request):
     # Make pyramid remember the user's id.
     user_id = app.model.find_user(profile['idUser'])
     if user_id is None:
-        user_id = app.model.import_user(profile)
+        user_id = app.model.import_user(profile, now=datetime.utcnow())
     else:
         app.model.update_user(user_id, profile)
     app.db.commit()

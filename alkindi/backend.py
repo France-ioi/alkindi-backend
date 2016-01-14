@@ -12,6 +12,7 @@ from pyramid.config import Configurator
 from pyramid.renderers import JSON
 from pyramid.static import QueryStringConstantCacheBuster
 from pyramid.renderers import render
+from pyramid.tweens import EXCVIEW
 
 from alkindi import helpers
 from alkindi.globals import app
@@ -37,6 +38,8 @@ def application(_global_config, **settings):
     config.add_subscriber(add_headers, NewRequest)
     config.add_subscriber(log_api_failure, BeforeRender)
     config.add_subscriber(set_renderer_context, BeforeRender)
+    config.add_tween('alkindi.backend.transaction_manager_tween_factory',
+                     under=EXCVIEW)
 
     # Serve versioned static assets from alkindi-r2-front at /front
     config.add_static_view(
@@ -54,7 +57,7 @@ def application(_global_config, **settings):
     config.include('.index')
     config.include('.misc')
 
-    return app.wrap_middleware(config.make_wsgi_app())
+    return config.make_wsgi_app()
 
 
 def add_headers(event):
@@ -108,7 +111,7 @@ def log_api_failure(event):
     # Rollback early to prevent any changes to the model from being
     # committed when the error is inserted.
     app.db.rollback()
-    app.model.log_error({
+    app.db.log_error({
         'created_at': datetime.utcnow(),
         'request_url': request.url,
         'request_body': request.body,
@@ -137,3 +140,22 @@ def add_json_renderer(config):
     json_renderer.add_adapter(decimal.Decimal, decimal_adapter)
 
     config.add_renderer('json', json_renderer)
+
+
+def transaction_manager_tween_factory(handler, registry):
+
+    def tween(request):
+
+        try:
+            app.db.ensure_connected()
+            app.db.start_transaction()
+            result = handler(request)
+            app.db.rollback()
+            return result
+        except:
+            app.db.rollback()
+            raise
+        finally:
+            app.db.close()
+
+    return tween
