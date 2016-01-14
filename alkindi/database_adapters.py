@@ -3,10 +3,7 @@ import mysql.connector as mysql
 from sqlbuilder.smartsql import Q, T, Query, Result
 from sqlbuilder.smartsql.compilers.mysql import compile as mysql_compile
 import json
-
-
-class ModelError(RuntimeError):
-    pass
+from alkindi.errors import ModelError
 
 
 class MysqlAdapter:
@@ -51,7 +48,13 @@ class MysqlAdapter:
             raise ModelError(ex)
 
     def scalar(self, query):
-        cursor = self.execute(query)
+        cursor = self.execute(query.select())
+        row = cursor.fetchone()
+        cursor.close()
+        return row[0] if row is not None else None
+
+    def count(self, query, **kwargs):
+        cursor = self.execute(query.count(**kwargs))
         row = cursor.fetchone()
         cursor.close()
         return row[0] if row is not None else None
@@ -73,12 +76,10 @@ class MysqlAdapter:
         cursor.close()
 
     def insert(self, query):
-        self.execute(query).close()
-        cursor = self.db.cursor()
-        cursor.execute('SELECT last_insert_id();')
-        id = cursor.fetchone()
+        cursor = self.execute(query)
+        row_id = cursor.lastrowid
         cursor.close()
-        return None if id is None else id[0]
+        return None if row_id is None else row_id
 
     def update(self, query, attrs):
         cursor = self.execute(query.update(attrs))
@@ -173,7 +174,9 @@ class MysqlAdapter:
                 if len(col) == 3:
                     key = col[0]
                     if col[2] == 'bool':
-                        row[key] = self.view_bool(row[key])
+                        row[key] = self.load_bool(row[key])
+                    elif col[2] == 'json':
+                        row[key] = self.load_json(row[key])
         return rows
 
     def log_error(self, error):

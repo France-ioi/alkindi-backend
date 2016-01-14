@@ -3,15 +3,21 @@ from pyramid.httpexceptions import HTTPNotModified
 from alkindi.globals import app
 from alkindi.contexts import (
     TeamApiContext, WorkspaceRevisionApiContext, AttemptApiContext)
+from alkindi.model.teams import load_team
+from alkindi.model.rounds import load_round
+from alkindi.model.attempts import load_team_attempts
+from alkindi.model.workspace_revisions import load_workspace_revision
 import alkindi.views as views
 
 
 def includeme(config):
+    # Still used
+    api_get(config, WorkspaceRevisionApiContext, '', read_workspace_revision)
+    # No longer used:
     api_get(config, TeamApiContext, '', read_team)
     api_get(config, TeamApiContext, 'attempts', read_team_attempts)
     api_get(config, AttemptApiContext, 'revisions', list_attempt_revisions)
     api_get(config, AttemptApiContext, 'answers', list_attempt_answer)
-    api_get(config, WorkspaceRevisionApiContext, '', read_workspace_revision)
 
 
 def api_get(config, context, name, view):
@@ -60,9 +66,11 @@ def list_attempt_answer(request):
 
 
 def read_workspace_revision(request):
-    revision = request.context.workspace_revision
+    revision_id = request.context.workspace_revision_id
+    revision = load_workspace_revision(app.db, revision_id)
     check_etag(request, revision['created_at'])
+    view = views.view_user_workspace_revision(revision)
     return {
         'success': True,
-        'workspace_revision': views.view_user_workspace_revision(revision)
+        'workspace_revision': view
     }

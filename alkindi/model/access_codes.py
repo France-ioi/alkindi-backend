@@ -21,7 +21,7 @@ def load_access_codes(db, attempt_id):
 
 
 def load_unlocked_access_codes(db, attempt_id):
-    codes = load_access_codes(attempt_id)
+    codes = load_access_codes(db, attempt_id)
     return [code for code in codes if code['is_unlocked']]
 
 

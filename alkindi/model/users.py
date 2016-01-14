@@ -3,7 +3,7 @@ from alkindi.errors import ModelError
 
 
 def load_user(db, user_id, for_update=False):
-    results = db.load_users((user_id,), for_update)
+    results = load_users(db, (user_id,), for_update)
     if len(results) == 0:
         raise ModelError('no such user')
     return results[0]

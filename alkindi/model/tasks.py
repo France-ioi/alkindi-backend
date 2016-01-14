@@ -21,9 +21,14 @@ def load_task(db, attempt_id):
 
 
 def load_task_team_data(db, attempt_id):
+    """ Return the team data for the given attempt, or None if there
+        is no task assigned to the attempt.
+    """
     tasks = db.tables.tasks
     row = db.load_row(
         tasks, attempt_id, ['score', 'team_data'], key='attempt_id')
+    if row is None:
+        return None
     result = db.load_json(row['team_data'])
     result['score'] = row['score']
     return result
@@ -109,7 +114,7 @@ def reset_user_task_hints(db, user_id):
     attempt = load_attempt(db, attempt_id)
     if not attempt['is_training']:
         raise ModelError('forbidden')
-    task = load_task(attempt_id)
+    task = load_task(db, attempt_id)
     if task is None:
         raise ModelError('no task')
     # reset_hints updates task in-place

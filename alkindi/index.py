@@ -27,9 +27,14 @@ from alkindi.model.team_members import (
 from alkindi.model.attempts import (
     get_user_current_attempt_id, start_attempt, cancel_attempt,
     reset_team_to_training_attempt)
-from alkindi.model.tasks import assign_task
+from alkindi.model.workspace_revisions import (
+    store_revision)
+from alkindi.model.tasks import (
+    assign_task, get_user_task_hint, reset_user_task_hints)
 from alkindi.model.access_codes import (
     get_access_code, clear_access_codes, unlock_access_code)
+from alkindi.model.answers import (
+    grade_answer)
 
 
 def includeme(config):
@@ -367,7 +372,7 @@ def store_revision_action(request):
     parent_id = getInt(query.get('parent_id'))
     revision_id = store_revision(
         app.db, user_id, parent_id, title, state,
-        workspace_id=workspace_id)
+        now=datetime.utcnow(), workspace_id=workspace_id)
     app.db.commit()
     return {'success': True, 'revision_id': revision_id}
 

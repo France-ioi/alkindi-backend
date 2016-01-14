@@ -181,7 +181,7 @@ def view_user_workspace_revision(workspace_revision):
 
 
 def view_user_task(db, user_id):
-    attempt_id = get_user_current_attempt_id(user_id)
+    attempt_id = get_user_current_attempt_id(db, user_id)
     return load_task_team_data(db, attempt_id)
 
 

@@ -2,6 +2,7 @@
 from sqlbuilder.smartsql import func
 
 from alkindi.errors import ModelError
+from alkindi.model.teams import load_team
 from alkindi.model.rounds import load_round
 from alkindi.model.access_codes import (
     generate_access_codes, load_access_codes, generate_access_code)
@@ -75,16 +76,16 @@ def get_attempt_team_id(db, attempt_id):
 
 
 def start_attempt(db, team_id, now):
-    attempt_id = get_team_current_attempt_id(team_id, now)
+    attempt_id = get_team_current_attempt_id(db, team_id)
     if attempt_id is None:
         # Create a training attempt.
         # The team is not locked at this time and can still be
         # changed (which requires creating an access code when
         # a new member joins the team, and deleting an access
         # code when a user leaves the team).
-        create_attempt(team_id, now=now, is_training=True)
+        create_attempt(db, team_id, now=now, is_training=True)
     else:
-        attempt = load_attempt(db, attempt_id)
+        attempt = load_attempt(db, attempt_id, now=now)
         if attempt['is_training']:
             # Current attempt is training.  Team must pass training to
             # create a timed attempt.
@@ -97,7 +98,7 @@ def start_attempt(db, team_id, now):
                 raise ModelError('timed attempt in progress')
         # Load the attempt's round.
         round_id = attempt['round_id']
-        round_ = load_round(db, round_id, now)
+        round_ = load_round(db, round_id, now=now)
         # Limit the number of timed attempts.
         n_attempts = count_team_timed_attempts(db, team_id)
         if n_attempts == round_['max_attempts']:
@@ -116,6 +117,8 @@ def cancel_attempt(db, attempt_id):
 
 
 def reset_team_to_training_attempt(db, team_id, now):
+    team = load_team(db, team_id)
+    round_id = team['round_id']
     attempt_id = get_team_current_attempt_id(db, team_id)
     if attempt_id is not None:
         attempt = load_attempt(db, attempt_id)
@@ -132,7 +135,7 @@ def reset_team_to_training_attempt(db, team_id, now):
         })
     # Select the new attempt and make it current.
     new_attempt_id = get_team_latest_training_attempt_id(
-        db, team_id, attempt['round_id'])
+        db, team_id, round_id)
     if new_attempt_id is not None:
         db.update_row(db.tables.attempts, new_attempt_id, {
             'is_current': True
@@ -142,7 +145,7 @@ def reset_team_to_training_attempt(db, team_id, now):
 def generate_user_access_code(db, attempt_id, team_id, user_id):
     # If the team has a current attempt, generate an access code for
     # the new user.
-    attempt_id = get_team_current_attempt_id(team_id)
+    attempt_id = get_team_current_attempt_id(db, team_id)
     if attempt_id is not None:
         codes = load_access_codes(attempt_id)
         used_codes = set([code['code'] for code in codes])
@@ -231,7 +234,7 @@ def is_attempt_completed(db, attempt, now):
 
 
 def create_attempt(db, team_id, now, is_training=True):
-    team = db.load_team(team_id)
+    team = load_team(db, team_id)
     # Get the team's current attempt.
     round_id = team['round_id']
     attempts = db.tables.attempts

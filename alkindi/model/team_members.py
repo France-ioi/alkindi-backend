@@ -3,7 +3,7 @@ from alkindi.errors import ModelError
 from alkindi.model.users import load_user, set_user_team_id
 from alkindi.model.teams import load_team
 from alkindi.model.rounds import (
-    find_round_ids_with_badges, is_round_registration_open)
+    load_round, find_round_ids_with_badges, is_round_registration_open)
 
 
 def create_team(db, user_id, now):
@@ -208,11 +208,11 @@ def validate_team(db, team, now, with_member=None, without_member=None):
     team_members = db.tables.team_members
     tm_query = db.query(team_members) \
         .where(team_members.team_id == team['id'])
-    n_members = db.scalar(
-        tm_query.fields(team_members.user_id).count())
-    n_qualified = db.scalar(
+    n_members = db.count(
+        tm_query.fields(team_members.user_id))
+    n_qualified = db.count(
         tm_query.where(team_members.is_qualified)
-        .fields(team_members.user_id).count())
+        .fields(team_members.user_id))
     if with_member is not None:
         if with_member['is_qualified']:
             n_qualified += 1
@@ -223,7 +223,7 @@ def validate_team(db, team, now, with_member=None, without_member=None):
             n_qualified -= 1
         else:
             n_members -= 1
-    round_ = rounds.load_round(team['round_id'], now)
+    round_ = load_round(db, team['round_id'], now)
     if n_members < round_['min_team_size']:
         raise ModelError('team too small')
     if n_members > round_['max_team_size']:
