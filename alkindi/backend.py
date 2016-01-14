@@ -108,9 +108,10 @@ def log_api_failure(event):
     success = value.get('success')
     if success is True:
         return
-    # Rollback early to prevent any changes to the model from being
-    # committed when the error is inserted.
-    app.db.rollback()
+    # The transaction manager tween is inserted under the exception view
+    # above (under=EXCVIEW), so the connection to the DB has been closed
+    # when execution reaches this point.
+    app.db.ensure_connected()
     app.db.log_error({
         'created_at': datetime.utcnow(),
         'request_url': request.url,
