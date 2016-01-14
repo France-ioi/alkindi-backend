@@ -70,12 +70,12 @@ def oauth_callback_view(request):
     # Get the user identity (refreshing the token should not be needed).
     profile = get_user_profile(request, refresh=False)
     # Make pyramid remember the user's id.
-    user_id = find_user(app.db, profile['idUser'])
+    user_id = find_user(request.db, profile['idUser'])
     if user_id is None:
-        user_id = import_user(app.db, profile, now=datetime.utcnow())
+        user_id = import_user(request.db, profile, now=datetime.utcnow())
     else:
-        update_user(app.db, user_id, profile)
-    app.db.commit()
+        update_user(request.db, user_id, profile)
+    request.db.commit()
     # Clear the user's cached principals to force them to be refreshed.
     reset_user_principals(request)
     remember(request, str(user_id))
@@ -139,7 +139,7 @@ def get_user_profile(request, foreign_id=None, refresh=True):
 def authentication_callback(userid, request):
     principals = request.session.get('principals')
     if principals is None:
-        principals = get_user_principals(app.db, userid)
+        principals = get_user_principals(request.db, userid)
         print("get_user_principals({}) = {}".format(userid, principals))
         request.session['principals'] = principals
     return principals

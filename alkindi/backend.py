@@ -22,6 +22,7 @@ from alkindi_r2_front import (
     version as front_version,
     min_build as front_min)
 from alkindi.errors import ApplicationError
+from alkindi.database_adapters import MysqlAdapter
 
 
 def application(_global_config, **settings):
@@ -37,6 +38,9 @@ def application(_global_config, **settings):
     # config.include('pyramid_debugtoolbar')
     config.include(set_session_factory)
     config.include('pyramid_mako')
+
+    # Add a db property to requests.
+    config.add_request_method(add_request_db, 'db', reify=True)
 
     config.add_subscriber(add_headers, NewRequest)
     config.add_subscriber(log_api_failure, BeforeRender)
@@ -140,8 +144,8 @@ def log_api_failure(event):
         context_obj['trace'] = traceback.format_tb(ex.__traceback__)
         if isinstance(ex, ApplicationError) and type(ex.args) is tuple:
             context_obj['args'] = ex.args
-    app.db.ensure_connected()
-    app.db.log_error({
+    request.db.ensure_connected()
+    request.db.log_error({
         'created_at': datetime.utcnow(),
         'request_url': request.url,
         'request_body': request.body,
@@ -150,7 +154,7 @@ def log_api_failure(event):
         'user_id': request.unauthenticated_userid,
         'response_body': render('json', value)
     })
-    app.db.commit()
+    request.db.commit()
 
 
 def add_json_renderer(config):
@@ -178,18 +182,23 @@ def transaction_manager_tween_factory(handler, registry):
 
         try:
             # print("\033[93mTM begin\033[0m")
-            app.db.ensure_connected()
-            app.db.start_transaction()
+            request.db.ensure_connected()
+            request.db.start_transaction()
             result = handler(request)
-            app.db.commit()
+            request.db.commit()
             # print("\033[92mTM commit\033[0m")
             return result
         except:
             # print("\033[91mTM rollback\033[0m")
-            app.db.rollback()
+            request.db.rollback()
             raise
         finally:
             # print("\033[94mTM close\033[0m")
-            app.db.close()
+            request.db.close()
 
     return tween
+
+
+def add_request_db(request):
+    mysql_connection = json.loads(app['mysql_connection'])
+    return MysqlAdapter(**mysql_connection)

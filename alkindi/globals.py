@@ -9,7 +9,6 @@ import logging
 from redis import StrictRedis
 
 from .utils import as_int
-from .database_adapters import MysqlAdapter
 
 
 __all__ = ['app']
@@ -33,8 +32,6 @@ class Globals:
         self._redis = None
         self._dict = dict()
         self._assets_pregenerator = None
-        mysql_connection = json.loads(self['mysql_connection'])
-        self.db = MysqlAdapter(**mysql_connection)
 
     @property
     def redis_settings(self):

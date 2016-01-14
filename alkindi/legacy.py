@@ -1,12 +1,12 @@
 from pyramid.httpexceptions import HTTPNotModified
 
-from alkindi.globals import app
 from alkindi.contexts import (
     TeamApiContext, WorkspaceRevisionApiContext, AttemptApiContext)
 from alkindi.model.teams import load_team
 from alkindi.model.rounds import load_round
 from alkindi.model.attempts import load_team_attempts
 from alkindi.model.workspace_revisions import load_workspace_revision
+from alkindi.model.answers import load_limited_attempt_answers
 import alkindi.views as views
 
 
@@ -44,30 +44,30 @@ def read_team(request):
 
 def read_team_attempts(request):
     team_id = request.context.team_id
-    team = load_team(app.db, team_id)
-    round_ = load_round(app.db, team['round_id'])
-    attempts = load_team_attempts(app.db, team_id)
+    team = load_team(request.db, team_id)
+    round_ = load_round(request.db, team['round_id'])
+    attempts = load_team_attempts(request.db, team_id)
     return views.view_round_attempts(round_, attempts)
 
 
 def list_attempt_revisions(request):
     attempt_id = request.context.attempt_id
     view = {'success': True}
-    views.add_revisions(app.db, view, attempt_id)
+    views.add_revisions(request.db, view, attempt_id)
     return view
 
 
 def list_attempt_answer(request):
     attempt_id = request.context.attempt_id
-    answers = app.model.load_limited_attempt_answers(attempt_id)
-    view = views.view_answers(app.db, answers)
+    answers = load_limited_attempt_answers(request.db, attempt_id)
+    view = views.view_answers(request.db, answers)
     view['success'] = True
     return view
 
 
 def read_workspace_revision(request):
     revision_id = request.context.workspace_revision_id
-    revision = load_workspace_revision(app.db, revision_id)
+    revision = load_workspace_revision(request.db, revision_id)
     check_etag(request, revision['created_at'])
     view = views.view_user_workspace_revision(revision)
     return {

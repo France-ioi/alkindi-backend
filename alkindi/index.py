@@ -13,7 +13,6 @@ from ua_parser import user_agent_parser
 from alkindi.auth import get_user_profile, reset_user_principals
 from alkindi.contexts import (
     ApiContext, UserApiContext, TeamApiContext, UserAttemptApiContext)
-from alkindi.globals import app
 from alkindi.errors import ApiError, ApplicationError
 import alkindi.views as views
 from alkindi_r2_front import version as front_version
@@ -132,7 +131,7 @@ def index_view(request):
             user_id = int(request.params['user_id'])
     # Add info about the logged-in user (if any) to the frontend config.
     if user_id is not None:
-        frontend_config['seed'] = views.view_requesting_user(app.db, user_id)
+        frontend_config['seed'] = views.view_requesting_user(request.db, user_id)
     request.response.cache_control = 'max-age=0, private'
     return {
         'frontend_config': frontend_config
@@ -147,23 +146,23 @@ def internal_request_view(request, path):
 def refresh_action(request):
     user_id = request.context.user_id
     json_request = request.json_body
-    view = views.view_requesting_user(app.db, user_id)
+    view = views.view_requesting_user(request.db, user_id)
     # print("\033[91mrequest\033[0m {}".format(json_request))
     attempt_id = view.get('current_attempt_id')
     if attempt_id is not None:
         # TODO: if json_request.get('attempt_id') != attempt_id: ...
         # Access code request.
         if json_request.get('access_code'):
-            access_code = get_access_code(app.db, attempt_id, user_id)
+            access_code = get_access_code(request.db, attempt_id, user_id)
             for attempt in view['attempts']:
                 if attempt.get('id') == attempt_id:
                     attempt['access_code'] = access_code
         # History request.
         if json_request.get('history'):
-            views.add_revisions(app.db, view, attempt_id)
+            views.add_revisions(request.db, view, attempt_id)
         # Answers request.
         if json_request.get('answers'):
-            views.add_answers(app.db, view, attempt_id)
+            views.add_answers(request.db, view, attempt_id)
     view['success'] = True
     return view
 
@@ -171,7 +170,7 @@ def refresh_action(request):
 def user_task_view(request):
     request.response.cache_control = 'max-age=0, private'
     user_id = request.context.user_id
-    return views.view_user_task(app.db, user_id)
+    return views.view_user_task(request.db, user_id)
 
 
 def user_view(request):
@@ -182,13 +181,13 @@ def user_view(request):
 
 def reset_team_to_training_action(request):
     team_id = request.context.team_id
-    reset_team_to_training_attempt(app.db, team_id, now=datetime.utcnow())
+    reset_team_to_training_attempt(request.db, team_id, now=datetime.utcnow())
     return {'success': True}
 
 
 def qualify_user_action(request):
     user_id = request.context.user_id
-    user = load_user(app.db, user_id)
+    user = load_user(request.db, user_id)
     foreign_id = user['foreign_id']
     data = request.json_body
     url = 'http://www.france-ioi.org/alkindi/apiQualificationAlkindi.php'
@@ -209,7 +208,7 @@ def qualify_user_action(request):
     if codeStatus == 'registered' and userIDStatus == 'registered':
         profile = get_user_profile(request, foreign_id)
         if profile is not None:
-            update_user(app.db, user['id'], profile)
+            update_user(request.db, user['id'], profile)
             profileUpdated = True
     return {
         'success': True,
@@ -226,7 +225,7 @@ def create_team_action(request):
     # Create the team.
     now = datetime.utcnow()
     user_id = request.context.user_id
-    create_user_team(app.db, user_id, now)
+    create_user_team(request.db, user_id, now)
     # Ensure the user gets team credentials.
     reset_user_principals(request)
     return {'success': True}
@@ -245,12 +244,12 @@ def join_team_action(request):
             team_id = data['team_id']
     if team_id is None:
         code = data['code']
-        team_id = find_team_by_code(app.db, code)
+        team_id = find_team_by_code(request.db, code)
     if team_id is None:
         raise ApiError('unknown team code')
     user_id = request.context.user_id
     # Add the user to the team.
-    join_team(app.db, user_id, team_id, now=datetime.utcnow())
+    join_team(request.db, user_id, team_id, now=datetime.utcnow())
     # Ensure the user gets team credentials.
     reset_user_principals(request)
     return {'success': True}
@@ -258,11 +257,11 @@ def join_team_action(request):
 
 def leave_team_action(request):
     user_id = request.context.user_id
-    team_id = get_user_team_id(app.db, user_id)
+    team_id = get_user_team_id(request.db, user_id)
     # Remove the user from their current team.
-    leave_team(app.db, user_id=user_id, team_id=team_id)
+    leave_team(request.db, user_id=user_id, team_id=team_id)
     # Clear the user's access codes in all of the team's attempts.
-    clear_access_codes(app.db, user_id=user_id, team_id=team_id)
+    clear_access_codes(request.db, user_id=user_id, team_id=team_id)
     # Clear the user's team credentials.
     reset_user_principals(request)
     return {'success': True}
@@ -270,13 +269,13 @@ def leave_team_action(request):
 
 def update_team_action(request):
     user_id = request.context.user_id
-    user = load_user(app.db, user_id)
+    user = load_user(request.db, user_id)
     team_id = user['team_id']
     if team_id is None:
         raise ApiError('no team')
     # If the user is not an admin, they must be the team's creator.
     if request.by_admin:
-        if user_id != get_team_creator(app.db, team_id):
+        if user_id != get_team_creator(request.db, team_id):
             raise ApiError('not team creator')
         # The creator can only change some settings.
         allowed_keys = ['is_open']
@@ -285,28 +284,28 @@ def update_team_action(request):
     else:
         # Admins can change all settings.
         settings = request.json_body
-    update_team(app.db, team_id, settings)
+    update_team(request.db, team_id, settings)
     return {'success': True}
 
 
 def start_attempt_action(request):
     user_id = request.context.user_id
-    user = load_user(app.db, user_id)
+    user = load_user(request.db, user_id)
     team_id = user['team_id']
     if team_id is None:
         raise ApiError('no team')
-    start_attempt(app.db, team_id, now=datetime.utcnow())
+    start_attempt(request.db, team_id, now=datetime.utcnow())
     return {'success': True}
 
 
 def cancel_attempt_action(request):
     user_id = request.context.user_id
-    team_id = get_user_team_id(app.db, user_id)
-    attempt_id = get_user_current_attempt_id(app.db, user_id)
+    team_id = get_user_team_id(request.db, user_id)
+    attempt_id = get_user_current_attempt_id(request.db, user_id)
     if attempt_id is None:
         raise ApiError('no current attempt')
-    cancel_attempt(app.db, attempt_id)
-    reset_team_to_training_attempt(app.db, team_id, now=datetime.utcnow())
+    cancel_attempt(request.db, attempt_id)
+    reset_team_to_training_attempt(request.db, team_id, now=datetime.utcnow())
     return {'success': True}
 
 
@@ -314,10 +313,10 @@ def enter_access_code_action(request):
     data = request.json_body
     code = data['code']
     user_id = request.context.user_id
-    attempt_id = get_user_current_attempt_id(app.db, user_id)
+    attempt_id = get_user_current_attempt_id(request.db, user_id)
     if attempt_id is None:
         raise ApiError('no current attempt')
-    success = unlock_access_code(app.db, attempt_id, user_id, code)
+    success = unlock_access_code(request.db, attempt_id, user_id, code)
     if not success:
         raise ApiError('unknown access code')
     return {'success': success}
@@ -325,24 +324,24 @@ def enter_access_code_action(request):
 
 def assign_attempt_task_action(request):
     user_id = request.context.user_id
-    attempt_id = get_user_current_attempt_id(app.db, user_id)
+    attempt_id = get_user_current_attempt_id(request.db, user_id)
     if attempt_id is None:
         raise ApiError('no current attempt')
     # This will fail if the team is invalid.
-    assign_task(app.db, attempt_id, now=datetime.utcnow())
+    assign_task(request.db, attempt_id, now=datetime.utcnow())
     return {'success': True}
 
 
 def get_hint_action(request):
     user_id = request.context.user_id
     query = request.json_body
-    success = get_user_task_hint(app.db, user_id, query)
+    success = get_user_task_hint(request.db, user_id, query)
     return {'success': success}
 
 
 def reset_hints_action(request):
     user_id = request.context.user_id
-    reset_user_task_hints(app.db, user_id)
+    reset_user_task_hints(request.db, user_id)
     return {'success': True}
 
 
@@ -354,7 +353,7 @@ def store_revision_action(request):
     workspace_id = getStr(query.get('workspace_id'))
     parent_id = getInt(query.get('parent_id'))
     revision_id = store_revision(
-        app.db, user_id, parent_id, title, state,
+        request.db, user_id, parent_id, title, state,
         now=datetime.utcnow(), workspace_id=workspace_id)
     return {'success': True, 'revision_id': revision_id}
 
@@ -363,7 +362,7 @@ def submit_user_attempt_answer_action(request):
     attempt_id = request.context.attempt_id
     submitter_id = request.context.user_id
     answer = grade_answer(
-        app.db, attempt_id, submitter_id, request.json_body,
+        request.db, attempt_id, submitter_id, request.json_body,
         now=datetime.utcnow())
     answer
     return {
