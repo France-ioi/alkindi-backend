@@ -56,10 +56,6 @@ def join_team(db, user_id, team_id, now):
     if not team['is_open']:
         # Team is closed (by its creator).
         raise ModelError('team is closed')
-    # If the team has already accessed a task (is_locked=True),
-    # verify that the team remains valid if the user is added.
-    if team['is_locked']:
-        validate_team(team, with_member=user, now=now)
     round_id = team['round_id']
     # Verify that the round is open for registration.
     if not is_round_registration_open(db, round_id, now):
@@ -77,6 +73,11 @@ def join_team(db, user_id, team_id, now):
                 .where(badges.symbol.in_(user_badges))
                 .where(badges.is_active))
         is_qualified = row is not None
+    # If the team has already accessed a task (is_locked=True),
+    # verify that the team remains valid if the user is added.
+    if team['is_locked']:
+        user['is_qualified'] = is_qualified
+        validate_team(db, team, with_member=user, now=now)
     # Create the team_members row.
     user_id = user['id']
     add_team_member(db, team_id, user_id, now=now, is_qualified=is_qualified)
