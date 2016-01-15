@@ -235,5 +235,5 @@ def validate_team(db, team, now, with_member=None, without_member=None):
         raise ModelError('team too small')
     if n_members > round_['max_team_size']:
         raise ModelError('team too large')
-    if n_qualified < (n_members + 1) * round_['min_team_ratio']:
+    if n_qualified < n_members * round_['min_team_ratio']:
         raise ModelError('not enough qualified members')
