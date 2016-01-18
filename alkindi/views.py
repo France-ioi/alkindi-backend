@@ -115,15 +115,16 @@ def view_team(db, team, round_=None):
     """ Return the user-view for a team.
     """
     members = load_team_members(db, team['id'], users=True)
-    creator = [m for m in members if m['is_creator']]
     result = {
         'id': team['id'],
         'code': team['code'],
         'is_open': team['is_open'],
         'is_locked': team['is_locked'],
-        'creator': creator[0]['user'],
         'members': members
     }
+    creators = [m for m in members if m['is_creator']]
+    if len(creator) > 0:
+        result['creator'] = creators[0]['user']
     if round_ is not None:
         causes = validate_members_for_round(members, round_)
         result['round_access'] = list(causes.keys())
