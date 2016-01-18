@@ -123,7 +123,7 @@ def view_team(db, team, round_=None):
         'members': members
     }
     creators = [m for m in members if m['is_creator']]
-    if len(creator) > 0:
+    if len(creators) > 0:
         result['creator'] = creators[0]['user']
     if round_ is not None:
         causes = validate_members_for_round(members, round_)
