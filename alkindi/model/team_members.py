@@ -221,15 +221,13 @@ def validate_team(db, team, now, with_member=None, without_member=None):
         tm_query.where(team_members.is_qualified)
         .fields(team_members.user_id))
     if with_member is not None:
+        n_members += 1
         if with_member['is_qualified']:
             n_qualified += 1
-        else:
-            n_members += 1
     if without_member is not None:
+        n_members -= 1
         if with_member['is_qualified']:
             n_qualified -= 1
-        else:
-            n_members -= 1
     round_ = load_round(db, team['round_id'], now)
     if n_members < round_['min_team_size']:
         raise ModelError('team too small')
