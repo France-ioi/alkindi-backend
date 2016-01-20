@@ -115,7 +115,7 @@ def start_attempt(db, team_id, now):
 def cancel_attempt(db, attempt_id):
     attempt = load_attempt(db, attempt_id)
     if attempt['started_at'] is not None:
-        raise 'cannot cancel started attempt'
+        raise ModelError('cannot cancel started attempt')
     attempts = db.tables.attempts
     query = db.query(attempts) \
         .where(attempts.id == attempt_id)
