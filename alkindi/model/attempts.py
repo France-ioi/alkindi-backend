@@ -113,7 +113,7 @@ def start_attempt(db, team_id, now):
 
 
 def cancel_attempt(db, attempt_id):
-    attempt = self.load_attempt(attempt_id)
+    attempt = load_attempt(db, attempt_id)
     if attempt['is_started']:
         raise 'cannot cancel started attempt'
     attempts = db.tables.attempts
