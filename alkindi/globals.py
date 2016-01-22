@@ -69,12 +69,17 @@ class Globals:
         return value
 
     def assets_pregenerator(self):
-        kw_override = json.loads(self.get('assets_pregenerator'), '{}')
+        cdn_dict = json.loads(self.get('assets_pregenerator', '{}'))
+        nocdn_dict = json.loads(self.get('nocdn_assets_pregenerator', '{}'))
 
         def pregenerator(request, elements, kwargs):
-            if 'nocdn' not in request.params:
+            if 'nocdn' in request.params:
                 kwargs = dict(kwargs)
-                for key, value in kw_override.items():
+                for key, value in nocdn_dict.items():
+                    kwargs[key] = value
+            else:
+                kwargs = dict(kwargs)
+                for key, value in cdn_dict.items():
                     kwargs[key] = value
             return elements, kwargs
 
