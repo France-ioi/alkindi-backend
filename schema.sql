@@ -297,13 +297,10 @@ CREATE INDEX ix_answers__submitter_id USING btree ON answers (submitter_id);
 ALTER TABLE answers ADD CONSTRAINT fk_answers__submitter_id
   FOREIGN KEY (submitter_id) REFERENCES users(id) ON DELETE CASCADE;
 
--- prod
-
---?
 ALTER TABLE attempts ADD COLUMN is_fully_solved BOOLEAN NOT NULL DEFAULT FALSE;
 
 
-ALTER TABLE attempts ADD COLUMN ordinal INT NOT NULL;
+ALTER TABLE attempts ADD COLUMN ordinal INT NOT NULL;;
 
 SET @ordinal := 0;
 SET @team_id := 0;
@@ -313,6 +310,36 @@ DELETE FROM attempts WHERE round_id = 1;
 
 ALTER TABLE attempts ADD UNIQUE INDEX ix_attempts__team_id_round_id_ordinal (team_id, round_id, ordinal) USING BTREE;
 
+ALTER TABLE answers ADD COLUMN is_full_solution BOOLEAN NOT NULL;
+ALTER TABLE answers ADD COLUMN feedback TEXT NOT NULL DEFAULT '';
+
 ---
 
-ALTER TABLE answers ADD COLUMN is_full_solution BOOLEAN NOT NULL;
+ALTER TABLE teams MODIFY COLUMN code TEXT NULL;
+ALTER TABLE teams ADD COLUMN score DECIMAL(6,0) NULL;
+ALTER TABLE rounds ADD COLUMN status TEXT NOT NULL;
+UPDATE rounds SET status = 'open';
+
+ALTER TABLE teams ADD COLUMN parent_id BIGINT NULL;
+CREATE INDEX ix_teams__parent_id USING btree ON teams (parent_id);
+ALTER TABLE teams ADD CONSTRAINT fk_teams__parent_id
+    FOREIGN KEY ix_teams__parent_id (parent_id) REFERENCES teams(id) ON DELETE SET NULL;
+
+ALTER TABLE rounds MODIFY COLUMN max_attempts INTEGER NULL;
+
+INSERT INTO rounds (
+  created_at, updated_at,
+  title,
+  min_team_size, max_team_size, min_team_ratio,
+  tasks_path, training_opens_at, registration_opens_at,
+  max_attempts, duration, max_answers,
+  status
+) VALUES (
+  NOW(), NOW(),
+  'Concours Alkindi 2015-2016 tour 3',
+  1, 4, 0.5,
+  '/home/alkindi/tasks/adfgx/INDEX',
+  '2016-01-25 07:00:00', '2016-01-23 19:00:00',
+  NULL, 60, NULL,
+  'prepared'
+);
