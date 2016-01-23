@@ -4,6 +4,7 @@ from datetime import timedelta
 from alkindi.errors import ModelError
 from alkindi.tasks import playfair
 from alkindi.model.teams import load_team
+from alkindi.model.rounds import load_round
 from alkindi.model.team_members import validate_team
 from alkindi.model.attempts import load_attempt, get_user_current_attempt_id
 from alkindi.model.workspaces import create_attempt_workspace
@@ -51,15 +52,13 @@ def assign_task(db, attempt_id, now):
     # Verify that the round is open for training (and implicily for
     # timed attempts).
     round_id = attempt['round_id']
-    rounds = db.tables.rounds
-    query = db.query(rounds) \
-        .where(rounds.id == round_id) \
-        .fields(rounds.tasks_path,
-                rounds.duration,
-                rounds.training_opens_at)
-    (tasks_path, duration, training_opens_at) = db.first(query)
-    if now < training_opens_at:
+    round_ = load_round(db, round_id, now=now)
+    if round_['status'] != 'open':
+        raise ModelError('round not open')
+    if now < round_['training_opens_at']:
         raise ModelError('training is not open')
+    tasks_path = round_['tasks_path']
+    duration = round_['duration']
     # Allocate a task that the team has never had, and associate it
     # with the attempt.
     task = get_new_team_task(db, tasks_path, team_id)
@@ -72,7 +71,6 @@ def assign_task(db, attempt_id, now):
         'team_data': db.dump_json(task['team_data']),
     }
     tasks = db.tables.tasks
-    query = db.query(tasks).insert(task_attrs)
     db.insert_row(tasks, task_attrs)
     attempt_attrs = {'started_at': now}
     if attempt['is_training']:

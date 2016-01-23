@@ -20,8 +20,10 @@ def grade_answer(db, attempt_id, submitter_id, data, now):
         get_attempt_latest_answer_infos(db, attempt_id, nth=2)
     # Fail if timed(not training) and there are more answers than
     # allowed.
-    round = load_round(db, attempt['round_id'], now)
-    max_answers = round['max_answers']
+    round_ = load_round(db, attempt['round_id'], now)
+    if round_['status'] != 'open':
+        raise ModelError('round not open')
+    max_answers = round_['max_answers']
     if (not is_training and max_answers is not None and
             prev_ordinal >= max_answers):
         raise ModelError('too many answers')

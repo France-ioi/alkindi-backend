@@ -4,8 +4,7 @@ from sqlbuilder.smartsql import func
 from alkindi.errors import ModelError
 from alkindi.model.teams import load_team
 from alkindi.model.rounds import load_round
-from alkindi.model.access_codes import (
-    generate_access_codes, load_access_codes, generate_access_code)
+from alkindi.model.access_codes import generate_access_codes
 
 
 # TODO: make (team_id, ordinal) the primary key (rather than a unique index).
@@ -102,6 +101,8 @@ def start_attempt(db, team_id, now):
         # Load the attempt's round.
         round_id = attempt['round_id']
         round_ = load_round(db, round_id, now=now)
+        if round_['status'] != 'open':
+            raise ModelError('round not open')
         # Limit the number of timed attempts.
         n_attempts = count_team_timed_attempts(db, team_id)
         if n_attempts == round_['max_attempts']:
@@ -233,6 +234,9 @@ def create_attempt(db, team_id, now, is_training=True):
     team = load_team(db, team_id)
     # Get the team's current attempt.
     round_id = team['round_id']
+    round_ = load_round(db, round_id, now=now)
+    if round_['status'] != 'open':
+        raise ModelError('round not open')
     attempts = db.tables.attempts
     # Find the greatest attempt ordinal for the team.
     query = db.query(attempts) \
