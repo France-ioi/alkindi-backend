@@ -114,14 +114,10 @@ def view_user(user):
 def view_team(db, team, round_=None):
     """ Return the user-view for a team.
     """
+    keys = ['id', 'code', 'is_open', 'is_locked', 'score']
+    result = {key: team[key] for key in keys}
     members = load_team_members(db, team['id'], users=True)
-    result = {
-        'id': team['id'],
-        'code': team['code'],
-        'is_open': team['is_open'],
-        'is_locked': team['is_locked'],
-        'members': members
-    }
+    result['members'] = members
     creators = [m for m in members if m['is_creator']]
     if len(creators) > 0:
         result['creator'] = creators[0]['user']
