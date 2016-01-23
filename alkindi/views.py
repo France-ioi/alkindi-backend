@@ -175,7 +175,7 @@ def view_round(round_):
         'registration_opens_at', 'training_opens_at',
         'is_registration_open', 'is_training_open',
         'min_team_size', 'max_team_size', 'min_team_ratio',
-        'max_attempts', 'max_answers'
+        'max_attempts', 'max_answers', 'status'
     ]
     return {key: round_[key] for key in keys}
 
