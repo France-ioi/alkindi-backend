@@ -78,14 +78,21 @@ def get_attempt_team_id(db, attempt_id):
 
 
 def start_attempt(db, team_id, now):
+    # Load the team's round.
+    team = load_team(db, team_id)
+    round_ = load_round(db, team['round_id'], now=now)
+    if round_['status'] != 'open':
+        raise ModelError('round not open')
     attempt_id = get_team_current_attempt_id(db, team_id)
     if attempt_id is None:
-        # Create a training attempt.
-        # The team is not locked at this time and can still be
-        # changed (which requires creating an access code when
-        # a new member joins the team, and deleting an access
-        # code when a user leaves the team).
-        create_attempt(db, team_id, now=now, is_training=True)
+        # Create the initial attempt (which may or may not be a training
+        # attempt, depending on the round's options).
+        # The team is not locked at this time and may still be changed
+        # (depending on round options).  This requires adding an access
+        # code when a new member joins the team, and deleting an access
+        # code when a member leaves the team.
+        is_training = round_['have_training_attempt']
+        create_attempt(db, team, round_, now=now, is_training=is_training)
     else:
         attempt = load_attempt(db, attempt_id, now=now)
         if attempt['is_training']:
@@ -98,11 +105,6 @@ def start_attempt(db, team_id, now):
             # only if completed.
             if not attempt['is_completed']:
                 raise ModelError('timed attempt in progress')
-        # Load the attempt's round.
-        round_id = attempt['round_id']
-        round_ = load_round(db, round_id, now=now)
-        if round_['status'] != 'open':
-            raise ModelError('round not open')
         # Limit the number of timed attempts.
         n_attempts = count_team_timed_attempts(db, team_id)
         if n_attempts == round_['max_attempts']:
@@ -110,7 +112,7 @@ def start_attempt(db, team_id, now):
         # Reset the is_current flag on the current attempt.
         set_attempt_not_current(db, attempt['id'])
         # Create a timed attempt.
-        create_attempt(db, team_id, now=now, is_training=False)
+        create_attempt(db, team, round_, now=now, is_training=False)
 
 
 def cancel_attempt(db, attempt_id):
@@ -230,25 +232,21 @@ def is_attempt_completed(db, attempt, now):
         return is_fully_solved or is_closed
 
 
-def create_attempt(db, team_id, now, is_training=True):
-    team = load_team(db, team_id)
-    # Get the team's current attempt.
-    round_id = team['round_id']
-    round_ = load_round(db, round_id, now=now)
+def create_attempt(db, team, round_, now, is_training=True):
     if round_['status'] != 'open':
         raise ModelError('round not open')
     attempts = db.tables.attempts
     # Find the greatest attempt ordinal for the team.
     query = db.query(attempts) \
-        .where(attempts.team_id == team_id) \
+        .where(attempts.team_id == team['id']) \
         .order_by(attempts.ordinal.desc()) \
         .fields(attempts.ordinal)
     row = db.first(query)
     ordinal = 0 if row is None else (row[0] + 1)
     attempt_id = db.insert_row(attempts, {
-        'team_id': team_id,
+        'team_id': team['id'],
         'ordinal': ordinal,
-        'round_id': round_id,
+        'round_id': round_['id'],
         'created_at': now,
         'started_at': None,   # set when enough codes have been entered
         'closes_at': None,    # set when task is accessed
@@ -256,5 +254,5 @@ def create_attempt(db, team_id, now, is_training=True):
         'is_training': is_training,
         'is_unsolved': True
     })
-    generate_access_codes(db, team_id, attempt_id)
+    generate_access_codes(db, team['id'], attempt_id)
     return attempt_id

@@ -171,7 +171,7 @@ def view_round(round_):
         'registration_opens_at', 'training_opens_at',
         'is_registration_open', 'is_training_open',
         'min_team_size', 'max_team_size', 'min_team_ratio',
-        'max_attempts', 'max_answers', 'status'
+        'max_attempts', 'max_answers', 'status', 'allow_team_changes'
     ]
     return {key: round_[key] for key in keys}
 
@@ -237,13 +237,21 @@ def view_round_attempts(round_, attempts):
         views.append(view_attempt(attempt))
         openNext = attempt['is_completed']
     if len(views) == 0:
-        views.append({
-            'ordinal': 0, 'is_current': True, 'is_training': True})
-    while len(views) <= round_['max_attempts']:
+        if round_['have_training_attempt']:
+            views.append({
+                'ordinal': 0, 'is_current': True, 'is_training': True})
+        else:
+            openNext = True
+    if round_['max_attempts'] is None:
         views.append({
             'ordinal': len(views), 'is_unsolved': True,
-            'is_current': openNext, 'duration': 60})  # XXX
-        openNext = False
+            'is_current': openNext, 'duration': 60})
+    else:
+        while len(views) <= round_['max_attempts']:
+            views.append({
+                'ordinal': len(views), 'is_unsolved': True,
+                'is_current': openNext, 'duration': 60})  # XXX
+            openNext = False
     while not views[0]['is_current']:
         views = views[1:] + views[:1]
     return views

@@ -2,8 +2,7 @@
 from alkindi.errors import ModelError
 from alkindi.model.users import load_user, set_user_team_id
 from alkindi.model.teams import load_team, create_empty_team
-from alkindi.model.rounds import (
-    load_round, find_round_ids_with_badges, is_round_registration_open)
+from alkindi.model.rounds import load_round, find_round_ids_with_badges
 
 
 def create_user_team(db, user_id, now):
@@ -57,8 +56,9 @@ def join_team(db, user_id, team_id, now):
         # Team is closed (by its creator).
         raise ModelError('team is closed')
     round_id = team['round_id']
+    round_ = load_round(round_id, now=now)
     # Verify that the round is open for registration.
-    if not is_round_registration_open(db, round_id, now):
+    if not round_['is_registration_open']:
         raise ModelError('registration is closed')
     # Look up the badges that grant access to the team's round, to
     # figure out whether the user is qualified for that round.
@@ -76,8 +76,11 @@ def join_team(db, user_id, team_id, now):
     # If the team has already accessed a task (is_locked=True),
     # verify that the team remains valid if the user is added.
     if team['is_locked']:
-        user['is_qualified'] = is_qualified
-        validate_team(db, team, with_member=user, now=now)
+        if round_['allow_team_changes']:
+            user['is_qualified'] = is_qualified
+            validate_team(db, team, with_member=user, now=now)
+        else:
+            raise ModelError('team is locked')
     # Create the team_members row.
     user_id = user['id']
     add_team_member(db, team_id, user_id, now=now, is_qualified=is_qualified)
@@ -228,7 +231,7 @@ def validate_team(db, team, now, with_member=None, without_member=None):
         n_members -= 1
         if with_member['is_qualified']:
             n_qualified -= 1
-    round_ = load_round(db, team['round_id'], now)
+    round_ = load_round(db, team['round_id'], now=now)
     if n_members < round_['min_team_size']:
         raise ModelError('team too small')
     if n_members > round_['max_team_size']:

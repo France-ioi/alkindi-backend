@@ -313,8 +313,6 @@ ALTER TABLE attempts ADD UNIQUE INDEX ix_attempts__team_id_round_id_ordinal (tea
 ALTER TABLE answers ADD COLUMN is_full_solution BOOLEAN NOT NULL;
 ALTER TABLE answers ADD COLUMN feedback TEXT NOT NULL DEFAULT '';
 
----
-
 ALTER TABLE teams MODIFY COLUMN code TEXT NULL;
 ALTER TABLE teams ADD COLUMN score DECIMAL(6,0) NULL;
 ALTER TABLE rounds ADD COLUMN status TEXT NOT NULL;
@@ -343,3 +341,16 @@ INSERT INTO rounds (
   NULL, 60, NULL,
   'prepared'
 );
+
+---
+
+ALTER TABLE rounds ADD COLUMN allow_team_changes BOOLEAN NOT NULL;
+ALTER TABLE rounds ADD COLUMN have_training_attempt BOOLEAN NOT NULL;
+ALTER TABLE rounds ADD COLUMN task_module TEXT NOT NULL;
+UPDATE rounds SET allow_team_changes = 1 WHERE id = 2;
+UPDATE rounds SET have_training_attempt = 1 WHERE id = 2;
+UPDATE rounds SET task_module = 'alkindi.tasks.playfair' WHERE id = 2;
+
+UPDATE rounds SET training_opens_at = now() WHERE id = 3;
+UPDATE rounds SET training_opens_at = '2016-01-25 07:00:00' where id = 3;
+UPDATE rounds SET task_module = 'alkindi.tasks.adfgx' WHERE id = 3;

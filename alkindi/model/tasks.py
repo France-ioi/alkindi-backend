@@ -2,7 +2,6 @@
 from datetime import timedelta
 
 from alkindi.errors import ModelError
-from alkindi.tasks import playfair
 from alkindi.model.teams import load_team
 from alkindi.model.rounds import load_round
 from alkindi.model.team_members import validate_team
@@ -10,12 +9,13 @@ from alkindi.model.attempts import load_attempt, get_user_current_attempt_id
 from alkindi.model.workspaces import create_attempt_workspace
 
 
-def load_task(db, attempt_id):
+def load_task(db, attempt_id, for_update=False):
     keys = [
         'attempt_id', 'created_at', 'full_data', 'team_data', 'score'
     ]
     tasks = db.tables.tasks
-    result = db.load_row(tasks, attempt_id, keys, key='attempt_id')
+    result = db.load_row(
+        tasks, attempt_id, keys, key='attempt_id', for_update=for_update)
     for key in ['full_data', 'team_data']:
         result[key] = db.load_json(result[key])
     return result
@@ -44,10 +44,12 @@ def assign_task(db, attempt_id, now):
     attempt = load_attempt(db, attempt_id, now=now)
     if attempt['started_at'] is not None:
         return ModelError('already have a task')
+    print('\033[95massign_task\033[0m 1')
     team_id = attempt['team_id']
     # The team must be valid to obtain a task.
     team = load_team(db, team_id, for_update=True)
     validate_team(db, team, now=now)
+    print('\033[95massign_task\033[0m 2')
     # TODO: check number of access codes entered
     # Verify that the round is open for training (and implicily for
     # timed attempts).
@@ -55,13 +57,15 @@ def assign_task(db, attempt_id, now):
     round_ = load_round(db, round_id, now=now)
     if round_['status'] != 'open':
         raise ModelError('round not open')
+    print('\033[95massign_task\033[0m 3')
     if now < round_['training_opens_at']:
         raise ModelError('training is not open')
-    tasks_path = round_['tasks_path']
+    print('\033[95massign_task\033[0m 4')
     duration = round_['duration']
     # Allocate a task that the team has never had, and associate it
     # with the attempt.
-    task = get_new_team_task(db, tasks_path, team_id)
+    task = get_new_team_task(db, round_, team_id)
+    print('\033[95massign_task\033[0m 5')
     task_attrs = {
         'attempt_id': attempt_id,
         'created_at': now,
@@ -80,26 +84,30 @@ def assign_task(db, attempt_id, now):
     else:
         # Set the closing time on the attempt.
         attempt_attrs['closes_at'] = now + timedelta(minutes=duration)
+    print('\033[95massign_task\033[0m 6')
     attempts = db.tables.attempts
     db.update_row(attempts, attempt_id, attempt_attrs)
     # Create the team's workspace.
     create_attempt_workspace(db, attempt_id, now)
+    print('\033[95massign_task\033[0m 7')
 
 
 def get_user_task_hint(db, user_id, query):
     attempt_id = get_user_current_attempt_id(db, user_id)
     if attempt_id is None:
         raise ModelError('no current attempt')
-    task = load_task(db, attempt_id)
+    task = load_task(db, attempt_id, for_update=True)
     if task is None:
         raise ModelError('no task')
+    task_module = get_attempt_task_module(db, attempt_id)
     # get_hint updates task in-place
-    success = playfair.get_hint(task, query)
+    success = task_module.get_hint(task, query)
     if not success:
         return False
+    score = task_module.get_current_score(task)
     tasks = db.tables.tasks
     db.update_row(tasks, attempt_id, {
-        'score': task['score'],
+        'score': score,
         'team_data': db.dump_json(task['team_data'])
     }, key='attempt_id')
     return True
@@ -109,17 +117,19 @@ def reset_user_task_hints(db, user_id):
     attempt_id = get_user_current_attempt_id(db, user_id)
     if attempt_id is None:
         raise ModelError('no current attempt')
-    attempt = load_attempt(db, attempt_id)
+    attempt = load_attempt(db, attempt_id, for_update=True)
     if not attempt['is_training']:
         raise ModelError('forbidden')
     task = load_task(db, attempt_id)
     if task is None:
         raise ModelError('no task')
     # reset_hints updates task in-place
-    playfair.reset_hints(task)
+    task_module = get_attempt_task_module(db, attempt_id)
+    task_module.reset_hints(task)
+    score = task_module.get_current_score(task)
     tasks = db.tables.tasks
     db.update_row(tasks, attempt_id, {
-        'score': task['score'],
+        'score': score,
         'team_data': db.dump_json(task['team_data'])
     }, key='attempt_id')
 
@@ -128,11 +138,29 @@ def reset_user_task_hints(db, user_id):
 # Functions below this point are used within this file only.
 #
 
-def get_new_team_task(db, tasks_path, team_id):
+def get_round_task_module(round_):
+    try:
+        __import__(round_['task_module'])
+    except ImportError:
+        raise ModelError('task module not found')
+
+
+def get_attempt_task_module(db, attempt_id):
+    attempt = load_attempt(db, attempt_id)
+    round_ = load_round(db, attempt['round_id'])
+    return get_round_task_module(round_)
+
+
+def get_new_team_task(db, round_, team_id):
     tasks = db.tables.tasks
     attempts = db.tables.attempts
-    for i in range(0, 15):
-        task = playfair.get_task(tasks_path)
+    tasks_path = round_['tasks_path']
+    # XXX better to load task_dir for all of the team's tasks, and
+    #     generate until we obtain a new one
+    # XXX lock the tasks table?
+    task_module = get_round_task_module(round_)
+    for i in range(0, 15):  # XXX hard-wired number of tries
+        task = task_module.get_task(tasks_path)
         task_dir = task['task_dir']
         query = db.query(tasks & attempts) \
             .where(tasks.attempt_id == attempts.id) \
@@ -141,22 +169,35 @@ def get_new_team_task(db, tasks_path, team_id):
             .fields(tasks.attempt_id)
         row = db.first(query)
         if row is None:
+            task['score'] = task_module.get_current_score(task)
             return task
+    raise ModelError('task pool exhausted')
 
 
-def fix_tasks(db):
+def fix_tasks(db, round_id):
+    """ This function can be used to fix all the tasks assigned for a
+        given round.  It calls the task module's fix_task function on
+        each task, and updates the tasks for which fix_task returns True.
+    """
+    round_ = load_round(db, round_id)
+    task_module = get_round_task_module(round_)
     keys = [
         'attempt_id', 'created_at', 'full_data', 'team_data', 'score'
     ]
     tasks = db.tables.tasks
-    query = db.query(tasks)
-    query = query.fields(*[getattr(tasks, key) for key in keys])
+    attempts = db.tables.tasks
+    query = (
+        db.query(
+            (tasks & attempts)
+            .on(tasks.attempt_id == attempts.id))
+        .where(attempts.round_id == round_id)
+        .fields(*[getattr(tasks, key) for key in keys]))
     count = 0
     for row in list(db.all(query)):
         task = {key: row[i] for i, key in enumerate(keys)}
         for key in ['full_data', 'team_data']:
             task[key] = db.load_json(task[key])
-        if playfair.fix_task(task):
+        if task_module.fix_task(task):
             count += 1
             for key in ['full_data', 'team_data']:
                 task[key] = db.dump_json(task[key])
