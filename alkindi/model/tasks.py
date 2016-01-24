@@ -1,5 +1,6 @@
 
 from datetime import timedelta
+from importlib import import_module
 
 from alkindi.errors import ModelError
 from alkindi.model.teams import load_team
@@ -140,7 +141,7 @@ def reset_user_task_hints(db, user_id):
 
 def get_round_task_module(round_):
     try:
-        __import__(round_['task_module'])
+        return import_module(round_['task_module'])
     except ImportError:
         raise ModelError('task module not found')
 

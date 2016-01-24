@@ -92,7 +92,7 @@ def view_requesting_user(db, user_id):
         task = None
     if task is not None:
         view['task'] = task
-        view['task']['url'] = round_['task_url']
+        view['task']['front'] = round_['task_front']
         current_attempt_view['has_task'] = True
         # Give the user the id of their latest revision for the
         # current attempt, to be loaded into the crypto tab on

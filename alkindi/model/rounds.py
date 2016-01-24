@@ -6,7 +6,7 @@ def load_round(db, round_id, now=None):
         'min_team_size', 'max_team_size', 'min_team_ratio',
         'max_attempts', 'max_answers', 'duration',
         'status', 'allow_team_changes', 'have_training_attempt',
-        'tasks_path', 'task_module', 'task_url'
+        'tasks_path', 'task_module', 'task_url', 'task_front'
     ]
     row = db.load_row(db.tables.rounds, round_id, keys)
     bool_cols = ['allow_team_changes', 'have_training_attempt']

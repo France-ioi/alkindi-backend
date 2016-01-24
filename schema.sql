@@ -354,3 +354,9 @@ UPDATE rounds SET task_module = 'alkindi.tasks.playfair' WHERE id = 2;
 UPDATE rounds SET training_opens_at = now() WHERE id = 3;
 UPDATE rounds SET training_opens_at = '2016-01-25 07:00:00' where id = 3;
 UPDATE rounds SET task_module = 'alkindi.tasks.adfgx' WHERE id = 3;
+
+UPDATE rounds SET status = 'open' WHERE id = 3;
+
+ALTER TABLE rounds ADD COLUMN task_front TEXT NOT NULL;
+UPDATE rounds SET task_front = 'playfair' WHERE id = 1;
+UPDATE rounds SET task_front = 'adfgx' WHERE id = 3;
