@@ -234,7 +234,7 @@ def view_round_attempts(round_, attempts):
     openNext = False
     views = []
     for attempt in attempts:
-        views.append(view_attempt(attempt))
+        views.append(view_attempt(attempt, round_))
         openNext = attempt['is_completed']
     if len(views) == 0:
         if round_['have_training_attempt']:
@@ -245,12 +245,12 @@ def view_round_attempts(round_, attempts):
     if round_['max_attempts'] is None:
         views.append({
             'ordinal': len(views), 'is_unsolved': True,
-            'is_current': openNext, 'duration': 60})
+            'is_current': openNext, 'duration': round_['duration']})
     else:
         while len(views) <= round_['max_attempts']:
             views.append({
                 'ordinal': len(views), 'is_unsolved': True,
-                'is_current': openNext, 'duration': 60})  # XXX
+                'is_current': openNext, 'duration': round_['duration']})
             openNext = False
     while not views[0]['is_current']:
         views = views[1:] + views[:1]
@@ -269,7 +269,7 @@ def view_answers(db, answers):
     }
 
 
-def view_attempt(attempt):
+def view_attempt(attempt, round_):
     keys = [
         'id', 'ordinal', 'created_at', 'started_at', 'closes_at',
         'is_current', 'is_training', 'is_unsolved', 'is_fully_solved',
@@ -277,5 +277,5 @@ def view_attempt(attempt):
     ]
     view = {key: attempt[key] for key in keys}
     if not attempt['is_training']:
-        view['duration'] = 60
+        view['duration'] = round_['duration']
     return view
