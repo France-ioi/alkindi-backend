@@ -2,10 +2,9 @@
 from datetime import timedelta
 
 from alkindi.errors import ModelError
-from alkindi.tasks import playfair
 from alkindi.model.attempts import load_attempt, update_attempt_with_grading
 from alkindi.model.rounds import load_round
-from alkindi.model.tasks import load_task
+from alkindi.model.tasks import load_task, get_round_task_module
 
 
 def grade_answer(db, attempt_id, submitter_id, data, now):
@@ -34,7 +33,8 @@ def grade_answer(db, attempt_id, submitter_id, data, now):
     ordinal = prev_ordinal + 1
     # Perform grading.
     task = load_task(db, attempt_id)
-    grading = playfair.grade(task, data)
+    task_module = get_round_task_module(round_)
+    grading = task_module.grade(task, data)
     if grading is None:
         raise ModelError('invalid input')
     update_attempt_with_grading(db, attempt_id, grading)
@@ -81,7 +81,7 @@ def load_limited_attempt_answers(db, attempt_id):
     answers = db.tables.answers
     cols = [
         'id', 'submitter_id', 'ordinal', 'created_at', 'answer',
-        'score', 'is_solution'
+        'score', 'is_solution', 'is_full_solution'
     ]
     query = db.query(answers) \
         .where(answers.attempt_id == attempt_id) \
