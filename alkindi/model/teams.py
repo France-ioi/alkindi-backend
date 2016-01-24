@@ -7,7 +7,7 @@ def load_team(db, team_id, for_update=False):
         return None
     keys = [
         'id', 'revision', 'created_at', 'round_id', 'code',
-        'is_open', 'is_locked', 'message', 'score'
+        'is_open', 'is_locked', 'message', 'score', 'parent_id'
     ]
     result = db.load_row(db.tables.teams, team_id, keys,
                          for_update=True)
