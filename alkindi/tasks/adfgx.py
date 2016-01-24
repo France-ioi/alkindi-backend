@@ -4,6 +4,9 @@ import re
 from unidecode import unidecode
 from decimal import Decimal
 
+__all__ = ['get_task', 'get_hint', 'get_current_score', 'grade']
+
+
 INITIAL_SCORE = 1000
 ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVXYZ'
 
