@@ -45,12 +45,10 @@ def assign_task(db, attempt_id, now):
     attempt = load_attempt(db, attempt_id, now=now)
     if attempt['started_at'] is not None:
         return ModelError('already have a task')
-    print('\033[95massign_task\033[0m 1')
     team_id = attempt['team_id']
     # The team must be valid to obtain a task.
     team = load_team(db, team_id, for_update=True)
     validate_team(db, team, now=now)
-    print('\033[95massign_task\033[0m 2')
     # TODO: check number of access codes entered
     # Verify that the round is open for training (and implicily for
     # timed attempts).
@@ -58,15 +56,12 @@ def assign_task(db, attempt_id, now):
     round_ = load_round(db, round_id, now=now)
     if round_['status'] != 'open':
         raise ModelError('round not open')
-    print('\033[95massign_task\033[0m 3')
     if now < round_['training_opens_at']:
         raise ModelError('training is not open')
-    print('\033[95massign_task\033[0m 4')
     duration = round_['duration']
     # Allocate a task that the team has never had, and associate it
     # with the attempt.
     task = get_new_team_task(db, round_, team_id)
-    print('\033[95massign_task\033[0m 5')
     task_attrs = {
         'attempt_id': attempt_id,
         'created_at': now,
@@ -85,12 +80,10 @@ def assign_task(db, attempt_id, now):
     else:
         # Set the closing time on the attempt.
         attempt_attrs['closes_at'] = now + timedelta(minutes=duration)
-    print('\033[95massign_task\033[0m 6')
     attempts = db.tables.attempts
     db.update_row(attempts, attempt_id, attempt_attrs)
     # Create the team's workspace.
     create_attempt_workspace(db, attempt_id, now)
-    print('\033[95massign_task\033[0m 7')
 
 
 def get_user_task_hint(db, user_id, query):
