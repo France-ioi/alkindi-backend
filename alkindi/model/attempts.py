@@ -22,13 +22,14 @@ def get_user_current_attempt_id(db, user_id):
     return None if row is None else row[0]
 
 
-def load_attempt(db, attempt_id, now=None):
+def load_attempt(db, attempt_id, now=None, for_update=False):
     keys = [
         'id', 'team_id', 'round_id',
         'created_at', 'started_at', 'closes_at',
         'is_current', 'is_training', 'is_unsolved', 'is_fully_solved'
     ]
-    row = db.load_row(db.tables.attempts, attempt_id, keys)
+    row = db.load_row(
+        db.tables.attempts, attempt_id, keys, for_update=for_update)
     bool_cols = [
         'is_current', 'is_training', 'is_unsolved', 'is_fully_solved']
     for key in bool_cols:
