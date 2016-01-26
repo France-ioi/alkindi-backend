@@ -107,12 +107,12 @@ def get_user_task_hint(db, user_id, query):
     return True
 
 
-def reset_user_task_hints(db, user_id):
+def reset_user_task_hints(db, user_id, force=False):
     attempt_id = get_user_current_attempt_id(db, user_id)
-    if attempt_id is None:
+    if not force and attempt_id is None:
         raise ModelError('no current attempt')
     attempt = load_attempt(db, attempt_id, for_update=True)
-    if not attempt['is_training']:
+    if not force and not attempt['is_training']:
         raise ModelError('forbidden')
     task = load_task(db, attempt_id)
     if task is None:
