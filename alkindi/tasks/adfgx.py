@@ -76,7 +76,7 @@ def empty_permutation(permutation):
 
 def read_grid(lines):
     return [
-        [ALPHABET.index(cell) for cell in line.split(' ')]
+        [ALPHABET.index(cell) for cell in line.strip().split(' ')]
         for line in lines[-5:]
     ]
 
