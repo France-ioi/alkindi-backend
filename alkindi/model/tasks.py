@@ -145,7 +145,7 @@ def get_attempt_task_module(db, attempt_id):
     return get_round_task_module(round_)
 
 
-def get_new_team_task(db, round_, team_id):
+def get_new_team_task(db, round_, team_id):  # XXX team/round
     tasks = db.tables.tasks
     attempts = db.tables.attempts
     tasks_path = round_['tasks_path']

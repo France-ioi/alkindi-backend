@@ -22,7 +22,7 @@ def create_user_team(db, user_id, now):
         # one that has the greatest id.  This is unsatisfactory.
         pass
     round_id = round_ids[0]
-    team_id = create_empty_team(db, round_id, now)
+    team_id = create_empty_team(db, round_id, now)  # XXX team/round
     # Create the team_members row.
     add_team_member(
         db, team_id, user_id, now=now,
@@ -45,6 +45,7 @@ def join_team(db, user_id, team_id, now):
         Registration for the team's round must be open.
         Return a boolean indicating if the team member was added.
     """
+    # XXX team/round
     # Verify that the user does not already belong to a team.
     user = load_user(db, user_id, for_update=True)
     if user['team_id'] is not None:
@@ -109,6 +110,7 @@ def leave_team(db, user_id, team_id):
     if team['is_locked']:
         # We could allow a user to leave the team even when it is
         # locked, with code like this instead of raising an error:
+        #     XXX team/round
         #     validate_team(db, team, round_, without_member=user, now=now)
         raise ModelError('team is locked')
     # Clear the user's team_id.
@@ -215,6 +217,7 @@ def validate_team(db, team, now, with_member=None, without_member=None):
     """ Raise an exception if the team is invalid for the round.
         If with_member is a user, check with the user added the team.
     """
+    # XXX team/round
     team_members = db.tables.team_members
     tm_query = db.query(team_members) \
         .where(team_members.team_id == team['id'])

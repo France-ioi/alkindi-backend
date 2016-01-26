@@ -52,7 +52,7 @@ def view_requesting_user(db, user_id):
 
     # Load round, team, members.
     team = load_team(db, team_id)
-    round_ = load_round(db, team['round_id'], now)
+    round_ = load_round(db, team['round_id'], now)  # XXX team/round
     view['team'] = view_team(db, team, round_)
     view['round'] = view_round(round_)
 
@@ -60,7 +60,7 @@ def view_requesting_user(db, user_id):
     if view['team']['is_invalid']:
         return view
 
-    attempts = load_team_attempts(db, team_id, now)
+    attempts = load_team_attempts(db, team_id, now)  # XXX team/round
     view['attempts'] = view_round_attempts(round_, attempts)
     # Find the team's current attempt, and the current attempt's view.
     current_attempt = None
@@ -111,7 +111,7 @@ def view_user(user):
     return {key: user[key] for key in keys}
 
 
-def view_team(db, team, round_=None):
+def view_team(db, team, round_=None):  # XXX team/round
     """ Return the user-view for a team.
     """
     keys = ['id', 'code', 'is_open', 'is_locked', 'score', 'parent_id']

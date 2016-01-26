@@ -81,7 +81,7 @@ def get_attempt_team_id(db, attempt_id):
 def start_attempt(db, team_id, now):
     # Load the team's round.
     team = load_team(db, team_id)
-    round_ = load_round(db, team['round_id'], now=now)
+    round_ = load_round(db, team['round_id'], now=now)  # XXX team/round
     if round_['status'] != 'open':
         raise ModelError('round not open')
     attempt_id = get_team_current_attempt_id(db, team_id)
@@ -128,7 +128,7 @@ def cancel_attempt(db, attempt_id):
 
 def reset_team_to_training_attempt(db, team_id, now):
     team = load_team(db, team_id)
-    round_id = team['round_id']
+    round_id = team['round_id']  # XXX team/round
     attempt_id = get_team_current_attempt_id(db, team_id)
     if attempt_id is not None:
         attempt = load_attempt(db, attempt_id)
@@ -233,7 +233,7 @@ def is_attempt_completed(db, attempt, now):
         return is_fully_solved or is_closed
 
 
-def create_attempt(db, team, round_, now, is_training=True):
+def create_attempt(db, team, round_, now, is_training=True):  # XXX team/round
     if round_['status'] != 'open':
         raise ModelError('round not open')
     attempts = db.tables.attempts
