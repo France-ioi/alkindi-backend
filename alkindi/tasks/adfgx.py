@@ -188,6 +188,7 @@ def reset_hints(task):
     team_data = task['team_data']
     team_data['substitution_grid'] = empty_grid(team_data['substitution_grid'])
     team_data['permutation'] = empty_permutation(team_data['permutation'])
+    team_data['hint_queries'] = []
 
 
 def canon_input(input):
