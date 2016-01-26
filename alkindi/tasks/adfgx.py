@@ -1,6 +1,7 @@
 import os
 import random
 import re
+from datetime import datetime
 from unidecode import unidecode
 from decimal import Decimal
 
@@ -84,8 +85,102 @@ def empty_grid(grid):
     return [[None for cell in row] for row in grid]
 
 
+def find_in_grid(grid, value):
+    for row, row_cells in enumerate(grid):
+        for col, cell in enumerate(row_cells):
+            if cell == value:
+                return (row, col)
+    return (None, None)
+
+
+def get_subst_decipher_hint(task, row, col):
+    dst_hints = task['team_data']['substitution_grid']
+    if dst_hints[row][col] is not None:
+        return False
+    src_hints = task['full_data']['substitution_grid']
+    dst_hints[row][col] = src_hints[row][col]
+    return True
+
+
+def get_subst_cipher_hint(task, rank):
+    src_hints = task['full_data']['substitution_grid']
+    dst_hints = task['team_data']['substitution_grid']
+    row, col = find_in_grid(src_hints, rank)
+    if dst_hints[row][col] is not None:
+        return True
+    dst_hints[row][col] = src_hints[row][col]
+    return True
+
+
+def get_perm_decipher_hint(task, line):
+    dst_hints = task['team_data']['permutation']
+    if dst_hints[line] is not None:
+        return False
+    src_hints = task['full_data']['permutation']
+    dst_hints[line] = src_hints[line]
+    return True
+
+
+def get_perm_cipher_hint(task, line):
+    src_hints = task['full_data']['permutation']
+    inv_line = src_hints.index(line)
+    dst_hints = task['team_data']['permutation']
+    if dst_hints[inv_line] is not None:
+        return False
+    dst_hints[inv_line] = src_hints[inv_line]
+    return True
+
+
+def get_current_score(task):
+    team_data = task['team_data']
+    score = INITIAL_SCORE
+    if 'hint_queries' not in team_data:
+        return score
+    for query in team_data['hint_queries']:
+        score -= get_hint_cost(query)
+    return score
+
+
+def get_hint_cost(query):
+    if query['type'] == 'subst-decipher':
+        return 35
+    elif query['type'] == 'subst-cipher':
+        return 50
+    elif query['type'] == 'perm-decipher':
+        return 200
+    elif query['type'] == 'perm-cipher':
+        return 200
+    else:
+        return (INITIAL_SCORE + 1)
+
+
+def save_hint_query(task, query):
+    team_data = task['team_data']
+    if 'hint_queries' not in team_data:
+        team_data['hint_queries'] = []
+    query['submitted_at'] = datetime.utcnow().isoformat()
+    team_data['hint_queries'].append(query)
+
+
 def get_hint(task, query):
-    # TODO
+    score = get_current_score(task)
+    cost = get_hint_cost(query)
+    if cost > score:
+        return False
+    save_hint_query(task, query)
+    if query['type'] == 'subst-decipher':
+        row = int(query['row'])
+        col = int(query['col'])
+        return get_subst_decipher_hint(task, row, col)
+    if query['type'] == 'subst-cipher':
+        rank = int(query['rank'])
+        return get_subst_cipher_hint(task, rank)
+    if query['type'] == 'perm-decipher':
+        line = int(query['line'])
+        return get_perm_decipher_hint(task, line)
+    if query['type'] == 'perm-cipher':
+        line = int(query['line'])
+        return get_perm_cipher_hint(task, line)
     return False
 
 
@@ -102,21 +197,6 @@ def canon_input(input):
     input = re.sub('[^0-9A-Z]*', '', input)
     input = re.sub('W', 'V', input)
     return input
-
-
-def get_current_score(task):
-    team_data = task['team_data']
-    substitution_grid = team_data['substitution_grid']
-    permutation = team_data['permutation']
-    n_hints = 0
-    for row in substitution_grid:
-        for cell in row:
-            if cell is not None:
-                n_hints += 1
-    for cell in permutation:
-        if cell is not None:
-            n_hints += 1
-    return max(0, INITIAL_SCORE - (n_hints * 300))
 
 
 def grade(task, data):
@@ -161,6 +241,7 @@ def grade(task, data):
         'hints': {
             'substitution_grid': team_data['substitution_grid'],
             'permutation': team_data['permutation'],
+            'hint_queries': team_data.get('hint_queries')
         },
         'feedback': {
             'city': city_equal == Decimal(1),
