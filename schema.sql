@@ -342,8 +342,6 @@ INSERT INTO rounds (
   'prepared'
 );
 
----
-
 ALTER TABLE rounds ADD COLUMN allow_team_changes BOOLEAN NOT NULL;
 ALTER TABLE rounds ADD COLUMN have_training_attempt BOOLEAN NOT NULL;
 ALTER TABLE rounds ADD COLUMN task_module TEXT NOT NULL;
@@ -360,3 +358,111 @@ UPDATE rounds SET status = 'open' WHERE id = 3;
 ALTER TABLE rounds ADD COLUMN task_front TEXT NOT NULL;
 UPDATE rounds SET task_front = 'playfair' WHERE id = 1;
 UPDATE rounds SET task_front = 'adfgx' WHERE id = 3;
+
+---
+
+# Delete round 1 (test round) attempts.
+DELETE FROM attempts WHERE round_id = 1;
+
+CREATE TABLE participations (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    team_id BIGINT NOT NULL,
+    round_id BIGINT NOT NULL,
+    created_at DATETIME NOT NULL,
+    score DECIMAL(6,0) NULL,
+    PRIMARY KEY (id)
+) CHARACTER SET utf8 ENGINE=InnoDB;
+CREATE INDEX ix_participations__round_id USING btree ON participations (round_id);
+
+# Attempts will be associated with a participation.
+ALTER TABLE attempts ADD COLUMN participation_id BIGINT NOT NULL;
+
+# Add some temporary indexes.
+CREATE INDEX ix_participations__team_id USING btree ON participations (team_id);
+CREATE INDEX ix_attempts__participation_id USING btree ON attempts (participation_id);
+
+# Create a participation for each (team_id, round_id) pair.
+INSERT INTO participations (team_id, round_id, created_at)
+    SELECT teams.id, teams.round_id, created_at FROM teams;
+# Set a participation id on each attempt.
+UPDATE attempts a
+    JOIN participations p ON p.team_id = a.team_id AND p.round_id = a.round_id
+    SET participation_id = p.id;
+# In participations, overwrite each team's id with its parent team's id.
+# /!\ Run the query until there are 0 rows matched.
+UPDATE participations p
+    JOIN teams t ON p.team_id = t.id
+    SET team_id = t.parent_id
+    WHERE t.parent_id IS NOT NULL;
+# Some teams now have more than one participation for round 3.
+# Associate their attempts to the participation with the smallest id.
+# [47 rows matched]
+UPDATE attempts a JOIN (
+    SELECT p1.id old_id, MIN(p2.id) new_id
+        FROM participations p1
+        INNER JOIN participations p2
+            ON p1.team_id = p2.team_id
+            AND p1.round_id = p2.round_id
+        GROUP BY p1.id) t
+    SET a.participation_id = t.new_id
+    WHERE a.participation_id = t.old_id
+    AND t.new_id <> t.old_id;
+# Delete the (now orphaned) duplicate participations.
+# [37 rows matched]
+DELETE p.*
+    FROM participations p,
+    (SELECT p1.id old_id, MIN(p2.id) new_id
+        FROM participations p1
+        INNER JOIN participations p2
+            ON p1.team_id = p2.team_id
+            AND p1.round_id = p2.round_id
+        GROUP BY p1.id) t
+    WHERE t.old_id <> t.new_id
+    AND p.id = t.old_id;
+# Compute participation scores.
+UPDATE participations p
+    JOIN (
+        SELECT at.participation_id id, MAX(an.score) max_score
+        FROM attempts at
+        INNER JOIN answers an ON an.attempt_id = at.id
+        GROUP BY at.participation_id
+    ) t
+    ON t.id = p.id
+    SET p.score = t.max_score;
+
+# Renumber the attempts sequentially within each participation.
+ALTER TABLE attempts DROP INDEX ix_attempts__team_id_round_id_ordinal;
+SET @ordinal := 0;
+SET @participation_id := 0;
+UPDATE attempts AS t,
+    (
+        SELECT id, @ordinal :=
+            CASE
+                WHEN @participation_id = participation_id THEN @ordinal + 1
+                ELSE 0
+            END AS ordinal,
+            @participation_id := participation_id AS participation_id
+        FROM attempts WHERE round_id = 3 ORDER BY participation_id, id) AS s
+    SET t.ordinal = s.ordinal WHERE t.id = s.id;
+
+# Replace the temporary indexes with the final ones.
+ALTER TABLE participations DROP INDEX ix_participations__team_id;
+ALTER TABLE attempts DROP INDEX ix_attempts__participation_id;
+CREATE UNIQUE INDEX ix_participations__team_id_round_id USING btree ON participations (team_id, round_id);
+CREATE UNIQUE INDEX ix_attempts__participation_id_ordinal USING BTREE ON attempts (participation_id, ordinal);
+
+# Add foreign keys.
+ALTER TABLE participations ADD CONSTRAINT fk_participations__team_id
+  FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE;
+ALTER TABLE participations ADD CONSTRAINT fk_participations__round_id
+  FOREIGN KEY (round_id) REFERENCES rounds(id) ON DELETE CASCADE;
+ALTER TABLE attempts ADD CONSTRAINT fk_attempts__participation_id
+  FOREIGN KEY (participation_id) REFERENCES participations(id) ON DELETE CASCADE;
+
+# Discard the now unused foreign keys and columns.
+ALTER TABLE teams DROP FOREIGN KEY fk_teams__round_id;
+ALTER TABLE attempts DROP FOREIGN KEY fk_attempts__team_id;
+ALTER TABLE attempts DROP FOREIGN KEY fk_attempts__round_id;
+ALTER TABLE teams DROP COLUMN round_id;
+ALTER TABLE attempts DROP COLUMN team_id;
+ALTER TABLE attempts DROP COLUMN round_id;
