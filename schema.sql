@@ -374,7 +374,7 @@ CREATE TABLE participations (
 ) CHARACTER SET utf8 ENGINE=InnoDB;
 CREATE INDEX ix_participations__round_id USING btree ON participations (round_id);
 
-# Attempts will be associated with a participation.
+# Attempts and workspaces will be associated with a participation.
 ALTER TABLE attempts ADD COLUMN participation_id BIGINT NOT NULL;
 
 # Add some temporary indexes.
@@ -384,14 +384,19 @@ CREATE INDEX ix_attempts__participation_id USING btree ON attempts (participatio
 # Create a participation for each (team_id, round_id) pair.
 INSERT INTO participations (team_id, round_id, created_at)
     SELECT teams.id, teams.round_id, created_at FROM teams;
-# Set a participation id on each attempt.
+# Set a participation id on each attempt, workspace.
 UPDATE attempts a
-    JOIN participations p ON p.team_id = a.team_id AND p.round_id = a.round_id
+    JOIN participations p ON p.team_id = a.team_id
     SET participation_id = p.id;
 # In participations, overwrite each team's id with its parent team's id.
 # /!\ Run the query until there are 0 rows matched.
 UPDATE participations p
     JOIN teams t ON p.team_id = t.id
+    SET team_id = t.parent_id
+    WHERE t.parent_id IS NOT NULL;
+# Do the same for users.
+UPDATE users u
+    JOIN teams t ON u.team_id = t.id
     SET team_id = t.parent_id
     WHERE t.parent_id IS NOT NULL;
 # Some teams now have more than one participation for round 3.
@@ -459,10 +464,20 @@ ALTER TABLE participations ADD CONSTRAINT fk_participations__round_id
 ALTER TABLE attempts ADD CONSTRAINT fk_attempts__participation_id
   FOREIGN KEY (participation_id) REFERENCES participations(id) ON DELETE CASCADE;
 
-# Discard the now unused foreign keys and columns.
+# Discard the now unused foreign keys.
 ALTER TABLE teams DROP FOREIGN KEY fk_teams__round_id;
+ALTER TABLE teams DROP FOREIGN KEY fk_teams__parent_id;
 ALTER TABLE attempts DROP FOREIGN KEY fk_attempts__team_id;
 ALTER TABLE attempts DROP FOREIGN KEY fk_attempts__round_id;
-ALTER TABLE teams DROP COLUMN round_id;
+
+# Delete child teams, they are no longer useful (cascades to team_members).
+DELETE FROM teams WHERE parent_id IS NOT NULL;
+
+# Discard unused columns.
 ALTER TABLE attempts DROP COLUMN team_id;
 ALTER TABLE attempts DROP COLUMN round_id;
+ALTER TABLE teams DROP COLUMN round_id;
+ALTER TABLE teams DROP COLUMN parent_id;
+ALTER TABLE teams DROP COLUMN score;
+ALTER TABLE teams DROP COLUMN revision;
+ALTER TABLE teams DROP COLUMN message;
