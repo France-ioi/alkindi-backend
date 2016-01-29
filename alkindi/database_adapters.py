@@ -137,7 +137,7 @@ class MysqlAdapter:
         """
         return self.query(table).where(table.id.in_(list(values)))
 
-    def load_scalar(self, table, value, column, key=None):
+    def load_scalar(self, table, value, column):
         """ Load the specified `column` from the first row in `table`
             where `by`=`value`.
         """

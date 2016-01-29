@@ -88,7 +88,7 @@ def find_user_by_username(db, username):
     """
     users = db.tables.users
     return db.load_scalar(
-        table=users, key='username', value=username, column='id')
+        table=users, value={'username': username}, column='id')
 
 
 def find_user_by_foreign_id(db, foreign_id):
@@ -97,7 +97,7 @@ def find_user_by_foreign_id(db, foreign_id):
     """
     users = db.tables.users
     return db.load_scalar(
-        table=users, key='foreign_id', value=foreign_id, column='id')
+        table=users, value={'foreign_id': foreign_id}, column='id')
 
 
 def get_user_team_id(db, user_id):
