@@ -3,13 +3,14 @@ from datetime import timedelta
 
 from alkindi.errors import ModelError
 from alkindi.model.attempts import load_attempt, update_attempt_with_grading
+from alkindi.model.participations import load_participation
 from alkindi.model.rounds import load_round
-from alkindi.model.tasks import load_task, get_round_task_module
+from alkindi.model.tasks import load_task, get_attempt_task_module
 
 
 def grade_answer(db, attempt_id, submitter_id, data, now):
-    # Fail if attempt is timed(not training) and solved(not unsolved).
     attempt = load_attempt(db, attempt_id, now)
+    participation = load_participation(db, attempt['participation_id'])
     is_training = attempt['is_training']
     # Fail if the attempt is closed.
     if attempt['is_closed']:
@@ -19,7 +20,7 @@ def grade_answer(db, attempt_id, submitter_id, data, now):
         get_attempt_latest_answer_infos(db, attempt_id, nth=2)
     # Fail if timed(not training) and there are more answers than
     # allowed.
-    round_ = load_round(db, attempt['round_id'], now)
+    round_ = load_round(db, participation['round_id'], now)
     if round_['status'] != 'open':
         raise ModelError('round not open')
     max_answers = round_['max_answers']
@@ -33,7 +34,7 @@ def grade_answer(db, attempt_id, submitter_id, data, now):
     ordinal = prev_ordinal + 1
     # Perform grading.
     task = load_task(db, attempt_id)
-    task_module = get_round_task_module(round_)
+    task_module = get_attempt_task_module(db, attempt_id)
     grading = task_module.grade(task, data)
     if grading is None:
         raise ModelError('invalid input')

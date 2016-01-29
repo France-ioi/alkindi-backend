@@ -23,15 +23,19 @@ from alkindi.model.teams import (
     find_team_by_code, update_team)
 from alkindi.model.team_members import (
     create_user_team, join_team, leave_team, get_team_creator)
+from alkindi.model.participations import (
+    get_user_latest_participation_id,
+    get_team_latest_participation_id)
 from alkindi.model.attempts import (
-    get_user_current_attempt_id, start_attempt, cancel_attempt,
-    reset_team_to_training_attempt)
+    get_current_attempt_id,
+    start_attempt, cancel_attempt, reset_to_training_attempt)
 from alkindi.model.workspace_revisions import (
     store_revision)
 from alkindi.model.tasks import (
     assign_task, get_user_task_hint, reset_user_task_hints)
 from alkindi.model.access_codes import (
-    get_access_code, clear_access_codes, unlock_access_code)
+    get_access_code, clear_access_codes, unlock_access_code,
+    generate_user_access_code)
 from alkindi.model.answers import (
     grade_answer)
 
@@ -185,7 +189,9 @@ def user_view(request):
 
 def reset_team_to_training_action(request):
     team_id = request.context.team_id
-    reset_team_to_training_attempt(request.db, team_id, now=datetime.utcnow())
+    participation_id = get_team_latest_participation_id(request.db, team_id)
+    reset_to_training_attempt(
+        request.db, participation_id, now=datetime.utcnow())
     return {'success': True}
 
 
@@ -232,6 +238,8 @@ def create_team_action(request):
     create_user_team(request.db, user_id, now)
     # Ensure the user gets team credentials.
     reset_user_principals(request)
+    # XXX create a participation for the open round for which the user
+    #     has a badge!
     return {'success': True}
 
 
@@ -254,6 +262,13 @@ def join_team_action(request):
     user_id = request.context.user_id
     # Add the user to the team.
     join_team(request.db, user_id, team_id, now=datetime.utcnow())
+    # If the team has a current attempt, generate a code for the new
+    # member.
+    participation_id = get_team_latest_participation_id(request.db, team_id)
+    if participation_id is not None:
+        attempt_id = get_current_attempt_id(request.db, participation_id)
+        if attempt_id is not None:
+            generate_user_access_code(request.db, attempt_id, user_id)
     # Ensure the user gets team credentials.
     reset_user_principals(request)
     return {'success': True}
@@ -294,22 +309,25 @@ def update_team_action(request):
 
 def start_attempt_action(request):
     user_id = request.context.user_id
-    user = load_user(request.db, user_id)
-    team_id = user['team_id']
-    if team_id is None:
-        raise ApiError('no team')
-    start_attempt(request.db, team_id, now=datetime.utcnow())
+    participation_id = get_user_latest_participation_id(request.db, user_id)
+    if participation_id is None:
+        raise ApiError('no current participation')
+    start_attempt(request.db, participation_id, now=datetime.utcnow())
     return {'success': True}
 
 
 def cancel_attempt_action(request):
     user_id = request.context.user_id
     team_id = get_user_team_id(request.db, user_id)
-    attempt_id = get_user_current_attempt_id(request.db, user_id)
+    participation_id = get_team_latest_participation_id(request.db, team_id)
+    if participation_id is None:
+        raise ApiError('no current participation')
+    attempt_id = get_current_attempt_id(request.db, participation_id)
     if attempt_id is None:
         raise ApiError('no current attempt')
     cancel_attempt(request.db, attempt_id)
-    reset_team_to_training_attempt(request.db, team_id, now=datetime.utcnow())
+    reset_to_training_attempt(
+        request.db, participation_id, now=datetime.utcnow())
     return {'success': True}
 
 
@@ -317,7 +335,10 @@ def enter_access_code_action(request):
     data = request.json_body
     code = data['code']
     user_id = request.context.user_id
-    attempt_id = get_user_current_attempt_id(request.db, user_id)
+    participation_id = get_user_latest_participation_id(request.db, user_id)
+    if participation_id is None:
+        raise ApiError('no current participation')
+    attempt_id = get_current_attempt_id(request.db, participation_id)
     if attempt_id is None:
         raise ApiError('no current attempt')
     success = unlock_access_code(request.db, attempt_id, user_id, code)
@@ -328,7 +349,10 @@ def enter_access_code_action(request):
 
 def assign_attempt_task_action(request):
     user_id = request.context.user_id
-    attempt_id = get_user_current_attempt_id(request.db, user_id)
+    participation_id = get_user_latest_participation_id(request.db, user_id)
+    if participation_id is None:
+        raise ApiError('no current pariciption')
+    attempt_id = get_current_attempt_id(request.db, participation_id)
     if attempt_id is None:
         raise ApiError('no current attempt')
     # This will fail if the team is invalid.

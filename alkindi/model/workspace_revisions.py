@@ -95,11 +95,15 @@ def get_workspace_revision_ownership(db, revision_id):
     attempts = db.tables.attempts
     workspace_revisions = db.tables.workspace_revisions
     workspaces = db.tables.workspaces
-    query = db.query(workspace_revisions & workspaces & attempts) \
+    participations = db.tables.participations
+    query = db.query(
+        workspace_revisions &
+        workspaces.on(workspaces.id == workspace_revisions.workspace_id) &
+        attempts.on(attempts.id == workspaces.attempt_id) &
+        participations.on(participations.id == attempts.participation_id))
+    query = query \
         .where(workspace_revisions.id == revision_id) \
-        .where(workspaces.id == workspace_revisions.workspace_id) \
-        .where(attempts.id == workspaces.attempt_id) \
-        .fields(attempts.team_id, workspace_revisions.creator_id)
+        .fields(participations.team_id, workspace_revisions.creator_id)
     row = db.first(query)
     return None if row is None else row
 

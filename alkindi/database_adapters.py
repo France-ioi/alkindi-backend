@@ -24,10 +24,14 @@ class MysqlAdapter:
         return Q(*args, result=self.result)
 
     def execute(self, query):
-        if type(query) == tuple:
+        if isinstance(query, tuple):
             (stmt, values) = query
-        elif type(query) == Query:
+        elif isinstance(query, Query):
             (stmt, values) = mysql_compile(query)
+        elif isinstance(query, str):
+            stmt = query
+            values = ()
+        else:
             raise ModelError("invalid query type: {}".format(query))
         try:
             if self.log:
@@ -115,34 +119,45 @@ class MysqlAdapter:
     def dump_json(self, value):
         return json.dumps(value)
 
+    def row_scoped_query(self, table, value):
+        """ If value is a scalar, add a (id=value) predicate to the query.
+            If value is a dict, add the (table.column=value) predicates
+            from the dict to the query.
+        """
+        query = self.query(table)
+        if isinstance(value, dict):
+            for col_name, col_value in value.items():
+                query = query.where(getattr(table, col_name) == col_value)
+        else:
+            query = query.where(table.id == value)
+        return query
+
+    def rows_scoped_query(self, table, values):
+        """ Add a (id in values) predicate to the query.
+        """
+        return self.query(table).where(table.id.in_(list(values)))
+
     def load_scalar(self, table, value, column, key=None):
         """ Load the specified `column` from the first row in `table`
             where `by`=`value`.
         """
-        key_column = table.id if key is None else getattr(table, key)
-        query = self.query(table) \
-            .where(key_column == value) \
-            .fields(getattr(table, column))
-        row = self.first(query)
+        query = self.row_scoped_query(table, value)
+        row = self.first(query.fields(getattr(table, column)))
         return None if row is None else row[0]
 
-    def load_row(self, table, value, columns, key=None, for_update=False):
-        key_column = table.id if key is None else getattr(table, key)
-        query = self.query(table) \
-            .where(key_column == value) \
-            .fields(*[getattr(table, col) for col in columns])
+    def load_row(self, table, value, columns, for_update=False):
+        query = self.row_scoped_query(table, value)
+        query = query.fields(*[getattr(table, col) for col in columns])
         row = self.first(query, for_update=for_update)
         if row is None:
             raise ModelError('no such row')
         return {key: row[i] for i, key in enumerate(columns)}
 
-    def load_rows(self, table, values, columns, key=None, for_update=False):
+    def load_rows(self, table, values, columns, for_update=False):
         if len(values) == 0:
             return []
-        key_column = table.id if key is None else getattr(table, key)
-        query = self.query(table) \
-            .where(key_column.in_(list(values))) \
-            .fields(*[getattr(table, col) for col in columns])
+        query = self.rows_scoped_query(table, values)
+        query = query.fields(*[getattr(table, col) for col in columns])
         return [
             {key: row[i] for i, key in enumerate(columns)}
             for row in self.all(query, for_update=for_update)
@@ -150,21 +165,21 @@ class MysqlAdapter:
 
     def insert_row(self, table, attrs):
         query = self.query(table)
-        query = query.insert({
-            getattr(table, key): attrs[key] for key in attrs
-        })
+        query = query.insert(
+            {getattr(table, key): attrs[key] for key in attrs})
         return self.insert(query)
 
-    def update_row(self, table, value, attrs, key=None):
-        key_column = table.id if key is None else getattr(table, key)
-        query = self.query(table) \
-            .where(key_column == value) \
-            .update({getattr(table, key): attrs[key] for key in attrs})
-        cursor = self.execute(query)
-        cursor.close()
-        return cursor
+    def update_row(self, table, value, attrs):
+        query = self.row_scoped_query(table, value)
+        return self.update(
+            query, {getattr(table, key): attrs[key] for key in attrs})
+
+    def first_row(self, query, cols):
+        rows = self.all_rows(query[:1], cols)
+        return rows[0] if len(rows) > 0 else None
 
     def all_rows(self, query, cols):
+        query = query.fields([col[1] for col in cols])
         rows = [{col[0]: row[i] for i, col in enumerate(cols)}
                 for row in self.all(query)]
         for row in rows:

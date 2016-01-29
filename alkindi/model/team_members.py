@@ -2,7 +2,7 @@
 from alkindi.errors import ModelError
 from alkindi.model.users import load_user, set_user_team_id
 from alkindi.model.teams import load_team, create_empty_team
-from alkindi.model.rounds import load_round, find_round_ids_with_badges
+from alkindi.model.rounds import load_round
 
 
 def create_user_team(db, user_id, now):
@@ -11,22 +11,13 @@ def create_user_team(db, user_id, now):
     if user['team_id'] is not None:
         # User is already in a team.
         raise ModelError('already in a team')
-    # Select a round based on the user's badges.
-    round_ids = find_round_ids_with_badges(db, user['badges'], now)
-    if len(round_ids) == 0:
-        # The user does not have access to any open round.
-        raise ModelError('not qualified for any open round')
-    if len(round_ids) > 1:
-        # XXX The case where a user has badges for multiple open rounds
-        # is currently handled by picking the first one, which is the
-        # one that has the greatest id.  This is unsatisfactory.
-        pass
-    round_id = round_ids[0]
-    team_id = create_empty_team(db, round_id, now)  # XXX team/round
+    # Create an empty team.
+    team_id = create_empty_team(db, now)
     # Create the team_members row.
     add_team_member(
         db, team_id, user_id, now=now,
         is_qualified=True, is_creator=True)
+    return team_id
 
 
 def get_team_creator(db, team_id):
@@ -79,7 +70,7 @@ def join_team(db, user_id, team_id, now):
     if team['is_locked']:
         if round_['allow_team_changes']:
             user['is_qualified'] = is_qualified
-            validate_team(db, team, with_member=user, now=now)
+            validate_team(db, team_id, round_id, with_member=user, now=now)
         else:
             raise ModelError('team is locked')
     # Create the team_members row.
@@ -87,13 +78,6 @@ def join_team(db, user_id, team_id, now):
     add_team_member(db, team_id, user_id, now=now, is_qualified=is_qualified)
     # Update the user's team_id.
     set_user_team_id(db, user_id, team_id)
-    # If the team has a current attempt, generate a code for the new
-    # member.
-    from alkindi.model.attempts import get_team_current_attempt_id
-    attempt_id = get_team_current_attempt_id(db, team_id)
-    if attempt_id is not None:
-        from alkindi.model.access_codes import generate_user_access_code
-        generate_user_access_code(db, attempt_id, team_id, user_id)
 
 
 def leave_team(db, user_id, team_id):
@@ -111,7 +95,7 @@ def leave_team(db, user_id, team_id):
         # We could allow a user to leave the team even when it is
         # locked, with code like this instead of raising an error:
         #     XXX team/round
-        #     validate_team(db, team, round_, without_member=user, now=now)
+        #     validate_team(db, team_id, round_id, without_member=user, now=now)
         raise ModelError('team is locked')
     # Clear the user's team_id.
     set_user_team_id(db, user_id, None)
@@ -213,14 +197,15 @@ def load_team_members(db, team_id, users=False):
     ]
 
 
-def validate_team(db, team, now, with_member=None, without_member=None):
+def validate_team(
+        db, team_id, round_id, now, with_member=None, without_member=None):
     """ Raise an exception if the team is invalid for the round.
         If with_member is a user, check with the user added the team.
     """
     # XXX team/round
     team_members = db.tables.team_members
     tm_query = db.query(team_members) \
-        .where(team_members.team_id == team['id'])
+        .where(team_members.team_id == team_id)
     n_members = db.count(
         tm_query.fields(team_members.user_id))
     n_qualified = db.count(
@@ -234,7 +219,7 @@ def validate_team(db, team, now, with_member=None, without_member=None):
         n_members -= 1
         if with_member['is_qualified']:
             n_qualified -= 1
-    round_ = load_round(db, team['round_id'], now=now)
+    round_ = load_round(db, round_id, now=now)
     if n_members < round_['min_team_size']:
         raise ModelError('team too small')
     if n_members > round_['max_team_size']:

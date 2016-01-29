@@ -6,8 +6,10 @@ from alkindi.model.rounds import load_round, find_round_ids_with_badges
 from alkindi.model.users import load_user, load_users
 from alkindi.model.teams import load_team
 from alkindi.model.team_members import load_team_members
+from alkindi.model.participations import (
+    get_team_latest_participation_id, load_participation)
 from alkindi.model.attempts import (
-    load_team_attempts, get_user_current_attempt_id)
+    load_participation_attempts, get_user_current_attempt_id)
 from alkindi.model.access_codes import load_unlocked_access_codes
 from alkindi.model.tasks import load_task_team_data
 from alkindi.model.answers import load_limited_attempt_answers
@@ -50,17 +52,29 @@ def view_requesting_user(db, user_id):
             view['round'] = view_round(round_)
         return view
 
-    # Load round, team, members.
+    # Add 'team' and 'round' views for the current (latest) participation.
+    participation_id = get_team_latest_participation_id(db, team_id)
+    participation = load_participation(db, participation_id)
+    team_id = participation['team_id']
+    round_id = participation['round_id']
     team = load_team(db, team_id)
-    round_ = load_round(db, team['round_id'], now)  # XXX team/round
-    view['team'] = view_team(db, team, round_)
+    round_ = load_round(db, round_id, now)
+    members = load_team_members(db, team['id'], users=True)
     view['round'] = view_round(round_)
+    view['team'] = view_team(team, members)
+    view['team']['score'] = participation['score']
+
+    # XXX A team's validity should be checked against settings for a
+    #     competition rather than a round.
+    causes = validate_members_for_round(members, round_)
+    view['team']['round_access'] = list(causes.keys())
+    view['team']['is_invalid'] = len(causes) != 0
 
     # Do not return attempts if the team is invalid.
     if view['team']['is_invalid']:
         return view
 
-    attempts = load_team_attempts(db, team_id, now)  # XXX team/round
+    attempts = load_participation_attempts(db, participation['id'], now)
     view['attempts'] = view_round_attempts(round_, attempts)
     # Find the team's current attempt, and the current attempt's view.
     current_attempt = None
@@ -111,20 +125,15 @@ def view_user(user):
     return {key: user[key] for key in keys}
 
 
-def view_team(db, team, round_=None):  # XXX team/round
+def view_team(team, members):
     """ Return the user-view for a team.
     """
-    keys = ['id', 'code', 'is_open', 'is_locked', 'score', 'parent_id']
+    keys = ['id', 'code', 'is_open', 'is_locked']
     result = {key: team[key] for key in keys}
-    members = load_team_members(db, team['id'], users=True)
     result['members'] = members
     creators = [m for m in members if m['is_creator']]
     if len(creators) > 0:
         result['creator'] = creators[0]['user']
-    if round_ is not None:
-        causes = validate_members_for_round(members, round_)
-        result['round_access'] = list(causes.keys())
-        result['is_invalid'] = len(causes) != 0
     return result
 
 

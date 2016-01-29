@@ -6,24 +6,20 @@ def load_team(db, team_id, for_update=False):
     if team_id is None:
         return None
     keys = [
-        'id', 'revision', 'created_at', 'round_id', 'code',
-        'is_open', 'is_locked', 'message', 'score', 'parent_id'
+        'id', 'created_at', 'code', 'is_open', 'is_locked'
     ]
-    # XXX team/round
     result = db.load_row(db.tables.teams, team_id, keys,
-                         for_update=True)
+                         for_update=for_update)
     for key in ['is_open', 'is_locked']:
         result[key] = db.load_bool(result[key])
     return result
 
 
-def create_empty_team(db, round_id, now):
-    """ Creates a team for the specified round.
-        Returns the team id.
+def create_empty_team(db, now):
+    """ Creates an empty team and returns the team id.
     """
     # Generate an unused team access code.
-    # XXX team/round
-    # XXX lock teams table
+    # XXX lock teams table / add a unique index on code
     code = generate_code()
     while find_team_by_code(db, code) is not None:
         code = generate_code()
@@ -31,7 +27,6 @@ def create_empty_team(db, round_id, now):
     teams = db.tables.teams
     query = db.query(teams).insert({
         teams.created_at: now,
-        teams.round_id: round_id,
         teams.code: code,
         teams.is_open: True,
         teams.is_locked: False
