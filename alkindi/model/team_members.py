@@ -3,6 +3,13 @@ from alkindi.errors import ModelError
 from alkindi.model.users import load_user, set_user_team_id
 from alkindi.model.teams import load_team, create_empty_team
 from alkindi.model.rounds import load_round
+from alkindi.model.participations import (
+    get_team_latest_participation_id, load_participation)
+
+
+# XXX min_team_size, max_team_size, min_team_ratio should all be set
+#     as columns of a new competitions table.  Currently they are set
+#     in rounds which makes little sense and makes the code awkward.
 
 
 def create_user_team(db, user_id, now):
@@ -36,22 +43,20 @@ def join_team(db, user_id, team_id, now):
         Registration for the team's round must be open.
         Return a boolean indicating if the team member was added.
     """
-    # XXX team/round
     # Verify that the user does not already belong to a team.
     user = load_user(db, user_id, for_update=True)
     if user['team_id'] is not None:
         raise ModelError('already in a team')
-    # Verify that the team exists and load the round.
+    # Verify that the team exists.
     team = load_team(db, team_id)
-    # Verify that the team is open and not locked.
+    # Verify that the team is open.
     if not team['is_open']:
         # Team is closed (by its creator).
         raise ModelError('team is closed')
-    round_id = team['round_id']
-    round_ = load_round(round_id, now=now)
-    # Verify that the round is open for registration.
-    if not round_['is_registration_open']:
-        raise ModelError('registration is closed')
+    # Load the participation.
+    participation_id = get_team_latest_participation_id(db, team_id)
+    participation = load_participation(db, participation_id)
+    round_id = participation['round_id']
     # Look up the badges that grant access to the team's round, to
     # figure out whether the user is qualified for that round.
     user_badges = user['badges']
@@ -59,15 +64,16 @@ def join_team(db, user_id, team_id, now):
     if len(user_badges) == 0:
         is_qualified = False
     else:
-        row = db.first(
-            db.query(badges).fields(badges.id)
-                .where(badges.round_id == round_id)
-                .where(badges.symbol.in_(user_badges))
-                .where(badges.is_active))
-        is_qualified = row is not None
+        query = db.query(badges) \
+            .where(badges.round_id == round_id) \
+            .where(badges.symbol.in_(user_badges)) \
+            .where(badges.is_active) \
+            .fields(badges.id)
+        is_qualified = db.scalar(query) is not None
     # If the team has already accessed a task (is_locked=True),
     # verify that the team remains valid if the user is added.
     if team['is_locked']:
+        round_ = load_round(round_id)
         if round_['allow_team_changes']:
             user['is_qualified'] = is_qualified
             validate_team(db, team_id, round_id, with_member=user, now=now)
@@ -78,9 +84,16 @@ def join_team(db, user_id, team_id, now):
     add_team_member(db, team_id, user_id, now=now, is_qualified=is_qualified)
     # Update the user's team_id.
     set_user_team_id(db, user_id, team_id)
+    # If the team has a current attempt, generate a code for the new
+    # member.
+    from alkindi.model.attempts import get_current_attempt_id
+    attempt_id = get_current_attempt_id(db, participation_id)
+    if attempt_id is not None:
+        from alkindi.model.access_codes import generate_user_access_code
+        generate_user_access_code(db, attempt_id, user_id)
 
 
-def leave_team(db, user_id, team_id):
+def leave_team(db, user_id, team_id, now):
     """ Remove a user from their team.
     """
     user = load_user(db, user_id, for_update=True)
@@ -89,14 +102,18 @@ def leave_team(db, user_id, team_id):
     if team_id is None:
         raise ModelError('no team')
     team = load_team(db, team_id)
+    # Load the participation.
+    participation_id = get_team_latest_participation_id(db, team_id)
+    participation = load_participation(db, participation_id)
+    round_id = participation['round_id']
+    round_ = load_round(db, round_id)
     # If the team already has an attempt (is_locked=True), verify
     # that the team remains valid if the user is removed.
     if team['is_locked']:
-        # We could allow a user to leave the team even when it is
-        # locked, with code like this instead of raising an error:
-        #     XXX team/round
-        #     validate_team(db, team_id, round_id, without_member=user, now=now)
-        raise ModelError('team is locked')
+        if round_['allow_team_changes']:
+            validate_team(db, team_id, round_id, without_member=user, now=now)
+        else:
+            raise ModelError('team is locked')
     # Clear the user's team_id.
     set_user_team_id(db, user_id, None)
     # Delete the team_members row.
@@ -202,7 +219,6 @@ def validate_team(
     """ Raise an exception if the team is invalid for the round.
         If with_member is a user, check with the user added the team.
     """
-    # XXX team/round
     team_members = db.tables.team_members
     tm_query = db.query(team_members) \
         .where(team_members.team_id == team_id)

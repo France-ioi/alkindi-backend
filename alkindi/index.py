@@ -23,7 +23,9 @@ from alkindi.model.teams import (
     find_team_by_code, update_team)
 from alkindi.model.team_members import (
     create_user_team, join_team, leave_team, get_team_creator)
+from alkindi.model.rounds import find_round_ids_with_badges, load_round
 from alkindi.model.participations import (
+    create_participation,
     get_user_latest_participation_id,
     get_team_latest_participation_id)
 from alkindi.model.attempts import (
@@ -34,8 +36,7 @@ from alkindi.model.workspace_revisions import (
 from alkindi.model.tasks import (
     assign_task, get_user_task_hint, reset_user_task_hints)
 from alkindi.model.access_codes import (
-    get_access_code, clear_access_codes, unlock_access_code,
-    generate_user_access_code)
+    get_access_code, clear_access_codes, unlock_access_code)
 from alkindi.model.answers import (
     grade_answer)
 
@@ -235,11 +236,27 @@ def create_team_action(request):
     # Create the team.
     now = datetime.utcnow()
     user_id = request.context.user_id
-    create_user_team(request.db, user_id, now)
+    user = load_user(request.db, user_id)
+    # Select a round based on the user's badges.
+    round_ids = find_round_ids_with_badges(request.db, user['badges'], now)
+    if len(round_ids) == 0:
+        # The user does not have access to any open round.
+        raise ApiError('not qualified for any open round')
+    if len(round_ids) > 1:
+        # XXX The case where a user has badges for multiple open rounds
+        # is currently handled by picking the first one, which is the
+        # one that has the greatest id.  This is unsatisfactory.
+        pass
+    round_id = round_ids[0]
+    round_ = load_round(request.db, round_id)
+    if not round_['is_registration_open']:
+        raise ApiError('registration is closed')
+    # Create the team.
+    team_id = create_user_team(request.db, user_id, now)
+    # Create a participation.
+    create_participation(request.db, team_id, round_id, now=now)
     # Ensure the user gets team credentials.
     reset_user_principals(request)
-    # XXX create a participation for the open round for which the user
-    #     has a badge!
     return {'success': True}
 
 
@@ -262,23 +279,17 @@ def join_team_action(request):
     user_id = request.context.user_id
     # Add the user to the team.
     join_team(request.db, user_id, team_id, now=datetime.utcnow())
-    # If the team has a current attempt, generate a code for the new
-    # member.
-    participation_id = get_team_latest_participation_id(request.db, team_id)
-    if participation_id is not None:
-        attempt_id = get_current_attempt_id(request.db, participation_id)
-        if attempt_id is not None:
-            generate_user_access_code(request.db, attempt_id, user_id)
     # Ensure the user gets team credentials.
     reset_user_principals(request)
     return {'success': True}
 
 
 def leave_team_action(request):
+    now = datetime.utcnow()
     user_id = request.context.user_id
     team_id = get_user_team_id(request.db, user_id)
     # Remove the user from their current team.
-    leave_team(request.db, user_id=user_id, team_id=team_id)
+    leave_team(request.db, user_id=user_id, team_id=team_id, now=now)
     # Clear the user's access codes in all of the team's attempts.
     clear_access_codes(request.db, user_id=user_id, team_id=team_id)
     # Clear the user's team credentials.

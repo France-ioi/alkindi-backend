@@ -19,8 +19,9 @@ def load_round(db, round_id, now=None):
 
 
 def find_round_ids_with_badges(db, badges, now):
-    """ Returns a list of all the ids of all the rounds (active,
-        registration open) for which the badges qualify.
+    """ Returns a list of all the ids of all the active rounds
+        for which the badges qualify.
+        The most recently update round is return first.
     """
     rounds = db.tables.rounds
     if len(badges) == 0:
@@ -31,6 +32,5 @@ def find_round_ids_with_badges(db, badges, now):
               .where(badges_table.round_id == rounds.id) \
               .where(badges_table.symbol.in_(badges)) \
               .where(badges_table.is_active) \
-              .where(rounds.registration_opens_at <= now) \
-              .order_by(rounds.id.desc())  # XXX temporary fix
+              .order_by(rounds.updated_at.desc())
     return [row[0] for row in db.all(query)]

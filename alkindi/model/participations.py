@@ -37,20 +37,3 @@ def load_participation(db, participation_id, for_update=False):
     return db.load_row(
         db.tables.participations, participation_id, cols,
         for_update=for_update)
-
-
-# from alkindi.model.rounds import load_round, find_round_ids_with_badges
-#     # Create a participation.
-#     # Select a round based on the user's badges.
-#     round_ids = find_round_ids_with_badges(db, user['badges'], now)
-#     if len(round_ids) == 0:
-#         # The user does not have access to any open round.
-#         raise ModelError('not qualified for any open round')
-#     if len(round_ids) > 1:
-#         # XXX The case where a user has badges for multiple open rounds
-#         # is currently handled by picking the first one, which is the
-#         # one that has the greatest id.  This is unsatisfactory.
-#         pass
-#     round_id = round_ids[0]
-#     create_participation(db, team_id, round_id, now=now)
-#     return team_id
