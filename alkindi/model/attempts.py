@@ -116,7 +116,7 @@ def start_attempt(db, participation_id, now):
         is_training = round_['have_training_attempt']
         create_attempt(db, participation, now=now, is_training=is_training)
     else:
-        attempt = load_attempt(db, attempt_id, now=now)
+        attempt = load_attempt(db, attempt_id, now=now, for_update=True)
         if attempt['is_training']:
             # Current attempt is training.  Team must pass training to
             # create a timed attempt.
