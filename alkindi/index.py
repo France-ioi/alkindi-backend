@@ -6,7 +6,6 @@ import json
 
 from pyramid.exceptions import PredicateMismatch
 from pyramid.httpexceptions import HTTPFound, HTTPForbidden, HTTPNotFound
-from pyramid.request import Request
 from pyramid.session import check_csrf_token
 from ua_parser import user_agent_parser
 
@@ -130,32 +129,22 @@ def index_view(request):
         'login_url': request.route_url('login'),
         'logout_url': request.route_url('logout')
     }
-    user_id = request.authenticated_userid
-    if 'g:admin' in request.effective_principals:
-        if 'user' in request.params:
-            user_id = find_user_by_username(
-                request.db, request.params['user'])
-        if 'user_id' in request.params:
-            user_id = int(request.params['user_id'])
+    kwargs = get_user_context(
+        request, request.authenticated_userid, request.params)
     # Add info about the logged-in user (if any) to the frontend config.
-    if user_id is not None:
-        frontend_config['seed'] = views.view_requesting_user(
-            request.db, user_id)
+    frontend_config['seed'] = views.view_requesting_user(request.db, **kwargs)
     request.response.cache_control = 'max-age=0, private'
     return {
         'frontend_config': frontend_config
     }
 
 
-def internal_request_view(request, path):
-    subreq = Request.blank(path)
-    return request.invoke_subrequest(subreq)
-
-
 def refresh_action(request):
     user_id = request.context.user_id
     json_request = request.json_body
-    view = views.view_requesting_user(request.db, user_id)
+    kwargs = get_user_context(
+        request, request.context.user_id, json_request.get('override', {}))
+    view = views.view_requesting_user(request.db, **kwargs)
     # print("\033[91mrequest\033[0m {}".format(json_request))
     attempt_id = view.get('current_attempt_id')
     if attempt_id is not None:
@@ -174,6 +163,25 @@ def refresh_action(request):
             views.add_answers(request.db, view, attempt_id)
     view['success'] = True
     return view
+
+
+def get_user_context(request, user_id, params):
+    result = {
+        'user_id': user_id
+    }
+    if 'g:admin' in request.effective_principals:
+        result['is_admin'] = True
+        if 'user' in params:
+            result['user_id'] = find_user_by_username(
+                request.db, params['user'])
+        if 'user_id' in params:
+            result['user_id'] = int(params['user_id'])
+        if 'participation_id' in params:
+            result['participation_id'] = \
+                int(params['participation_id'])
+        if 'attempt_id' in params:
+            result['attempt_id'] = int(params['attempt_id'])
+    return result
 
 
 def user_task_view(request):

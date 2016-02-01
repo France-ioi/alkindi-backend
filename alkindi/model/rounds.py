@@ -1,6 +1,10 @@
 
 def load_round(db, round_id, now=None):
-    keys = [
+    return load_rounds(db, [round_id], now)[round_id]
+
+
+def load_rounds(db, round_ids, now=None):
+    cols = [
         'id', 'created_at', 'updated_at', 'title',
         'registration_opens_at', 'training_opens_at',
         'min_team_size', 'max_team_size', 'min_team_ratio',
@@ -8,14 +12,17 @@ def load_round(db, round_id, now=None):
         'status', 'allow_team_changes', 'have_training_attempt',
         'tasks_path', 'task_module', 'task_url', 'task_front'
     ]
-    row = db.load_row(db.tables.rounds, round_id, keys)
     bool_cols = ['allow_team_changes', 'have_training_attempt']
-    for key in bool_cols:
-        row[key] = db.load_bool(row[key])
-    if now is not None:
-        row['is_registration_open'] = row['registration_opens_at'] <= now
-        row['is_training_open'] = row['training_opens_at'] <= now
-    return row
+    rows = db.load_rows(db.tables.rounds, round_ids, cols)
+    result = {}
+    for row in rows:
+        for key in bool_cols:
+            row[key] = db.load_bool(row[key])
+        if now is not None:
+            row['is_registration_open'] = row['registration_opens_at'] <= now
+            row['is_training_open'] = row['training_opens_at'] <= now
+        result[row['id']] = row
+    return result
 
 
 def find_round_ids_with_badges(db, badges, now):

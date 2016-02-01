@@ -2,12 +2,12 @@
 from datetime import datetime
 
 from alkindi.errors import ModelError
-from alkindi.model.rounds import load_round, find_round_ids_with_badges
+from alkindi.model.rounds import (
+    load_round, load_rounds, find_round_ids_with_badges)
 from alkindi.model.users import load_user, load_users
 from alkindi.model.teams import load_team
 from alkindi.model.team_members import load_team_members
-from alkindi.model.participations import (
-    get_team_latest_participation_id, load_participation)
+from alkindi.model.participations import load_team_participations
 from alkindi.model.attempts import (
     load_participation_attempts, get_user_current_attempt_id)
 from alkindi.model.access_codes import load_unlocked_access_codes
@@ -29,15 +29,23 @@ AllowHtmlTags = [
 ]
 
 
-def view_requesting_user(db, user_id):
-    view = {}
-    view['now'] = now = datetime.utcnow()
+def view_requesting_user(
+        db, user_id=None, participation_id=None, attempt_id=None,
+        is_admin=False):
+
+    now = datetime.utcnow()
+    view = {
+        'now': now,
+        'is_admin': is_admin,
+    }
+    if user_id is None:
+        return view
     user = load_user(db, user_id)
     if user is None:
-        return None
+        return view
     view['user'] = view_user(user)
-    team_id = user['team_id']
 
+    team_id = user['team_id']
     if team_id is None:
         # If the user has no team, we look for a round to which a
         # badge grants access.
@@ -52,13 +60,32 @@ def view_requesting_user(db, user_id):
             view['round'] = view_round(round_)
         return view
 
+    # Load the team's participations.
+    participations = load_team_participations(db, team_id)
+    round_ids = set()
+    for participation in participations:
+        round_ids.add(participation['round_id'])
+    rounds = load_rounds(db, round_ids, now)
+    view['participations'] = [
+        view_team_participation(
+            participation,
+            rounds[participation['round_id']])
+        for participation in participations
+    ]
+    if len(participations) == 0:
+        return view
+
     # Add 'team' and 'round' views for the current (latest) participation.
-    participation_id = get_team_latest_participation_id(db, team_id)
-    participation = load_participation(db, participation_id)
-    team_id = participation['team_id']
+    if participation_id is None:
+        participation = participations[-1]
+    else:
+        participation = get_by_id(participations, participation_id)
+        if participation is None:
+            return view
+
     round_id = participation['round_id']
     team = load_team(db, team_id)
-    round_ = load_round(db, round_id, now)
+    round_ = rounds[round_id]
     members = load_team_members(db, team['id'], users=True)
     view['round'] = view_round(round_)
     view['team'] = view_team(team, members)
@@ -76,20 +103,24 @@ def view_requesting_user(db, user_id):
 
     attempts = load_participation_attempts(db, participation['id'], now)
     view['attempts'] = view_round_attempts(round_, attempts)
-    # Find the team's current attempt, and the current attempt's view.
+
+    # Find the team's current attempt.
     current_attempt = None
-    for attempt in attempts:
-        if attempt['is_current']:
-            current_attempt = attempt
+    if attempt_id is None:
+        for attempt in attempts:
+            if attempt['is_current']:
+                current_attempt = attempt
+                attempt_id = attempt['id']
+    else:
+        current_attempt = get_by_id(attempts, attempt_id)
     if current_attempt is None:
         return view
 
     # Focus on the current attempt.
     current_attempt_view = None
     for attempt_view in view['attempts']:
-        if current_attempt['id'] == attempt_view.get('id'):
+        if attempt_id == attempt_view.get('id'):
             current_attempt_view = attempt_view
-    attempt_id = current_attempt['id']
     view['current_attempt_id'] = attempt_id
     members_view = view['team']['members']
     access_codes = load_unlocked_access_codes(db, attempt_id)
@@ -116,6 +147,13 @@ def view_requesting_user(db, user_id):
         view['my_latest_revision_id'] = revision_id
 
     return view
+
+
+def get_by_id(items, id):
+    try:
+        return next(item for item in items if item['id'] == id)
+    except StopIteration:
+        return None
 
 
 def view_user(user):
@@ -183,6 +221,15 @@ def view_round(round_):
         'max_attempts', 'max_answers', 'status', 'allow_team_changes'
     ]
     return {key: round_[key] for key in keys}
+
+
+def view_team_participation(participation, round_):
+    return {
+        'id': participation['id'],
+        'created_at': participation['created_at'],
+        'score': participation['score'],
+        'round': view_round(round_),
+    }
 
 
 def view_user_workspace_revision(workspace_revision):

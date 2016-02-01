@@ -37,3 +37,18 @@ def load_participation(db, participation_id, for_update=False):
     return db.load_row(
         db.tables.participations, participation_id, cols,
         for_update=for_update)
+
+
+def load_team_participations(db, team_id):
+    participations = db.tables.participations
+    cols = [
+        ('id', participations.id),
+        ('round_id', participations.round_id),
+        ('created_at', participations.created_at),
+        ('score', participations.score)
+    ]
+    query = db.query(participations) \
+        .fields([col[1] for col in cols]) \
+        .where(participations.team_id == team_id) \
+        .order_by(participations.created_at)
+    return db.all_rows(query, cols)
