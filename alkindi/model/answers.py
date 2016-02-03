@@ -59,7 +59,6 @@ def grade_answer(db, attempt_id, submitter_id, data, now):
     answer['id'] = db.insert_row(answers, answer)
     # Best score for the participation?
     new_score = Decimal(answer['score'])
-    print('score {} / {}'.format(new_score, participation['score']))
     if not is_training and new_score > participation['score']:
         update_participation(
             db, participation_id, {'score': new_score})
