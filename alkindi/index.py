@@ -411,7 +411,6 @@ def submit_user_attempt_answer_action(request):
     answer = grade_answer(
         request.db, attempt_id, submitter_id, request.json_body,
         now=datetime.utcnow())
-    answer
     return {
         'success': True, 'answer_id': answer['id'],
         'feedback': json.loads(answer['grading'])['feedback']
