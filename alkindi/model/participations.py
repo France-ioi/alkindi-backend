@@ -52,3 +52,7 @@ def load_team_participations(db, team_id):
         .where(participations.team_id == team_id) \
         .order_by(participations.created_at)
     return db.all_rows(query, cols)
+
+
+def update_participation(db, participation_id, attrs):
+    db.update_row(db.tables.participations, participation_id, attrs)

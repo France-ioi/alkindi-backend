@@ -1,16 +1,20 @@
 
 from datetime import timedelta
+from decimal import Decimal
 
 from alkindi.errors import ModelError
 from alkindi.model.attempts import load_attempt, update_attempt_with_grading
-from alkindi.model.participations import load_participation
+from alkindi.model.participations import (
+    load_participation, update_participation)
 from alkindi.model.rounds import load_round
 from alkindi.model.tasks import load_task, get_attempt_task_module
 
 
 def grade_answer(db, attempt_id, submitter_id, data, now):
     attempt = load_attempt(db, attempt_id, now)
-    participation = load_participation(db, attempt['participation_id'])
+    participation_id = attempt['participation_id']
+    participation = load_participation(
+        db, participation_id, for_update=True)
     is_training = attempt['is_training']
     # Fail if the attempt is closed.
     if attempt['is_closed']:
@@ -53,6 +57,12 @@ def grade_answer(db, attempt_id, submitter_id, data, now):
         'is_full_solution': grading['is_full_solution']
     }
     answer['id'] = db.insert_row(answers, answer)
+    # Best score for the participation?
+    new_score = Decimal(answer['score'])
+    print('score {} / {}'.format(new_score, participation['score']))
+    if not is_training and new_score > participation['score']:
+        update_participation(
+            db, participation_id, {'score': new_score})
     return answer
 
 
