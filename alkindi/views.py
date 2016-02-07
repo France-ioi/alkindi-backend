@@ -303,7 +303,7 @@ def view_round_attempts(round_, attempts):
             'ordinal': len(views), 'is_unsolved': True,
             'is_current': openNext, 'duration': round_['duration']})
     else:
-        while len(views) <= round_['max_attempts']:
+        while len(views) < round_['max_attempts']:
             views.append({
                 'ordinal': len(views), 'is_unsolved': True,
                 'is_current': openNext, 'duration': round_['duration']})
