@@ -324,10 +324,11 @@ def view_round_attempts(round_, attempts):
 def view_answer(answer, hide_scores):
     view = {}
     cols = [
-        'id', 'submitter_id', 'ordinal', 'created_at', 'answer',
-        'is_solution', 'is_full_solution']
+        'id', 'submitter_id', 'ordinal', 'created_at', 'answer']
     if not hide_scores:
         cols.append('score')
+        cols.append('is_solution')
+        cols.append('is_full_solution')
     for col in cols:
         view[col] = answer[col]
     return view
