@@ -86,7 +86,7 @@ def assign_task(db, attempt_id, now):
         # Lock the team.
         teams = db.tables.teams
         db.update_row(teams, team_id, {'is_locked': True})
-    else:
+    elif duration is not None:
         # Set the closing time on the attempt.
         attempt_attrs['closes_at'] = now + timedelta(minutes=duration)
     attempts = db.tables.attempts
