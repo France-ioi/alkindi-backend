@@ -481,3 +481,6 @@ ALTER TABLE teams DROP COLUMN parent_id;
 ALTER TABLE teams DROP COLUMN score;
 ALTER TABLE teams DROP COLUMN revision;
 ALTER TABLE teams DROP COLUMN message;
+
+# Rounds can have a null duration.
+ALTER TABLE rounds MODIFY COLUMN duration INT NULL;
