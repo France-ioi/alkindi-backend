@@ -75,22 +75,24 @@ def reset_hints(task):
     pass
 
 
+def canon_input(text):
+    return re.sub('[ \t\u00a0]', '', text)
+
+
 def grade(task, data):
 
     in1 = unidecode(data.get('input1', '')).strip().split('\n')
-    in2 = unidecode(data.get('input2', '')).strip()
+    in2 = unidecode(data.get('input2', ''))
 
-    supplied_lines = [s.strip() for s in in1]
-    supplied_lines.append(in2)
+    supplied_lines = [canon_input(s) for s in in1]
+    supplied_lines.append(canon_input(in2))
     expected_lines = task['full_data']['answer']
-    print("supplied_lines {} / expected_lines {}".format(
-        len(supplied_lines), len(expected_lines)))
-
     if len(supplied_lines) != len(expected_lines):
         return None
+
     n_correct = 0
     for p in zip(supplied_lines, expected_lines):
-        if p[0] == p[1]:
+        if p[0] == canon_input(p[1]):
             n_correct += 1
 
     score = n_correct * 200
