@@ -10,9 +10,10 @@ def load_rounds(db, round_ids, now=None):
         'min_team_size', 'max_team_size', 'min_team_ratio',
         'max_attempts', 'max_answers', 'duration',
         'status', 'allow_team_changes', 'have_training_attempt',
-        'tasks_path', 'task_module', 'task_url', 'task_front'
+        'tasks_path', 'task_module', 'task_url', 'task_front',
+        'hide_scores'
     ]
-    bool_cols = ['allow_team_changes', 'have_training_attempt']
+    bool_cols = ['allow_team_changes', 'have_training_attempt', 'hide_scores']
     rows = db.load_rows(db.tables.rounds, round_ids, cols)
     result = {}
     for row in rows:

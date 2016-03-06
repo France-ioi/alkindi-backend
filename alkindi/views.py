@@ -89,7 +89,8 @@ def view_requesting_user(
     members = load_team_members(db, team['id'], users=True)
     view['round'] = view_round(round_)
     view['team'] = view_team(team, members)
-    view['team']['score'] = participation['score']
+    if not round_['hide_scores']:
+        view['team']['score'] = participation['score']
 
     # XXX A team's validity should be checked against settings for a
     #     competition rather than a round.
@@ -218,18 +219,21 @@ def view_round(round_):
         'registration_opens_at', 'training_opens_at',
         'is_registration_open', 'is_training_open',
         'min_team_size', 'max_team_size', 'min_team_ratio',
-        'max_attempts', 'max_answers', 'status', 'allow_team_changes'
+        'max_attempts', 'max_answers', 'status', 'allow_team_changes',
+        'hide_scores'
     ]
     return {key: round_[key] for key in keys}
 
 
 def view_team_participation(participation, round_):
-    return {
+    view = {
         'id': participation['id'],
         'created_at': participation['created_at'],
-        'score': participation['score'],
         'round': view_round(round_),
     }
+    if not round_['hide_scores'] or round_['status'] != 'open':
+        view['score'] = participation['score']
+    return view
 
 
 def view_user_workspace_revision(workspace_revision):
@@ -277,7 +281,8 @@ def add_revisions(db, view, attempt_id):
 
 def add_answers(db, view, attempt_id):
     answers = load_limited_attempt_answers(db, attempt_id)
-    view['answers'] = answers
+    hide_scores = view['round']['hide_scores']
+    view['answers'] = [view_answer(answer, hide_scores) for answer in answers]
     user_ids = set()
     for answer in answers:
         user_ids.add(answer['submitter_id'])
@@ -316,25 +321,27 @@ def view_round_attempts(round_, attempts):
     return views
 
 
-def view_answers(db, answers):
-    user_ids = set()
-    for answer in answers:
-        user_ids.add(answer['submitter_id'])
-    users = load_users(db, user_ids)
-    user_views = [view_user(user) for user in users]
-    return {
-        'answers': answers,
-        'users': user_views
-    }
+def view_answer(answer, hide_scores):
+    view = {}
+    cols = [
+        'id', 'submitter_id', 'ordinal', 'created_at', 'answer',
+        'is_solution', 'is_full_solution']
+    if not hide_scores:
+        cols.append('score')
+    for col in cols:
+        view[col] = answer[col]
+    return view
 
 
 def view_attempt(attempt, round_):
     keys = [
         'id', 'ordinal', 'created_at', 'started_at', 'closes_at',
         'is_current', 'is_training', 'is_unsolved', 'is_fully_solved',
-        'is_closed', 'is_completed', 'max_score'
+        'is_closed', 'is_completed'
     ]
     view = {key: attempt[key] for key in keys}
     if not attempt['is_training']:
         view['duration'] = round_['duration']
+    if not round_['hide_scores']:
+        view['max_score'] = attempt['max_score']
     return view
