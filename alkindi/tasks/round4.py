@@ -35,6 +35,9 @@ def get_task(index, choice=None):
         answer = f.read().strip()
     hints = re.sub("'(.)' ?\n?", '\\1', hints)
     answer_lines = answer.split('\n')
+    while len(answer_lines[-1]) == 0:
+        answer_lines.pop()
+    answer_lines = [line.strip() for line in answer_lines]
     return {
         'task_dir': task_dir,
         'full_data': {
@@ -72,25 +75,30 @@ def reset_hints(task):
     pass
 
 
-def canon_input(input):
-    # Map to ASCII, strip, uppercase.
-    input = unidecode(input).strip().upper()
-    return input
-
-
 def grade(task, data):
 
-    in1 = data.get('input1', '')
-    in2 = data.get('input2', '')
+    in1 = unidecode(data.get('input1', '')).strip().split('\n')
+    in2 = unidecode(data.get('input2', '')).strip()
 
-    # in.split('\n').map(in1)
-    # canon_input(in2)
-    score = 0
+    supplied_lines = [s.strip() for s in in1]
+    supplied_lines.append(in2)
+    expected_lines = task['full_data']['answer']
+    print("supplied_lines {} / expected_lines {}".format(
+        len(supplied_lines), len(expected_lines)))
+
+    if len(supplied_lines) != len(expected_lines):
+        return None
+    n_correct = 0
+    for p in zip(supplied_lines, expected_lines):
+        if p[0] == p[1]:
+            n_correct += 1
+
+    score = n_correct * 200
     is_solution = score > 0
-    is_full_solution = score == 1400
+    is_full_solution = n_correct == len(expected_lines)
 
     return {
-        'input': [],
+        'input': {'supplied_lines': supplied_lines},
         'expected': [],
         'feedback': {},
         'base_score': '0',
