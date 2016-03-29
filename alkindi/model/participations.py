@@ -45,7 +45,9 @@ def load_team_participations(db, team_id):
         ('id', participations.id),
         ('round_id', participations.round_id),
         ('created_at', participations.created_at),
-        ('score', participations.score)
+        ('score', participations.score),
+        ('score_90min', participations.score_90min),
+        ('first_equal_90min', participations.first_equal_90min),
     ]
     query = db.query(participations) \
         .fields([col[1] for col in cols]) \

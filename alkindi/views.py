@@ -233,6 +233,9 @@ def view_team_participation(participation, round_):
     }
     if not round_['hide_scores'] or round_['status'] != 'open':
         view['score'] = participation['score']
+        if participation['score_90min'] is not None:
+            view['score_90min'] = participation['score_90min']
+            view['first_equal_90min'] = participation['first_equal_90min']
     return view
 
 
