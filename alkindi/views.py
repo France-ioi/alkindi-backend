@@ -82,7 +82,9 @@ def view_requesting_user(
         participation = get_by_id(participations, participation_id)
         if participation is None:
             return view
-    participation['is_current'] = True
+    for pview in view['participations']:
+        if pview['id'] == participation['id']:
+            pview['is_current'] = True
 
     round_id = participation['round_id']
     team = load_team(db, team_id)
