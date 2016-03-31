@@ -152,7 +152,7 @@ def view_requesting_user(
         view['my_latest_revision_id'] = revision_id
         # If the round is closed, add expectedAnswer.
         if round_['status'] == 'closed':
-            view['task']['expectedAnswer'] = task['full_data']['answer']
+            view['task']['expectedAnswer'] = task['full_data'].get('answer')
     return view
 
 
