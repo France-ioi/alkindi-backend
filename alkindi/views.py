@@ -11,7 +11,7 @@ from alkindi.model.participations import load_team_participations
 from alkindi.model.attempts import (
     load_participation_attempts, get_user_current_attempt_id)
 from alkindi.model.access_codes import load_unlocked_access_codes
-from alkindi.model.tasks import load_task_team_data
+from alkindi.model.tasks import load_task
 from alkindi.model.answers import load_limited_attempt_answers
 from alkindi.model.workspace_revisions import (
     load_user_latest_revision_id, load_attempt_revisions)
@@ -133,11 +133,15 @@ def view_requesting_user(
     current_attempt_view['needs_codes'] = needs_codes
     # Add task data, if available.
     try:
-        task = load_task_team_data(db, attempt_id)
+        # XXX Previously load_task_team_data which did not parse
+        #     full_data.
+        # /!\ task contains sensitive data
+        task = load_task(db, attempt_id)
     except ModelError:
         task = None
     if task is not None:
-        view['task'] = task
+        view['task'] = task['team_data']
+        view['task']['score'] = task['score']
         view['task']['front'] = round_['task_front']
         current_attempt_view['has_task'] = True
         # Give the user the id of their latest revision for the
@@ -146,7 +150,9 @@ def view_requesting_user(
         revision_id = load_user_latest_revision_id(
             db, user_id, attempt_id)
         view['my_latest_revision_id'] = revision_id
-
+        # If the round is closed, add expectedAnswer.
+        if round_['status'] == 'closed':
+            view['task']['expectedAnswer'] = task['full_data']['answer']
     return view
 
 
