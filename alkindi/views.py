@@ -11,7 +11,7 @@ from alkindi.model.participations import load_team_participations
 from alkindi.model.attempts import (
     load_participation_attempts, get_user_current_attempt_id)
 from alkindi.model.access_codes import load_unlocked_access_codes
-from alkindi.model.tasks import load_task
+from alkindi.model.tasks import (load_task, load_task_team_data)
 from alkindi.model.answers import load_limited_attempt_answers
 from alkindi.model.workspace_revisions import (
     load_user_latest_revision_id, load_attempt_revisions)
