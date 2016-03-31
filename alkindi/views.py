@@ -82,6 +82,7 @@ def view_requesting_user(
         participation = get_by_id(participations, participation_id)
         if participation is None:
             return view
+    participation['is_current'] = True
 
     round_id = participation['round_id']
     team = load_team(db, team_id)
@@ -236,6 +237,7 @@ def view_team_participation(participation, round_):
         'id': participation['id'],
         'created_at': participation['created_at'],
         'round': view_round(round_),
+        'is_qualified': participation['is_qualified']
     }
     if not round_['hide_scores'] or round_['status'] != 'open':
         view['score'] = participation['score']

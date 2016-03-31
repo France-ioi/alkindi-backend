@@ -485,3 +485,5 @@ ALTER TABLE teams DROP COLUMN message;
 # Rounds can have a null duration.
 ALTER TABLE rounds MODIFY COLUMN duration INT NULL;
 ALTER TABLE rounds ADD COLUMN hide_scores BOOLEAN NOT NULL DEFAULT FALSE;
+
+ALTER TABLE participations ADD COLUMN is_qualified BOOLEAN NOT NULL DEFAULT FALSE;

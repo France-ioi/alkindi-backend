@@ -34,9 +34,12 @@ def get_team_latest_participation_id(db, team_id):
 
 def load_participation(db, participation_id, for_update=False):
     cols = ['id', 'created_at', 'team_id', 'round_id', 'score']
-    return db.load_row(
+    row = db.load_row(
         db.tables.participations, participation_id, cols,
         for_update=for_update)
+    for key in ['is_qualified']:
+        row[key] = db.load_bool(row[key])
+    return row
 
 
 def load_team_participations(db, team_id):
@@ -48,12 +51,18 @@ def load_team_participations(db, team_id):
         ('score', participations.score),
         ('score_90min', participations.score_90min),
         ('first_equal_90min', participations.first_equal_90min),
+        ('is_qualified', participations.is_qualified)
     ]
     query = db.query(participations) \
         .fields([col[1] for col in cols]) \
         .where(participations.team_id == team_id) \
         .order_by(participations.created_at)
-    return db.all_rows(query, cols)
+    rows = db.all_rows(query, cols)
+    for row in rows:
+        for key in ['is_qualified']:
+            row[key] = db.load_bool(row[key])
+    return rows
+
 
 
 def update_participation(db, participation_id, attrs):
