@@ -176,7 +176,7 @@ def view_user(user):
 def view_team(team, members):
     """ Return the user-view for a team.
     """
-    keys = ['id', 'code', 'is_open', 'is_locked']
+    keys = ['id', 'code', 'is_open', 'is_locked', 'rank', 'rank_region']
     result = {key: team[key] for key in keys}
     result['members'] = members
     creators = [m for m in members if m['is_creator']]
