@@ -7,7 +7,7 @@ def load_team(db, team_id, for_update=False):
         return None
     keys = [
         'id', 'created_at', 'code', 'is_open', 'is_locked',
-        'rank', 'rank_region'
+        'region_id', 'rank', 'rank_region'
     ]
     result = db.load_row(db.tables.teams, team_id, keys,
                          for_update=for_update)
@@ -55,3 +55,22 @@ def update_team(db, team_id, settings):
         No checks are performed in this function.
     """
     db.update_row(db.tables.teams, team_id, settings)
+
+
+def count_teams_in_round(db, round_id):
+    teams = db.tables.teams
+    participations = db.tables.participations
+    query = db.query(teams & participations) \
+        .where(participations.team_id == teams.id) \
+        .where(participations.round_id == round_id)
+    return db.count(query.fields(teams.id))
+
+
+def count_teams_in_round_region(db, round_id, region_id):
+    teams = db.tables.teams
+    participations = db.tables.participations
+    query = db.query(teams & participations) \
+        .where(participations.team_id == teams.id) \
+        .where(participations.round_id == round_id) \
+        .where(teams.region_id == region_id)
+    return db.count(query.fields(teams.id))
