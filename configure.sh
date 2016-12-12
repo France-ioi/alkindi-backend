@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# mysql password (must be escaped for inclusion in JSON)
+MYSQL_PASSWORD="MYSQL_PASSWORD"
+
 # Without this setting, the application will fail with a fatal error
 # pointing to this configuration script.
 redis-cli set configured yes
@@ -28,3 +31,5 @@ redis-cli set oauth_refresh_uri     'https://oauth.epixode.fr/oauth/token'
 # user's profile.
 redis-cli set identity_provider_uri 'https://oauth.epixode.fr/profile'
 
+# Configure the connection to mysql.
+redis-cli set mysql_connection "{\"host\":\"localhost\",\"user\":\"alkindi\",\"passwd\":\"${MYSQL_PASSWORD}\",\"db\":\"alkindi\"}"
