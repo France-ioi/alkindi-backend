@@ -12,15 +12,11 @@ import traceback
 from pyramid.events import NewRequest, BeforeRender
 from pyramid.config import Configurator
 from pyramid.renderers import JSON
-from pyramid.static import QueryStringConstantCacheBuster
 from pyramid.renderers import render
 from pyramid.tweens import EXCVIEW
 
 from alkindi import helpers
 from alkindi.globals import app
-from alkindi_r2_front import (
-    version as front_version,
-    min_build as front_min)
 from alkindi.errors import ApplicationError
 from alkindi.database_adapters import MysqlAdapter
 
@@ -30,9 +26,8 @@ def application(_global_config, **settings):
     """
 
     print(
-        "=== {}Z worker {} starting (front {}{})".format(
-            datetime.utcnow().isoformat(), os.getpid(),
-            front_version, 'min' if front_min else ''))
+        "=== {}Z worker {} starting".format(
+            datetime.utcnow().isoformat(), os.getpid()))
 
     config = Configurator(settings=settings)
     # config.include('pyramid_debugtoolbar')
@@ -47,14 +42,6 @@ def application(_global_config, **settings):
     config.add_subscriber(set_renderer_context, BeforeRender)
     config.add_tween('alkindi.backend.transaction_manager_tween_factory',
                      under=EXCVIEW)
-
-    # Serve versioned static assets from alkindi-r2-front at /front
-    config.add_static_view(
-        name='front', path='alkindi_r2_front:',
-        cache_max_age=(2592000 if front_min else 0),
-        pregenerator=app.assets_pregenerator())
-    config.add_cache_buster(
-        'alkindi_r2_front:', QueryStringConstantCacheBuster(front_version))
 
     # Set up a json renderer that handles datetime objects.
     config.include(add_json_renderer)
@@ -72,8 +59,7 @@ def add_headers(event):
         response.headers.update({
             'Access-Control-Allow-Origin': 'https://suite.concours-alkindi.fr',
             'Access-Control-Allow-Methods': 'GET',
-            'Access-Control-Max-Age': '1728000',
-            'X-Frontend-Version': front_version
+            'Access-Control-Max-Age': '1728000'
         })
     event.request.add_response_callback(callback)
 
@@ -96,8 +82,6 @@ def set_renderer_context(event):
         return
     event['g'] = app
     event['h'] = helpers
-    event['front_version'] = front_version
-    event['front_min'] = '.min' if front_min else ''
 
 
 def log_api_failure(event):
