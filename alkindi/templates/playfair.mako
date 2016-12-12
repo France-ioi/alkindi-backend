@@ -82,6 +82,11 @@
 		<p class="title">Annonces :</p>
 		<ul>
 			<li>Le concours est prolongé jusqu'au samedi 23 janvier à 20h</li>
+			<li>
+Notez qu'il est possible que le message contienne un tout petit nombre de
+fautes d'orthographe ou de grammaire. En particulier, "DE LE" au lieu de
+"DU" et des tirets en trop ou manquants.
+			</li>
 		</ul>
 	</div>
 	<p>
