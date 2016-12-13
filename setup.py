@@ -31,7 +31,7 @@ requires = [
     'pyramid-mako >= 1.0.2',
     'pyramid_redis_sessions >= 1.0.1',
     'requests >= 2.9.0',
-    'sqlbuilder >= 0.7.9.34',  # must run: pip install sqlbuilder
+    'sqlbuilder == 0.7.9.34',  # must run: pip install sqlbuilder
     'ua-parser >= 0.6.1',
     'bleach >= 1.4.2',
     'unidecode >= 0.03'

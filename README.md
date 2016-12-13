@@ -17,9 +17,14 @@ On Debian "jessie" and "stretch", these instructions should work:
     # apt-get install python3 python3-venv python3-setuptools python3-wheel
     # apt-get install python3-mysql.connector python3-zope.interface python3-markupsafe python3-yaml
     $ pyven --system-site-packages ~/python
-    $ pip install sqlbuilder
 
 # Installation
+
+As of version 0.7.9.53, the mysql dialect of sqlbuilder is broken and
+requires a patch to work.  A solution is to install version 0.7.9.34
+which is known to work:
+
+    $ pip3 install -Iv 'https://pypi.python.org/packages/26/09/78b5336550fa977ffa68dfa9a73dd5f93084dd4b0a08e41baff2c18f7e18/sqlbuilder-0.7.9.34.tar.gz#md5=2cdba62ae995556b8e1e3e8e45be1880'
 
 Install the python package for development:
 
