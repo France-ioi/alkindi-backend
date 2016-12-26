@@ -503,3 +503,9 @@ ALTER TABLE teams ADD INDEX ix_teams__region_id (region_id) USING BTREE;
 ALTER TABLE teams ADD CONSTRAINT fk_teams__region_id
     FOREIGN KEY ix_teams__region_id (region_id) REFERENCES regions(id)
     ON DELETE SET NULL ON UPDATE CASCADE;
+
+ALTER TABLE `participations` ADD COLUMN `score_90min` decimal(6,0) DEFAULT NULL;
+ALTER TABLE `participations` ADD COLUMN `first_equal_90min` smallint DEFAULT NULL;
+ALTER TABLE `participations` ADD COLUMN `is_qualified` boolean DEFAULT NULL;
+
+ALTER TABLE `users` ADD COLUMN `is_admin` tinyint(1) NOT NULL DEFAULT '0';
