@@ -214,12 +214,14 @@ def oauth2_provider_uri(request):
     """ Generate an authorization URL.
     """
     authorise_uri = app['oauth_authorise_uri']
+    requested_badge = app['requested_badge']
     callback_uri = request.route_url('oauth_callback')
     request.session['oauth_state'] = state = str(uuid.uuid4())
     oauth_params = {
         'state': state,
         'redirect_uri': callback_uri,
-        'access_type': 'offline'
+        'access_type': 'offline',
+        'required_badge': requested_badge,
         # 'approval_prompt': 'force'
     }
     return get_oauth_client().prepare_request_uri(
