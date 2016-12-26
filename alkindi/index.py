@@ -64,9 +64,9 @@ def includeme(config):
 
     # Deprecated routes and views -- frontend stuff is planned to be
     # completely separated from the backend.
-    config.add_route('index', '/', request_method='GET')
+    config.add_route('start', '/start', request_method='GET')
     config.add_view(
-        index_view, route_name='index', renderer='templates/index.mako')
+        start_view, route_name='start', renderer='templates/start.mako')
     config.add_route(
         'ancient_browser', '/ancient_browser', request_method='GET')
     config.add_view(
@@ -110,11 +110,11 @@ def ancient_browser_view(request):
     return user_agent_parser.Parse(ua)
 
 
-def index_view(request):
+def start_view(request):
     # Redirect ancient browsers (detection is performed by the reverse
     # proxy).
-    if 'ancient' not in request.params and is_ancient_browser(request):
-        raise HTTPFound(request.route_url('ancient_browser'))
+    #if 'ancient' not in request.params and is_ancient_browser(request):
+    #    raise HTTPFound(request.route_url('ancient_browser'))
     # Prepare the frontend's config for injection as JSON in a script tag.
     csrf_token = request.session.get_csrf_token()
     frontend_config = {
@@ -129,6 +129,7 @@ def index_view(request):
     # Add info about the logged-in user (if any) to the frontend config.
     frontend_config['seed'] = views.view_requesting_user(request.db, **kwargs)
     request.response.cache_control = 'max-age=0, private'
+    request.response.content_type = 'application/javascript'
     return {
         'frontend_config': frontend_config
     }
