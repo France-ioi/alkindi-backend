@@ -1,7 +1,11 @@
 <%inherit file="layout.mako"/>
 <%block name="body">
+% if user_id:
 <script type="text/javascript">
-window.opener.postMessage(JSON.stringify({'action': 'afterLogout'}), window.location.origin);
-window.location.href = ${h.to_json(identity_provider_logout_uri)};
+window.opener.postMessage(${h.double_json({
+  'dispatch': {'type': 'Logout.Feedback'}
+})}, window.location.origin);
+window.location.href = ${h.to_json(auth_provider_logout_uri)};
 </script>
+% endif
 </%block>

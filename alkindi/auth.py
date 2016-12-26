@@ -95,14 +95,14 @@ def oauth_callback_view(request):
 def logout_view(request):
     # Opening this view in a new window will post an 'afterLogout'
     # message to the application then redirect to the logout page
-    # of the identity provider.
+    # of the authorisation provider.
     # Do not open this view in an iframe, as it would prevent the
-    # identity provider from receiving the user's cookies (look up
+    # authorisation provider from receiving the user's cookies (see
     # Third-party cookies).
     forget(request)
     request.session.clear()
     return {
-        'identity_provider_logout_uri': app['logout_uri']
+        'auth_provider_logout_uri': app['logout_uri']
     }
 
 
