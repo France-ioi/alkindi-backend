@@ -33,3 +33,5 @@ redis-cli set identity_provider_uri 'https://oauth.epixode.fr/profile'
 
 # Configure the connection to mysql.
 redis-cli set mysql_connection "{\"host\":\"localhost\",\"user\":\"alkindi\",\"passwd\":\"${MYSQL_PASSWORD}\",\"db\":\"alkindi\"}"
+
+redis-cli set requested_badge 'https://badges.concours-alkindi.fr/qualification_tour2/2017'
