@@ -11,15 +11,10 @@ with open(os.path.join(here, 'CHANGES.md')) as f:
     CHANGES = f.read()
 
 requires = [
-    # These packages have binary extensions, it is easier to use a venv
-    # with --system-site-packages:
-    # 'psycopg2 >= 2.5',
-    'mysql-connector-python >= 1.2.3',
+    'mysql-connector >= 2.1.4',
     'zope.interface >= 4.1.1',
     'MarkupSafe >= 0.23',
     'PyYAML >= 3.11',
-    # These packages can be installed from source, and it is better to use
-    # recent versions:
     'Babel >= 2.1.1',
     'gunicorn >= 19.4.1',
     'iso8601 >= 0.1.11',
@@ -31,7 +26,7 @@ requires = [
     'pyramid-mako >= 1.0.2',
     'pyramid_redis_sessions >= 1.0.1',
     'requests >= 2.9.0',
-    'sqlbuilder == 0.7.9.34',  # must run: pip install sqlbuilder
+    'sqlbuilder-0.7.9.53',
     'ua-parser >= 0.6.1',
     'bleach >= 1.4.2',
     'unidecode >= 0.03'
