@@ -19,7 +19,7 @@ def import_user(db, profile, now):
         users.username: profile['sLogin'],
         users.firstname: profile['sFirstName'],
         users.lastname: profile['sLastName'],
-        users.badges: ' '.join(profile['badges']),
+        users.badges: ' '.join(profile['aBadges']),
     })
     user_id = db.insert(query)
     return user_id
@@ -30,7 +30,7 @@ def update_user(db, user_id, profile):
         'username': profile['sLogin'],
         'firstname': profile['sFirstName'],
         'lastname': profile['sLastName'],
-        'badges': ' '.join(profile['badges']),
+        'badges': ' '.join(profile['aBadges']),
     })
 
 
