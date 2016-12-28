@@ -9,11 +9,13 @@ from pyramid.httpexceptions import HTTPFound, HTTPForbidden, HTTPNotFound
 from pyramid.session import check_csrf_token
 from ua_parser import user_agent_parser
 
-from alkindi.auth import get_user_profile, reset_user_principals
+from alkindi.auth import (
+    get_user_profile, reset_user_principals, get_oauth2_token)
 from alkindi.contexts import (
     ApiContext, UserApiContext, TeamApiContext, UserAttemptApiContext)
 from alkindi.errors import ApiError, ApplicationError
 import alkindi.views as views
+from alkindi.globals import app
 
 from alkindi.model.users import (
     load_user, update_user, get_user_team_id, find_user_by_username)
@@ -47,7 +49,7 @@ def includeme(config):
     config.include('alkindi.legacy')
 
     api_post(config, UserApiContext, '', refresh_action)
-    api_post(config, UserApiContext, 'qualify', qualify_user_action)
+    api_post(config, UserApiContext, 'add_badge', add_badge_action)
     api_post(config, UserApiContext, 'create_team', create_team_action)
     api_post(config, UserApiContext, 'join_team', join_team_action)
     api_post(config, UserApiContext, 'leave_team', leave_team_action)
@@ -200,35 +202,42 @@ def reset_team_to_training_action(request):
     return {'success': True}
 
 
-def qualify_user_action(request):
+def add_badge_action(request):
+    data = request.json_body
     user_id = request.context.user_id
     user = load_user(request.db, user_id)
     foreign_id = user['foreign_id']
-    data = request.json_body
-    url = 'http://www.france-ioi.org/alkindi/apiQualificationAlkindi.php'
-    payload = {
-        'userID': foreign_id,
-        'qualificationCode': data.get('code')
+    access_token = get_oauth2_token(request, refresh=True)
+    params = {
+        'badgeUrl': app['requested_badge'],
+        'idUser': foreign_id,
+        'qualCode': data.get('code')
     }
-    headers = {'Accept': 'application/json'}
-    req = requests.post(url, data=payload, headers=headers)
+    headers = {
+        'Accept': 'application/json',
+        'Authorization': 'Bearer {}'.format(access_token)
+    }
+    req = requests.post(
+        app['add_badge_uri'],
+        headers=headers, data=params,
+        verify='/etc/ssl/certs/ca-certificates.crt')
     req.raise_for_status()
-    try:
-        body = json.loads(req.text)
-    except:
-        body = {}
-    codeStatus = body.get('codeStatus')
-    userIDStatus = body.get('userIDStatus')
+    result = req.json()
+    print("\033[91mresult\033[0m {}".format(result))
+    success = result.get('success')
+    if not success:
+        return {
+            'success': False,
+            'profileUpdated': False,
+            'error': result.get('error', 'undefined')
+        }
     profileUpdated = False
-    if codeStatus == 'registered' and userIDStatus == 'registered':
-        profile = get_user_profile(request, foreign_id)
-        if profile is not None:
-            update_user(request.db, user['id'], profile)
-            profileUpdated = True
+    profile = get_user_profile(request, foreign_id)
+    if profile is not None:
+        update_user(request.db, user['id'], profile)
+        profileUpdated = True
     return {
         'success': True,
-        'codeStatus': codeStatus,
-        'userIDStatus': userIDStatus,
         'profileUpdated': profileUpdated
     }
 
