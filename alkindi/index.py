@@ -252,7 +252,7 @@ def create_team_action(request):
         # one that has the greatest id.  This is unsatisfactory.
         pass
     round_id = round_ids[0]
-    round_ = load_round(request.db, round_id)
+    round_ = load_round(request.db, round_id, now)
     if not round_['is_registration_open']:
         raise ApiError('registration is closed')
     # Create the team.
