@@ -33,7 +33,7 @@ def get_team_latest_participation_id(db, team_id):
 
 
 def load_participation(db, participation_id, for_update=False):
-    cols = ['id', 'created_at', 'team_id', 'round_id', 'score']
+    cols = ['id', 'created_at', 'team_id', 'round_id', 'score', 'is_qualified']
     row = db.load_row(
         db.tables.participations, participation_id, cols,
         for_update=for_update)

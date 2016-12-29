@@ -79,9 +79,11 @@ def unlock_access_code(db, attempt_id, user_id, code):
 def clear_access_codes(db, user_id, team_id):
     # Delete the user's access codes in all of the team's attempts.
     attempts = db.tables.attempts
-    subquery = db.query(attempts) \
+    participations = db.tables.participations
+    subquery = db.query(attempts & participations) \
         .fields(attempts.id) \
-        .where(attempts.team_id == team_id) \
+        .where(attempts.participation_id == participations.id) \
+        .where(participations.team_id == team_id) \
         .order_by(attempts.ordinal)
     access_codes = db.tables.access_codes
     query = db.query(access_codes) \
