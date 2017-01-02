@@ -70,7 +70,7 @@ def join_team(db, user_id, team_id, now):
             .where(badges.is_active) \
             .fields(badges.id)
         is_qualified = db.scalar(query) is not None
-    # If the team has already accessed a task (is_locked=True),
+    # If the team has already accessed a task instance (is_locked=True),
     # verify that the team remains valid if the user is added.
     if team['is_locked']:
         round_ = load_round(round_id)

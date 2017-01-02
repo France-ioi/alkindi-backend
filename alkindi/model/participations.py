@@ -64,6 +64,5 @@ def load_team_participations(db, team_id):
     return rows
 
 
-
 def update_participation(db, participation_id, attrs):
     db.update_row(db.tables.participations, participation_id, attrs)

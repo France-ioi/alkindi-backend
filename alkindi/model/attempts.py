@@ -57,8 +57,9 @@ def load_attempt(db, attempt_id, now=None, for_update=False):
 
 def load_participation_attempts(db, participation_id, now):
     attempts = db.tables.attempts
-    tasks = db.tables.tasks
+    task_instances = db.tables.task_instances
     answers = db.tables.answers
+    round_tasks = db.tables.round_tasks
     cols = [
         ('id', attempts.id),
         ('ordinal', attempts.ordinal),
@@ -69,17 +70,18 @@ def load_participation_attempts(db, participation_id, now):
         ('is_training', attempts.is_training, 'bool'),
         ('is_unsolved', attempts.is_unsolved, 'bool'),
         ('is_fully_solved', attempts.is_fully_solved, 'bool'),
-        ('task_id', tasks.attempt_id),
+        ('task_id', task_instances.attempt_id),
         ('max_score', func.max(answers.score)),
     ]
     query = db.query(
-            attempts +
-            tasks.on(tasks.attempt_id == attempts.id) +
-            answers.on(answers.attempt_id == attempts.id)) \
+        attempts &
+        round_tasks.on(round_tasks.id == attempts.task_id) +
+        task_instances.on(task_instances.attempt_id == attempts.id) +
+        answers.on(answers.attempt_id == attempts.id)) \
         .fields([col[1] for col in cols]) \
         .where(attempts.participation_id == participation_id) \
-        .order_by(attempts.ordinal) \
-        .group_by(attempts.id)
+        .group_by(attempts.id) \
+        .order_by(round_tasks.ordinal, attempts.ordinal)
     attempts = db.all_rows(query, cols)
     for attempt in attempts:
         enrich_attempt(db, attempt, now)

@@ -33,8 +33,10 @@ from alkindi.model.attempts import (
     start_attempt, cancel_attempt, reset_to_training_attempt)
 from alkindi.model.workspace_revisions import (
     store_revision)
-from alkindi.model.tasks import (
-    assign_task, get_user_task_hint, reset_user_task_hints)
+from alkindi.model.task_instances import (
+    assign_task_instance,
+    get_user_task_instance_hint,
+    reset_user_task_instance_hints)
 from alkindi.model.access_codes import (
     get_access_code, clear_access_codes, unlock_access_code)
 from alkindi.model.answers import (
@@ -48,6 +50,10 @@ def includeme(config):
 
     config.include('alkindi.legacy')
 
+    config.add_route('start', '/start', request_method='GET')
+    config.add_view(
+        start_view, route_name='start', renderer='templates/start.mako')
+
     api_post(config, UserApiContext, '', refresh_action)
     api_post(config, UserApiContext, 'add_badge', add_badge_action)
     api_post(config, UserApiContext, 'create_team', create_team_action)
@@ -57,18 +63,21 @@ def includeme(config):
     api_post(config, UserApiContext, 'start_attempt', start_attempt_action)
     api_post(config, UserApiContext, 'cancel_attempt', cancel_attempt_action)
     api_post(config, UserApiContext, 'access_code', enter_access_code_action)
-    api_post(config, UserApiContext, 'assign_attempt_task', assign_attempt_task_action)
+    api_post(
+        config, UserApiContext,
+        'assign_attempt_task', assign_attempt_task_action)
     api_post(config, UserApiContext, 'get_hint', get_hint_action)
     api_post(config, UserApiContext, 'reset_hints', reset_hints_action)
     api_post(config, UserApiContext, 'store_revision', store_revision_action)
-    api_post(config, TeamApiContext, 'reset_to_training', reset_team_to_training_action)
-    api_post(config, UserAttemptApiContext, 'answers', submit_user_attempt_answer_action)
+    api_post(
+        config, TeamApiContext,
+        'reset_to_training', reset_team_to_training_action)
+    api_post(
+        config, UserAttemptApiContext,
+        'answers', submit_user_attempt_answer_action)
 
     # Deprecated routes and views -- frontend stuff is planned to be
     # completely separated from the backend.
-    config.add_route('start', '/start', request_method='GET')
-    config.add_view(
-        start_view, route_name='start', renderer='templates/start.mako')
     config.add_route(
         'ancient_browser', '/ancient_browser', request_method='GET')
     config.add_view(
@@ -115,7 +124,7 @@ def ancient_browser_view(request):
 def start_view(request):
     # Redirect ancient browsers (detection is performed by the reverse
     # proxy).
-    #if 'ancient' not in request.params and is_ancient_browser(request):
+    # if 'ancient' not in request.params and is_ancient_browser(request):
     #    raise HTTPFound(request.route_url('ancient_browser'))
     # Prepare the frontend's config for injection as JSON in a script tag.
     csrf_token = request.session.get_csrf_token()
@@ -129,7 +138,10 @@ def start_view(request):
     kwargs = get_user_context(
         request, request.authenticated_userid, request.params)
     # Add info about the logged-in user (if any) to the frontend config.
-    frontend_config['seed'] = views.view_requesting_user(request.db, **kwargs)
+    try:
+        frontend_config['seed'] = views.view_requesting_user(request.db, **kwargs)
+    except ApplicationError as error:
+        frontend_config['seed'] = {'error': str(error)}
     request.response.cache_control = 'max-age=0, private'
     request.response.content_type = 'application/javascript'
     return {
@@ -185,7 +197,7 @@ def get_user_context(request, user_id, params):
 def user_task_view(request):
     request.response.cache_control = 'max-age=0, private'
     user_id = request.context.user_id
-    return views.view_user_task(request.db, user_id)
+    return views.view_user_task_instance(request.db, user_id)
 
 
 def user_view(request):
@@ -380,20 +392,20 @@ def assign_attempt_task_action(request):
     if attempt_id is None:
         raise ApiError('no current attempt')
     # This will fail if the team is invalid.
-    assign_task(request.db, attempt_id, now=datetime.utcnow())
+    assign_task_instance(request.db, attempt_id, now=datetime.utcnow())
     return {'success': True}
 
 
 def get_hint_action(request):
     user_id = request.context.user_id
     query = request.json_body
-    success = get_user_task_hint(request.db, user_id, query)
+    success = get_user_task_instance_hint(request.db, user_id, query)
     return {'success': success}
 
 
 def reset_hints_action(request):
     user_id = request.context.user_id
-    reset_user_task_hints(request.db, user_id)
+    reset_user_task_instance_hints(request.db, user_id)
     return {'success': True}
 
 

@@ -7,7 +7,8 @@ from alkindi.model.attempts import load_attempt, update_attempt_with_grading
 from alkindi.model.participations import (
     load_participation, update_participation)
 from alkindi.model.rounds import load_round
-from alkindi.model.tasks import load_task, get_attempt_task_module
+from alkindi.model.task_instances import (
+    load_task_instance, get_attempt_task_module)
 
 
 def grade_answer(db, attempt_id, submitter_id, data, now):

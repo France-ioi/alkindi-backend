@@ -10,25 +10,26 @@ from alkindi.model.attempts import load_attempt, get_user_current_attempt_id
 from alkindi.model.workspaces import create_attempt_workspace
 
 
-def load_task(db, attempt_id, for_update=False):
+def load_task_instance(db, attempt_id, for_update=False):
     keys = [
         'attempt_id', 'created_at', 'full_data', 'team_data', 'score'
     ]
-    tasks = db.tables.tasks
+    task_instances = db.tables.task_instances
     result = db.load_row(
-        tasks, {'attempt_id': attempt_id}, keys, for_update=for_update)
+        task_instances, {'attempt_id': attempt_id}, keys,
+        for_update=for_update)
     for key in ['full_data', 'team_data']:
         result[key] = db.load_json(result[key])
     return result
 
 
-def load_task_team_data(db, attempt_id):
+def load_task_instance_team_data(db, attempt_id):
     """ Return the team data for the given attempt, or None if there
         is no task assigned to the attempt.
     """
-    tasks = db.tables.tasks
+    task_instances = db.tables.task_instances
     row = db.load_row(
-        tasks, {'attempt_id': attempt_id}, ['score', 'team_data'])
+        task_instances, {'attempt_id': attempt_id}, ['score', 'team_data'])
     if row is None:
         return None
     result = db.load_json(row['team_data'])
@@ -36,7 +37,7 @@ def load_task_team_data(db, attempt_id):
     return result
 
 
-def assign_task(db, attempt_id, now):
+def assign_task_instance(db, attempt_id, now):
     """ Assign a task to the attempt.
         The team performing the attempt must be valid, otherwise
         an exception is raised.
@@ -61,15 +62,15 @@ def assign_task(db, attempt_id, now):
         raise ModelError('training is not open')
     duration = round_['duration']
     try:
-        # Lock the tasks table to prevent concurrent inserts.
-        db.execute('LOCK TABLES tasks WRITE, attempts READ').close()
-        # Load all task_dir field for all tasks associated with the
+        # Lock the task_instances table to prevent concurrent inserts.
+        db.execute('LOCK TABLES task_instances WRITE, attempts READ').close()
+        # Load all task_dir field for all task_instances associated with the
         # participation.
         task_dirs = get_participation_task_dirs(db, participation_id)
         # Allocate a task that the team has never had, and associate it
         # with the attempt.
         task = get_new_task(round_, task_dirs)
-        task_attrs = {
+        attrs = {
             'attempt_id': attempt_id,
             'created_at': now,
             'task_dir': task['task_dir'],
@@ -77,8 +78,8 @@ def assign_task(db, attempt_id, now):
             'full_data': db.dump_json(task['full_data']),
             'team_data': db.dump_json(task['team_data']),
         }
-        tasks = db.tables.tasks
-        db.insert_row(tasks, task_attrs)
+        task_instances = db.tables.task_instances
+        db.insert_row(task_instances, attrs)
     finally:
         db.execute('UNLOCK TABLES').close()
     attempt_attrs = {'started_at': now}
@@ -95,11 +96,11 @@ def assign_task(db, attempt_id, now):
     create_attempt_workspace(db, attempt_id, now)
 
 
-def get_user_task_hint(db, user_id, query):
+def get_user_task_instance_hint(db, user_id, query):
     attempt_id = get_user_current_attempt_id(db, user_id)
     if attempt_id is None:
         raise ModelError('no current attempt')
-    task = load_task(db, attempt_id, for_update=True)
+    task = load_task_instance(db, attempt_id, for_update=True)
     if task is None:
         raise ModelError('no task')
     task_module = get_attempt_task_module(db, attempt_id)
@@ -108,30 +109,30 @@ def get_user_task_hint(db, user_id, query):
     if not success:
         return False
     score = task_module.get_current_score(task)
-    tasks = db.tables.tasks
-    db.update_row(tasks, {'attempt_id': attempt_id}, {
+    task_instances = db.tables.task_instances
+    db.update_row(task_instances, {'attempt_id': attempt_id}, {
         'score': score,
         'team_data': db.dump_json(task['team_data'])
     })
     return True
 
 
-def reset_user_task_hints(db, user_id, force=False):
+def reset_user_task_instance_hints(db, user_id, force=False):
     attempt_id = get_user_current_attempt_id(db, user_id)
     if not force and attempt_id is None:
         raise ModelError('no current attempt')
     attempt = load_attempt(db, attempt_id, for_update=True)
     if not force and not attempt['is_training']:
         raise ModelError('forbidden')
-    task = load_task(db, attempt_id)
+    task = load_task_instance(db, attempt_id)
     if task is None:
         raise ModelError('no task')
     # reset_hints updates task in-place
     task_module = get_attempt_task_module(db, attempt_id)
     task_module.reset_hints(task)
     score = task_module.get_current_score(task)
-    tasks = db.tables.tasks
-    db.update_row(tasks, {'attempt_id': attempt_id}, {
+    task_instances = db.tables.task_instances
+    db.update_row(task_instances, {'attempt_id': attempt_id}, {
         'score': score,
         'team_data': db.dump_json(task['team_data'])
     })
@@ -165,17 +166,17 @@ def get_task_module(module_path):
 
 
 def get_participation_task_dirs(db, participation_id):
-    """ Return the list of task_dir(s) in all the tasks accessed by
+    """ Return the list of task_dir(s) in all the task instances accessed by
         the given participation.
     """
-    tasks = db.tables.tasks
+    task_instances = db.tables.task_instances
     attempts = db.tables.attempts
     query = db.query(
-        tasks &
-        attempts.on(attempts.id == tasks.attempt_id))
+        task_instances &
+        attempts.on(attempts.id == task_instances.attempt_id))
     query = query \
         .where(attempts.participation_id == participation_id) \
-        .fields(tasks.task_dir)
+        .fields(task_instances.task_dir)
     return [row[0] for row in db.all(query)]
 
 
@@ -192,23 +193,24 @@ def get_new_task(round_, task_dirs):
 
 
 def fix_tasks(db, round_id):
-    """ This function can be used to fix all the tasks assigned for a
+    """ This function can be used to fix all the task instances assigned for a
         given round.  It calls the task module's fix_task function on
-        each task, and updates the tasks for which fix_task returns True.
+        each task, and updates the task instances for which fix_task returns
+        True.
     """
     round_ = load_round(db, round_id)
     task_module = get_task_module(round_['task_module'])
     keys = [
         'attempt_id', 'created_at', 'full_data', 'team_data', 'score'
     ]
-    tasks = db.tables.tasks
-    attempts = db.tables.tasks
+    task_instances = db.tables.task_instances
+    attempts = db.tables.attempts
     query = (
         db.query(
-            (tasks & attempts)
-            .on(tasks.attempt_id == attempts.id))
+            (task_instances & attempts)
+            .on(task_instances.attempt_id == attempts.id))
         .where(attempts.round_id == round_id)
-        .fields(*[getattr(tasks, key) for key in keys]))
+        .fields(*[getattr(task_instances, key) for key in keys]))
     count = 0
     for row in list(db.all(query)):
         task = {key: row[i] for i, key in enumerate(keys)}
@@ -218,5 +220,6 @@ def fix_tasks(db, round_id):
             count += 1
             for key in ['full_data', 'team_data']:
                 task[key] = db.dump_json(task[key])
-            db.update_row(tasks, {'attempt_id': task['attempt_id']}, task)
+            db.update_row(
+                task_instances, {'attempt_id': task['attempt_id']}, task)
     return count

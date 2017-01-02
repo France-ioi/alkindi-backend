@@ -509,3 +509,75 @@ ALTER TABLE `participations` ADD COLUMN `first_equal_90min` smallint DEFAULT NUL
 ALTER TABLE `participations` ADD COLUMN `is_qualified` boolean DEFAULT NULL;
 
 ALTER TABLE `users` ADD COLUMN `is_admin` tinyint(1) NOT NULL DEFAULT '0';
+
+---
+
+RENAME TABLE `tasks` TO `task_instances`;
+-- Column task_dir is removed, will be included in full_data.
+ALTER TABLE `task_instances` DROP COLUMN `task_dir`;
+-- Update FK name.
+ALTER TABLE `task_instances` DROP FOREIGN KEY `fk_tasks__attempt_id`;
+ALTER TABLE `task_instances` ADD CONSTRAINT `fk_task_instances__attempt_id`
+  FOREIGN KEY (`attempt_id`) REFERENCES `attempts` (`id`)
+  ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- Platform/task communication will all go through backend_url.
+CREATE TABLE `tasks` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `created_at` datetime NOT NULL,
+  `updated_at` datetime NOT NULL,
+  `title` text NOT NULL,
+  `backend_url` text NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+-- Table round_tasks holds the task settings (default values may be
+-- provided by the task's backend)
+CREATE TABLE `round_tasks` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `round_id` bigint(20) NOT NULL,
+  `task_id` bigint(20) NOT NULL,
+  `rank` int(11) NOT NULL DEFAULT '0',
+  `duration` int(11) DEFAULT NULL,
+  `max_attempts` int(11) DEFAULT NULL,
+  `max_answers` int(11) DEFAULT NULL,
+  `hide_scores` tinyint(1) NOT NULL DEFAULT '0',
+  `have_training_attempt` tinyint(1) NOT NULL DEFAULT '0',
+  PRIMARY KEY (id)
+) ENGINE=InnoDB;
+ALTER TABLE `round_tasks` ADD INDEX `ix_round_tasks__round_rank` (round_id, rank) USING BTREE;
+ALTER TABLE `round_tasks` ADD INDEX `ix_round_tasks__task_id` (task_id) USING BTREE;
+ALTER TABLE `round_tasks` ADD CONSTRAINT `fk_round_tasks__round_id`
+  FOREIGN KEY `ix_round_tasks__round_rank` (`round_id`) REFERENCES `rounds` (`id`)
+  ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE `round_tasks` ADD CONSTRAINT `fk_round_tasks__task_id`
+  FOREIGN KEY `ix_round_tasks__task_id` (`task_id`) REFERENCES `tasks` (`id`)
+  ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- Every attempt now relates to a task.
+ALTER TABLE `attempts` ADD COLUMN `task_id` bigint(20) NOT NULL;
+ALTER TABLE `attempts` ADD CONSTRAINT `fk_attempts__task_id`
+  FOREIGN KEY (`task_id`) REFERENCES `tasks` (`id`) ON DELETE CASCADE;
+
+-- The best score will be cached in every attempt.
+ALTER TABLE `attempts` ADD COLUMN `score` decimal(6,0) DEFAULT NULL;
+
+-- Participations would benefit from an updated_at column.
+ALTER TABLE `participations` ADD COLUMN `updated_at` datetime NOT NULL;
+
+-- Clean up now-unused columns.
+ALTER TABLE `rounds` DROP COLUMN `task_front`;
+ALTER TABLE `rounds` DROP COLUMN `task_module`;
+ALTER TABLE `rounds` DROP COLUMN `task_url`;
+ALTER TABLE `rounds` DROP COLUMN `tasks_path`;
+ALTER TABLE `rounds` DROP COLUMN `max_attempts`;
+ALTER TABLE `rounds` DROP COLUMN `max_answers`;
+ALTER TABLE `rounds` DROP COLUMN `hide_scores`;
+ALTER TABLE `rounds` DROP COLUMN `have_training_attempt`;
+
+ALTER TABLE `round_tasks` ADD COLUMN `use_codes` tinyint(1) NOT NULL DEFAULT '0';
+ALTER TABLE `round_tasks` CHANGE COLUMN `rank` `ordinal` int(11) NOT NULL DEFAULT '0';
+ALTER TABLE `round_tasks` CHANGE COLUMN `duration` `attempt_duration` int(11) DEFAULT NULL;
+ALTER TABLE `round_tasks` CHANGE COLUMN `max_answers` `max_attempt_answers` int(11) DEFAULT NULL;
+ALTER TABLE `round_tasks` CHANGE COLUMN `max_attempts` `max_timed_attempts` int(11) DEFAULT NULL;
+

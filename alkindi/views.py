@@ -4,6 +4,7 @@ from datetime import datetime
 from alkindi.errors import ModelError
 from alkindi.model.rounds import (
     load_round, load_rounds, find_round_ids_with_badges)
+from alkindi.model.round_tasks import load_round_tasks
 from alkindi.model.users import load_user, load_users
 from alkindi.model.teams import (
     load_team, count_teams_in_round, count_teams_in_round_region)
@@ -13,7 +14,8 @@ from alkindi.model.participations import load_team_participations
 from alkindi.model.attempts import (
     load_participation_attempts, get_user_current_attempt_id)
 from alkindi.model.access_codes import load_unlocked_access_codes
-from alkindi.model.tasks import (load_task, load_task_team_data)
+from alkindi.model.task_instances import (
+    load_task_instance, load_task_instance_team_data)
 from alkindi.model.answers import load_limited_attempt_answers
 from alkindi.model.workspace_revisions import (
     load_user_latest_revision_id, load_attempt_revisions)
@@ -33,7 +35,7 @@ AllowHtmlTags = [
 
 def view_requesting_user(
         db, user_id=None, participation_id=None, attempt_id=None,
-        is_admin=False):
+        task_id=None, is_admin=False):
 
     now = datetime.utcnow()
     view = {
@@ -42,12 +44,19 @@ def view_requesting_user(
     }
     if user_id is None:
         return view
+
+    #
+    # Add the user.
+    #
     user = load_user(db, user_id)
     if user is None:
         return view
     view['user'] = view_user(user)
-
     team_id = user['team_id']
+
+    #
+    # Quick return path when the user has no team.
+    #
     if team_id is None:
         # If the user has no team, we look for a round to which a
         # badge grants access.
@@ -62,7 +71,16 @@ def view_requesting_user(
             view['round'] = view_round(round_)
         return view
 
-    # Load the team's participations.
+    #
+    # Add the team and team members.
+    #
+    team = load_team(db, team_id)
+    members = load_team_members(db, team['id'], users=True)
+    team_view = view['team'] = view_team(team, members)
+
+    #
+    # Add the team's participations.
+    #
     participations = load_team_participations(db, team_id)
     round_ids = set()
     for participation in participations:
@@ -77,7 +95,7 @@ def view_requesting_user(
     if len(participations) == 0:
         return view
 
-    # Add 'team' and 'round' views for the current (latest) participation.
+    # Mark the lastest (or selected) participation as current.
     if participation_id is None:
         participation = participations[-1]
     else:
@@ -88,23 +106,33 @@ def view_requesting_user(
         if pview['id'] == participation['id']:
             pview['is_current'] = True
 
+    #
+    # Add the current participation's round.
+    #
     round_id = participation['round_id']
-    team = load_team(db, team_id)
     round_ = rounds[round_id]
-    members = load_team_members(db, team['id'], users=True)
     view['round'] = view_round(round_)
-    team_view = view['team'] = view_team(team, members)
-    if not round_['hide_scores']:
-        team_view['score'] = participation['score']
 
-    # XXX Horrible constant initial_round_id, should be looked up in a
-    #     competition table.
-    initial_round_id = 2
+    #
+    # Add the tasks for the current round.
+    #
+    tasks = load_round_tasks(db, round_id)
+    tasks_view = view['tasks'] = [view_task(t) for t in tasks]
 
-    # Add total number of teams for the competition, and total number
-    # of teams within the same region (if non-null).
-    if team_view['rank'] is not None:
-        team_view['n_teams'] = count_teams_in_round(db, initial_round_id)
+    if False:  # XXX disabled
+        # XXX Horrible constant initial_round_id, should be looked up in a
+        #     competition table.
+        initial_round_id = 2
+        # Add total number of teams for the competition, and total number
+        # of teams within the same region (if non-null).
+        if team_view['rank'] is not None:
+            team_view['n_teams'] = count_teams_in_round(db, initial_round_id)
+
+    # XXX A team's validity should be checked against settings for a
+    #     competition rather than a round.
+    causes = validate_members_for_round(members, round_)
+    team_view['round_access'] = list(causes.keys())
+    team_view['is_invalid'] = len(causes) != 0
 
     # Add the user's region to the view.
     region = load_region(db, team['region_id'])
@@ -114,18 +142,14 @@ def view_requesting_user(
             team_view['n_teams_region'] = count_teams_in_round_region(
                 db, initial_round_id, region['id'])
 
-    # XXX A team's validity should be checked against settings for a
-    #     competition rather than a round.
-    causes = validate_members_for_round(members, round_)
-    team_view['round_access'] = list(causes.keys())
-    team_view['is_invalid'] = len(causes) != 0
-
     # Do not return attempts if the team is invalid.
     if team_view['is_invalid']:
         return view
 
+    # Load the participation attempts.
+    # XXX add an option to participations for a given task_id.
     attempts = load_participation_attempts(db, participation['id'], now)
-    view['attempts'] = view_round_attempts(round_, attempts)
+    view_task_attempts(attempts, tasks_view)
 
     # Find the team's current attempt.
     current_attempt = None
@@ -153,17 +177,17 @@ def view_requesting_user(
     else:
         needs_codes = not have_code_majority(members_view)
     current_attempt_view['needs_codes'] = needs_codes
-    # Add task data, if available.
+    # Add task instance data, if available.
     try:
-        # XXX Previously load_task_team_data which did not parse
+        # XXX Previously load_task_instance_team_data which did not parse
         #     full_data.
         # /!\ task contains sensitive data
-        task = load_task(db, attempt_id)
+        task_instance = load_task_instance(db, attempt_id)
     except ModelError:
-        task = None
-    if task is not None:
-        view['task'] = task['team_data']
-        view['task']['score'] = task['score']
+        task_instance = None
+    if task_instance is not None:
+        view['task'] = task_instance['team_data']
+        view['task']['score'] = task_instance['score']
         view['task']['front'] = round_['task_front']
         current_attempt_view['has_task'] = True
         # Give the user the id of their latest revision for the
@@ -174,7 +198,8 @@ def view_requesting_user(
         view['my_latest_revision_id'] = revision_id
         # If the round is closed, add expectedAnswer.
         if round_['status'] == 'closed':
-            view['task']['expectedAnswer'] = task['full_data'].get('answer')
+            view['task']['expectedAnswer'] = \
+                task_instance['full_data'].get('answer')
     return view
 
 
@@ -248,12 +273,11 @@ def view_round(round_):
     """ Return the user-view for a round.
     """
     keys = [
-        'id', 'title',
-        'registration_opens_at', 'training_opens_at',
-        'is_registration_open', 'is_training_open',
+        'id', 'title', 'status',
+        'registration_opens_at', 'is_registration_open',
+        'training_opens_at', 'is_training_open',
         'min_team_size', 'max_team_size', 'min_team_ratio',
-        'max_attempts', 'max_answers', 'status', 'allow_team_changes',
-        'hide_scores', 'have_training_attempt'
+        'allow_team_changes'
     ]
     return {key: round_[key] for key in keys}
 
@@ -265,11 +289,6 @@ def view_team_participation(participation, round_):
         'round': view_round(round_),
         'is_qualified': participation['is_qualified']
     }
-    if not round_['hide_scores'] or round_['status'] != 'open':
-        view['score'] = participation['score']
-        if participation['score_90min'] is not None:
-            view['score_90min'] = participation['score_90min']
-            view['first_equal_90min'] = participation['first_equal_90min']
     return view
 
 
@@ -279,7 +298,7 @@ def view_user_workspace_revision(workspace_revision):
 
 def view_user_task(db, user_id):
     attempt_id = get_user_current_attempt_id(db, user_id)
-    return load_task_team_data(db, attempt_id)
+    return load_task_instance_team_data(db, attempt_id)
 
 
 def view_revision(revision):
@@ -328,34 +347,59 @@ def add_answers(db, view, attempt_id):
     view['users'] = user_views
 
 
-def view_round_attempts(round_, attempts):
-    openNext = False
-    views = []
+def view_task(task):
+    view = {}
+    fields = [
+        'id', 'task_id', 'task_title',
+        'have_training_attempt', 'max_timed_attempts', 'hide_scores',
+        'attempt_duration', 'max_attempt_answers']
+    for key in fields:
+        view[key] = task[key]
+    view['attempts'] = []
+    return view
+
+
+def view_task_attempts(attempts, task_views):
+    # Add each attempt's view to its task's view.
+    task_view_map = {task_views['id']: task_view for task_view in task_views}
     for attempt in attempts:
-        views.append(view_attempt(attempt, round_))
-        openNext = attempt['is_completed']
-    if len(views) == 0:
-        if round_['have_training_attempt']:
-            views.append({
-                'ordinal': 0, 'is_current': True, 'is_training': True})
-        else:
-            openNext = True
-    if round_['max_attempts'] is None:
-        views.append({
-            'ordinal': len(views), 'is_unsolved': True,
-            'is_current': openNext, 'duration': round_['duration']})
-    else:
-        max_attempts = round_['max_attempts']
-        if round_['have_training_attempt']:
+        task_id = attempt['task_id']
+        task_view = task_view_map[task_id]
+        attempt_view = view_attempt(attempt, task_view)
+        task_view['attempts'].append(attempt_view)
+    # In each incomplete task, add a pseudo-attempt that the user can start.
+    for task_view in task_views:
+        max_attempts = task_view['max_timed_attempts']
+        have_training_attempt = task_view['have_training_attempt']
+        if max_attempts is not None and have_training_attempt:
             max_attempts += 1
-        while len(views) < max_attempts:
-            views.append({
-                'ordinal': len(views), 'is_unsolved': True,
-                'is_current': openNext, 'duration': round_['duration']})
-            openNext = False
-    while not views[0]['is_current']:
-        views = views[1:] + views[:1]
-    return views
+        task_attempts = task_view['attempts']
+        add_attempt = False
+        is_training = False
+        is_current = False
+        duration = None
+        if len(task_attempts) == 0:
+            add_attempt = True
+            is_training = have_training_attempt
+            is_current = True
+        else:
+            last_attempt = task_attempts[-1]
+            if max_attempts is None or len(task_attempts) < max_attempts:
+                if not last_attempt['is_fully_solved']:
+                    add_attempt = True
+                    is_current = not last_attempt['is_current']
+                    duration = task_view['attempt_duration']
+        if add_attempt:
+            task_attempts.append({
+                'ordinal': len(task_attempts),
+                'is_current': is_current,
+                'is_training': is_training,
+                'is_unsolved': True,
+                'is_fully_solved': False,
+                'is_closed': False,
+                'is_completed': False,
+                'duration': duration
+            })
 
 
 def view_answer(answer, hide_scores):
@@ -371,7 +415,7 @@ def view_answer(answer, hide_scores):
     return view
 
 
-def view_attempt(attempt, round_):
+def view_attempt(attempt, task_view):
     keys = [
         'id', 'ordinal', 'created_at', 'started_at', 'closes_at',
         'is_current', 'is_training', 'is_unsolved', 'is_fully_solved',
@@ -379,7 +423,7 @@ def view_attempt(attempt, round_):
     ]
     view = {key: attempt[key] for key in keys}
     if not attempt['is_training']:
-        view['duration'] = round_['duration']
-    if not round_['hide_scores']:
+        view['duration'] = task_view['duration']
+    if not task_view['hide_scores']:
         view['max_score'] = attempt['max_score']
     return view
