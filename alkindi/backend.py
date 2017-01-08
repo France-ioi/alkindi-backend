@@ -9,7 +9,7 @@ import os
 import sys
 import traceback
 
-from pyramid.events import NewRequest, BeforeRender
+from pyramid.events import BeforeRender
 from pyramid.config import Configurator
 from pyramid.renderers import JSON
 from pyramid.renderers import render
@@ -37,7 +37,6 @@ def application(_global_config, **settings):
     # Add a db property to requests.
     config.add_request_method(add_request_db, 'db', reify=True)
 
-    config.add_subscriber(add_headers, NewRequest)
     config.add_subscriber(log_api_failure, BeforeRender)
     config.add_subscriber(set_renderer_context, BeforeRender)
     config.add_tween('alkindi.backend.transaction_manager_tween_factory',
@@ -52,16 +51,6 @@ def application(_global_config, **settings):
     config.include('.misc')
 
     return config.make_wsgi_app()
-
-
-def add_headers(event):
-    def callback(request, response):
-        response.headers.update({
-            'Access-Control-Allow-Origin': 'https://suite.concours-alkindi.fr',
-            'Access-Control-Allow-Methods': 'GET',
-            'Access-Control-Max-Age': '1728000'
-        })
-    event.request.add_response_callback(callback)
 
 
 def get_redis(request, **kwargs):
