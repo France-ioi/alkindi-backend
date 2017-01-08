@@ -245,8 +245,8 @@ def create_attempt(db, participation, now, is_training=True):
         'participation_id': participation_id,
         'ordinal': ordinal,
         'created_at': now,
-        'started_at': None,   # set when enough codes have been entered
-        'closes_at': None,    # set when task is accessed
+        'started_at': None,   # set when task is accessed
+        'closes_at': None,
         'is_current': True,
         'is_training': is_training,
         'is_unsolved': True
