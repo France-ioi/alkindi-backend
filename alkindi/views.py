@@ -391,7 +391,7 @@ def view_task_attempts(attempts, task_views):
                     duration = task_view['attempt_duration']
         if add_attempt:
             task_attempts.append({
-                'ordinal': len(task_attempts),
+                'ordinal': len(task_attempts) + 1,
                 'is_current': is_current,
                 'is_training': is_training,
                 'is_unsolved': True,
