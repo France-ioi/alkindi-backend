@@ -365,7 +365,7 @@ def view_round_task(task):
 
 def view_task_attempts(attempts, task_views):
     # Add each attempt's view to its task's view.
-    task_view_map = {task_views['id']: task_view for task_view in task_views}
+    task_view_map = {task_view['id']: task_view for task_view in task_views}
     for attempt in attempts:
         task_id = attempt['task_id']
         task_view = task_view_map[task_id]
