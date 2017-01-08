@@ -240,7 +240,7 @@ def create_attempt(db, participation, now, is_training=True):
         .order_by(attempts.ordinal.desc()) \
         .fields(attempts.ordinal)
     row = db.first(query)
-    ordinal = 0 if row is None else (row[0] + 1)
+    ordinal = 1 if row is None else (row[0] + 1)
     attempt_id = db.insert_row(attempts, {
         'participation_id': participation_id,
         'ordinal': ordinal,
