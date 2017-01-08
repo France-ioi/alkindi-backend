@@ -11,17 +11,20 @@ def load_round_tasks(db, round_id):
         ('hide_scores', round_tasks.hide_scores),
         ('attempt_duration', round_tasks.attempt_duration),
         ('max_attempt_answers', round_tasks.max_attempt_answers),
+        ('max_score', round_tasks.max_score)
     ]
     query = db.query(round_tasks & tasks.on(round_tasks.task_id == tasks.id)) \
         .fields([col[1] for col in cols]) \
         .where(round_tasks.round_id == round_id) \
         .order_by(round_tasks.ordinal)
     rows = db.all_rows(query, cols)
-    result = {}
+    results = []
     for row in rows:
+        result = {}
         for key in ['id', 'task_id', 'task_title', 'max_timed_attempts',
-                    'attempt_duration', 'max_attempt_answers']:
+                    'attempt_duration', 'max_attempt_answers', 'max_score']:
             result[key] = row[key]
         for key in ['have_training_attempt', 'hide_scores']:
             result[key] = db.load_bool(row[key])
-    return rows
+        results.append(result)
+    return results
