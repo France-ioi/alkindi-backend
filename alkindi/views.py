@@ -117,7 +117,7 @@ def view_requesting_user(
     # Add the tasks for the current round.
     #
     tasks = load_round_tasks(db, round_id)
-    tasks_view = view['tasks'] = [view_task(t) for t in tasks]
+    tasks_view = view['round']['tasks'] = [view_round_task(t) for t in tasks]
 
     if False:  # XXX disabled
         # XXX Horrible constant initial_round_id, should be looked up in a
@@ -347,15 +347,19 @@ def add_answers(db, view, attempt_id):
     view['users'] = user_views
 
 
-def view_task(task):
-    view = {}
+def view_round_task(task):
+    view = {
+        'task': {
+            'id': task['task_id'],
+            'title': task['task_title']
+        },
+        'attempts': []
+    }
     fields = [
-        'id', 'task_id', 'task_title',
-        'have_training_attempt', 'max_timed_attempts', 'hide_scores',
-        'attempt_duration', 'max_attempt_answers']
+        'id', 'have_training_attempt', 'max_timed_attempts', 'hide_scores',
+        'attempt_duration', 'max_attempt_answers', 'max_score']
     for key in fields:
         view[key] = task[key]
-    view['attempts'] = []
     return view
 
 
