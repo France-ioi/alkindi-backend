@@ -429,5 +429,6 @@ def view_attempt(attempt, task_view):
     if not attempt['is_training']:
         view['duration'] = task_view['duration']
     if not task_view['hide_scores']:
-        view['max_score'] = attempt['max_score']
+        view['score'] = score = attempt['max_score']
+        view['ratio'] = score / task_view['max_score']
     return view
