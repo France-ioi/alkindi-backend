@@ -581,3 +581,4 @@ ALTER TABLE `round_tasks` CHANGE COLUMN `duration` `attempt_duration` int(11) DE
 ALTER TABLE `round_tasks` CHANGE COLUMN `max_answers` `max_attempt_answers` int(11) DEFAULT NULL;
 ALTER TABLE `round_tasks` CHANGE COLUMN `max_attempts` `max_timed_attempts` int(11) DEFAULT NULL;
 
+ALTER TABLE `round_tasks` ADD COLUMN `max_score` DECIMAL(6,0) NOT NULL;
