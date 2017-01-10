@@ -62,6 +62,14 @@ def get_user_principals(db, user_id):
         principals.append('ts:{}'.format(team_id))
     if db.load_bool(row[1]):
         principals.append('tc:{}'.format(team_id))
+    if False:
+        # Add credentials for user participations.
+        participations = db.tables.participations
+        query = db.query(participations) \
+            .where(participations.team_id == team_id) \
+            .fields(participations.id)
+        for row in db.all(query):
+            principals.append('p:{}'.format(row[0]))
     return principals
 
 

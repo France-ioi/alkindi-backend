@@ -582,3 +582,16 @@ ALTER TABLE `round_tasks` CHANGE COLUMN `max_answers` `max_attempt_answers` int(
 ALTER TABLE `round_tasks` CHANGE COLUMN `max_attempts` `max_timed_attempts` int(11) DEFAULT NULL;
 
 ALTER TABLE `round_tasks` ADD COLUMN `max_score` DECIMAL(6,0) NOT NULL;
+
+-- Every attempt actually relates to a round_task (not a task).
+ALTER TABLE `attempts` DROP FOREIGN KEY `fk_attempts__task_id`;
+ALTER TABLE `attempts` DROP COLUMN `task_id`;
+ALTER TABLE `attempts` ADD COLUMN `round_task_id` bigint(20) NOT NULL;
+ALTER TABLE `attempts` ADD CONSTRAINT `fk_attempts__round_task_id`
+  FOREIGN KEY (`round_task_id`) REFERENCES `round_tasks` (`id`) ON DELETE CASCADE;
+ALTER TABLE `attempts` DROP FOREIGN KEY `fk_attempts__participation_id`;
+ALTER TABLE `attempts` DROP INDEX `ix_attempts__participation_id_ordinal`;
+CREATE UNIQUE INDEX ix_attempts__participation_id_round_task_id_ordinal
+    USING BTREE ON attempts (participation_id, round_task_id, ordinal);
+ALTER TABLE attempts ADD CONSTRAINT fk_attempts__participation_id
+  FOREIGN KEY (participation_id) REFERENCES participations(id) ON DELETE CASCADE;

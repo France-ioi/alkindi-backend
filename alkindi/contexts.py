@@ -5,6 +5,8 @@ from alkindi.auth import ADMIN_GROUP
 from alkindi.model.users import get_user_team_id
 from alkindi.model.attempts import get_attempt_team_id
 from alkindi.model.workspace_revisions import get_workspace_revision_ownership
+from alkindi.model.participations import load_participation
+from alkindi.model.round_tasks import load_round_task
 
 
 def includeme(config):
@@ -48,6 +50,23 @@ class ApiContextBase:
 #
 # /c1/n1/c2/n2
 #
+
+
+class ParticipationRoundTaskApiContext(ApiContextBase):
+
+    def __str__(self):
+        return "{}({}, {})".format(
+            self.__class__.__name__, self.participation['id'],
+            self.round_task['id'])
+
+    @property
+    def __acl__(self):
+        team_id = self.participation['team_id']
+        return [
+            (Allow, ADMIN_GROUP, ['read', 'change']),
+            (Allow, 't:{}'.format(team_id), ['read', 'create_attempt'])
+        ]
+
 
 class UserAttemptApiContext(ApiContextBase):
 
@@ -99,6 +118,26 @@ class UserAttemptsApiContext(ApiContextBase):
             self, user_id=self.user_id, attempt_id=attempt_id)
 
 
+class ParticipationTasksApiContext(ApiContextBase):
+
+    def __str__(self):
+        return "{}({})".format(
+            self.__class__.__name__, self.participation_id)
+
+    def __getitem__(self, path_element):
+        print("ParticipationTasksApiContext")
+        round_task_id = int(path_element)
+        round_task = load_round_task(self.db, round_task_id)
+        print("participation {} round_task {}".format(self.participation, round_task))
+        if round_task is None:
+            raise KeyError()
+        if self.participation['round_id'] != round_task['round_id']:
+            raise KeyError()
+        return ParticipationRoundTaskApiContext(
+            self,
+            participation=self.participation, round_task=round_task)
+
+
 ########################################################################
 #
 # /c1/n1
@@ -136,6 +175,25 @@ class TeamApiContext(ApiContextBase):
         ]
 
 
+class ParticipationApiContext(ApiContextBase):
+
+    def __str__(self):
+        return "{}({})".format(self.__class__.__name__, self.participation)
+
+    @property
+    def __acl__(self):
+        return [
+            (Allow, ADMIN_GROUP, ['read', 'change']),
+            (Allow, 't:{}'.format(self.participation['team_id']), ['read'])
+        ]
+
+    def __getitem__(self, path_element):
+        if path_element == 'tasks':
+            return ParticipationTasksApiContext(
+                self, participation=self.participation)
+        raise KeyError()
+
+
 class AttemptApiContext(ApiContextBase):
 
     def __str__(self):
@@ -169,6 +227,14 @@ class TeamsApiContext(ApiContextBase):
         return TeamApiContext(self, team_id=team_id)
 
 
+class ParticipationsApiContext(ApiContextBase):
+
+    def __getitem__(self, path_element):
+        participation_id = int(path_element)
+        participation = load_participation(self.db, participation_id)
+        return ParticipationApiContext(self, participation=participation)
+
+
 class AttemptsApiContext(ApiContextBase):
 
     def __getitem__(self, path_element):
@@ -196,7 +262,7 @@ class WorkspaceRevisionsApiContext(ApiContextBase):
 
 ########################################################################
 #
-# 0
+# /
 #
 
 class ApiContext(ApiContextBase):
@@ -209,6 +275,7 @@ class ApiContext(ApiContextBase):
     FACTORIES = {
         'users': UsersApiContext,
         'teams': TeamsApiContext,
+        'participations': ParticipationsApiContext,
         'attempts': AttemptsApiContext,
         'workspace_revisions': WorkspaceRevisionsApiContext,
     }

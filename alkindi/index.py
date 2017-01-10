@@ -1,7 +1,6 @@
 
 
 from datetime import datetime
-import requests
 import json
 
 from pyramid.exceptions import PredicateMismatch
@@ -10,15 +9,15 @@ from pyramid.session import check_csrf_token
 from ua_parser import user_agent_parser
 
 from alkindi.auth import (
-    get_user_profile, reset_user_principals, get_oauth2_token)
+    reset_user_principals)
 from alkindi.contexts import (
-    ApiContext, UserApiContext, TeamApiContext, UserAttemptApiContext)
+    ApiContext, UserApiContext, TeamApiContext, UserAttemptApiContext,
+    ParticipationRoundTaskApiContext)
 from alkindi.errors import ApiError, ApplicationError
 import alkindi.views as views
-from alkindi.globals import app
 
 from alkindi.model.users import (
-    load_user, update_user, get_user_team_id, find_user_by_username)
+    load_user, get_user_team_id, find_user_by_username)
 from alkindi.model.teams import (
     find_team_by_code, update_team)
 from alkindi.model.team_members import (
@@ -30,7 +29,7 @@ from alkindi.model.participations import (
     get_team_latest_participation_id)
 from alkindi.model.attempts import (
     get_current_attempt_id,
-    start_attempt, cancel_attempt, reset_to_training_attempt)
+    create_attempt, cancel_attempt, reset_to_training_attempt)
 from alkindi.model.workspace_revisions import (
     store_revision)
 from alkindi.model.task_instances import (
@@ -55,12 +54,14 @@ def includeme(config):
         start_view, route_name='start', renderer='templates/start.mako')
 
     api_post(config, UserApiContext, '', refresh_action)
-    api_post(config, UserApiContext, 'add_badge', add_badge_action)
     api_post(config, UserApiContext, 'create_team', create_team_action)
     api_post(config, UserApiContext, 'join_team', join_team_action)
     api_post(config, UserApiContext, 'leave_team', leave_team_action)
     api_post(config, UserApiContext, 'update_team', update_team_action)
-    api_post(config, UserApiContext, 'start_attempt', start_attempt_action)
+
+    api_post(
+        config, ParticipationRoundTaskApiContext, 'create_attempt',
+        create_attempt_action, permission='create_attempt')
     api_post(config, UserApiContext, 'cancel_attempt', cancel_attempt_action)
     api_post(config, UserApiContext, 'access_code', enter_access_code_action)
     api_post(
@@ -102,11 +103,11 @@ def get_api(request):
     return ApiContext(request.root)
 
 
-def api_post(config, context, name, view):
+def api_post(config, context, name, view, permission='change'):
     config.add_view(
         view, context=context, name=name,
         request_method='POST', check_csrf=True,
-        permission='change', renderer='json')
+        permission=permission, renderer='json')
 
 
 def application_error_view(error, request):
@@ -209,49 +210,11 @@ def user_view(request):
 def reset_team_to_training_action(request):
     team_id = request.context.team_id
     participation_id = get_team_latest_participation_id(request.db, team_id)
+    round_task_id = None
+    raise ApiError('XXX missing round_task_id')
     reset_to_training_attempt(
-        request.db, participation_id, now=datetime.utcnow())
+        request.db, participation_id, round_task_id, now=datetime.utcnow())
     return {'success': True}
-
-
-def add_badge_action(request):
-    data = request.json_body
-    user_id = request.context.user_id
-    user = load_user(request.db, user_id)
-    foreign_id = user['foreign_id']
-    access_token = get_oauth2_token(request, refresh=True)
-    params = {
-        'badgeUrl': app['requested_badge'],
-        'idUser': foreign_id,
-        'qualCode': data.get('code')
-    }
-    headers = {
-        'Accept': 'application/json',
-        'Authorization': 'Bearer {}'.format(access_token)
-    }
-    req = requests.post(
-        app['add_badge_uri'],
-        headers=headers, data=params,
-        verify='/etc/ssl/certs/ca-certificates.crt')
-    req.raise_for_status()
-    result = req.json()
-    print("\033[91mresult\033[0m {}".format(result))
-    success = result.get('success')
-    if not success:
-        return {
-            'success': False,
-            'profileUpdated': False,
-            'error': result.get('error', 'undefined')
-        }
-    profileUpdated = False
-    profile = get_user_profile(request, foreign_id)
-    if profile is not None:
-        update_user(request.db, user['id'], profile)
-        profileUpdated = True
-    return {
-        'success': True,
-        'profileUpdated': profileUpdated
-    }
 
 
 def create_team_action(request):
@@ -343,12 +306,12 @@ def update_team_action(request):
     return {'success': True}
 
 
-def start_attempt_action(request):
-    user_id = request.context.user_id
-    participation_id = get_user_latest_participation_id(request.db, user_id)
-    if participation_id is None:
-        raise ApiError('no current participation')
-    start_attempt(request.db, participation_id, now=datetime.utcnow())
+def create_attempt_action(request):
+    participation_id = request.context.participation['id']
+    round_task_id = request.context.round_task['id']
+    create_attempt(
+        request.db, participation_id, round_task_id,
+        now=datetime.utcnow())
     return {'success': True}
 
 

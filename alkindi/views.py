@@ -102,6 +102,7 @@ def view_requesting_user(
         participation = get_by_id(participations, participation_id)
         if participation is None:
             return view
+    view['participation_id'] = participation['id']
     for pview in view['participations']:
         if pview['id'] == participation['id']:
             pview['is_current'] = True
@@ -116,8 +117,11 @@ def view_requesting_user(
     #
     # Add the tasks for the current round.
     #
-    tasks = load_round_tasks(db, round_id)
-    tasks_view = view['round']['tasks'] = [view_round_task(t) for t in tasks]
+    round_tasks = load_round_tasks(db, round_id)
+    view['round']['task_ids'] = [str(rt['id']) for rt in round_tasks]
+    round_task_views = view['round_tasks'] = {
+        str(rt['id']): view_round_task(rt) for rt in round_tasks
+    }
 
     if False:  # XXX disabled
         # XXX Horrible constant initial_round_id, should be looked up in a
@@ -147,25 +151,18 @@ def view_requesting_user(
         return view
 
     # Load the participation attempts.
-    # XXX add an option to participations for a given task_id.
     attempts = load_participation_attempts(db, participation['id'], now)
-    view_task_attempts(attempts, tasks_view)
+    view_task_attempts(attempts, round_task_views)
 
     # Find the team's current attempt.
-    current_attempt = None
-    if attempt_id is None:
-        for attempt in attempts:
-            if attempt['is_current']:
-                current_attempt = attempt
-                attempt_id = attempt['id']
-    else:
-        current_attempt = get_by_id(attempts, attempt_id)
+    current_attempt = get_by_id(attempts, attempt_id)
     if current_attempt is None:
         return view
+    current_round_task = round_task_views[current_attempt['round_task_id']]
 
     # Focus on the current attempt.
     current_attempt_view = None
-    for attempt_view in view['attempts']:
+    for attempt_view in current_round_task['attempts']:
         if attempt_id == attempt_view.get('id'):
             current_attempt_view = attempt_view
     view['current_attempt_id'] = attempt_id
@@ -347,63 +344,26 @@ def add_answers(db, view, attempt_id):
     view['users'] = user_views
 
 
-def view_round_task(task):
+def view_round_task(round_task):
     view = {
-        'task': {
-            'id': task['task_id'],
-            'title': task['task_title']
-        },
         'attempts': []
     }
     fields = [
-        'id', 'have_training_attempt', 'max_timed_attempts', 'hide_scores',
+        'id', 'title', 'task_id',
+        'have_training_attempt', 'max_timed_attempts', 'hide_scores',
         'attempt_duration', 'max_attempt_answers', 'max_score']
     for key in fields:
-        view[key] = task[key]
+        view[key] = round_task[key]
     return view
 
 
-def view_task_attempts(attempts, task_views):
-    # Add each attempt's view to its task's view.
-    task_view_map = {task_view['id']: task_view for task_view in task_views}
+def view_task_attempts(attempts, round_task_views):
+    # Add each attempt's view to its round_task's view.
     for attempt in attempts:
-        task_id = attempt['task_id']
-        task_view = task_view_map[task_id]
-        attempt_view = view_attempt(attempt, task_view)
-        task_view['attempts'].append(attempt_view)
-    # In each incomplete task, add a pseudo-attempt that the user can start.
-    for task_view in task_views:
-        max_attempts = task_view['max_timed_attempts']
-        have_training_attempt = task_view['have_training_attempt']
-        if max_attempts is not None and have_training_attempt:
-            max_attempts += 1
-        task_attempts = task_view['attempts']
-        add_attempt = False
-        is_training = False
-        is_current = False
-        duration = None
-        if len(task_attempts) == 0:
-            add_attempt = True
-            is_training = have_training_attempt
-            is_current = True
-        else:
-            last_attempt = task_attempts[-1]
-            if max_attempts is None or len(task_attempts) < max_attempts:
-                if not last_attempt['is_fully_solved']:
-                    add_attempt = True
-                    is_current = not last_attempt['is_current']
-                    duration = task_view['attempt_duration']
-        if add_attempt:
-            task_attempts.append({
-                'ordinal': len(task_attempts) + 1,
-                'is_current': is_current,
-                'is_training': is_training,
-                'is_unsolved': True,
-                'is_fully_solved': False,
-                'is_closed': False,
-                'is_completed': False,
-                'duration': duration
-            })
+        round_task_id = str(attempt['round_task_id'])
+        round_task_view = round_task_views[round_task_id]
+        attempt_view = view_attempt(attempt, round_task_view)
+        round_task_view['attempts'].append(attempt_view)
 
 
 def view_answer(answer, hide_scores):
@@ -419,7 +379,8 @@ def view_answer(answer, hide_scores):
     return view
 
 
-def view_attempt(attempt, task_view):
+def view_attempt(attempt, round_task_view):
+    print('view_attempt {} {}'.format(attempt, round_task_view))
     keys = [
         'id', 'ordinal', 'created_at', 'started_at', 'closes_at',
         'is_current', 'is_training', 'is_unsolved', 'is_fully_solved',
@@ -427,8 +388,9 @@ def view_attempt(attempt, task_view):
     ]
     view = {key: attempt[key] for key in keys}
     if not attempt['is_training']:
-        view['duration'] = task_view['duration']
-    if not task_view['hide_scores']:
+        view['duration'] = round_task_view['attempt_duration']
+    if not round_task_view['hide_scores']:
         view['score'] = score = attempt['max_score']
-        view['ratio'] = score / task_view['max_score']
+        view['ratio'] = score / round_task_view['max_score'] \
+            if score is not None else None
     return view

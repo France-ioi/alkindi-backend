@@ -4,17 +4,17 @@ from sqlbuilder.smartsql import func
 from alkindi.errors import ModelError
 from alkindi.model.rounds import load_round
 from alkindi.model.participations import load_participation
+from alkindi.model.round_tasks import load_round_task
 from alkindi.model.access_codes import generate_access_codes
 
 
-# TODO: make (team_id, ordinal) the primary key (rather than a unique index).
-
-def get_current_attempt_id(db, participation_id):
+def get_current_attempt_id(db, participation_id, round_task_id):
     attempts = db.tables.attempts
     query = db.query(attempts)
     query = query \
         .fields(attempts.id) \
         .where(attempts.participation_id == participation_id) \
+        .where(attempts.round_task_id == round_task_id) \
         .where(attempts.is_current)
     row = db.first(query)
     return None if row is None else row[0]
@@ -57,11 +57,11 @@ def load_attempt(db, attempt_id, now=None, for_update=False):
 
 def load_participation_attempts(db, participation_id, now):
     attempts = db.tables.attempts
-    task_instances = db.tables.task_instances
-    answers = db.tables.answers
     round_tasks = db.tables.round_tasks
+    answers = db.tables.answers
     cols = [
         ('id', attempts.id),
+        ('round_task_id', attempts.round_task_id),
         ('ordinal', attempts.ordinal),
         ('created_at', attempts.created_at),
         ('started_at', attempts.started_at),
@@ -70,13 +70,11 @@ def load_participation_attempts(db, participation_id, now):
         ('is_training', attempts.is_training, 'bool'),
         ('is_unsolved', attempts.is_unsolved, 'bool'),
         ('is_fully_solved', attempts.is_fully_solved, 'bool'),
-        ('task_id', task_instances.attempt_id),
         ('max_score', func.max(answers.score)),
     ]
     query = db.query(
         attempts &
-        round_tasks.on(round_tasks.id == attempts.task_id) +
-        task_instances.on(task_instances.attempt_id == attempts.id) +
+        round_tasks.on(round_tasks.id == attempts.round_task_id) +
         answers.on(answers.attempt_id == attempts.id)) \
         .fields([col[1] for col in cols]) \
         .where(attempts.participation_id == participation_id) \
@@ -100,23 +98,26 @@ def get_attempt_team_id(db, attempt_id):
     return db.scalar(query)
 
 
-def start_attempt(db, participation_id, now):
-    # Load the team's round.
+def create_attempt(db, participation_id, round_task_id, now):
+    # Load the participation and round_task, check consistency.
     participation = load_participation(db, participation_id)
-    round_ = load_round(db, participation['round_id'], now=now)
+    round_task = load_round_task(db, round_task_id)
+    if participation['round_id'] != round_task['round_id']:
+        raise ModelError('round mismatch')
+    # Check that round is open.
+    round_ = load_round(db, round_task['round_id'], now=now)
     if round_['status'] != 'open':
-        print(round_)
         raise ModelError('round not open')
-    attempt_id = get_current_attempt_id(db, participation_id)
+    attempt_id = get_current_attempt_id(db, participation_id, round_task_id)
+    is_training = False
     if attempt_id is None:
         # Create the initial attempt (which may or may not be a training
-        # attempt, depending on the round's options).
+        # attempt, depending on the task_round's options).
         # The team is not locked at this time and may still be changed
         # (depending on round options).  This requires adding an access
         # code when a new member joins the team, and deleting an access
         # code when a member leaves the team.
-        is_training = round_['have_training_attempt']
-        create_attempt(db, participation, now=now, is_training=is_training)
+        is_training = round_task['have_training_attempt']
     else:
         attempt = load_attempt(db, attempt_id, now=now, for_update=True)
         if attempt['is_training']:
@@ -130,14 +131,34 @@ def start_attempt(db, participation_id, now):
             if not attempt['is_completed']:
                 raise ModelError('timed attempt in progress')
         # Optionally limit the number of timed attempts.
-        if round_['max_attempts'] is not None:
+        if round_task['max_timed_attempts'] is not None:
             n_attempts = count_timed_attempts(db, participation_id)
-            if n_attempts >= round_['max_attempts']:
+            if n_attempts >= round_task['max_timed_attempts']:
                 raise ModelError('too many attempts')
         # Reset the is_current flag on the current attempt.
         set_attempt_current(db, attempt_id, is_current=False)
-        # Create a timed attempt.
-        create_attempt(db, participation, now=now, is_training=False)
+    # Find the greatest attempt ordinal for the (participation, round_task).
+    attempts = db.tables.attempts
+    query = db.query(attempts) \
+        .where(attempts.participation_id == participation_id) \
+        .where(attempts.round_task_id == round_task_id) \
+        .order_by(attempts.ordinal.desc()) \
+        .fields(attempts.ordinal)
+    row = db.first(query)
+    ordinal = 1 if row is None else (row[0] + 1)
+    attempt_id = db.insert_row(attempts, {
+        'participation_id': participation_id,
+        'round_task_id': round_task_id,
+        'ordinal': ordinal,
+        'created_at': now,
+        'started_at': None,   # set when task is accessed
+        'closes_at': None,
+        'is_current': True,
+        'is_training': is_training,
+        'is_unsolved': True
+    })
+    generate_access_codes(db, participation['team_id'], attempt_id)
+    return attempt_id
 
 
 def cancel_attempt(db, attempt_id):
@@ -150,8 +171,9 @@ def cancel_attempt(db, attempt_id):
     db.delete(query)
 
 
-def reset_to_training_attempt(db, participation_id, now):
-    attempt_id = get_current_attempt_id(db, participation_id)
+# XXX
+def reset_to_training_attempt(db, participation_id, round_task_id, now):
+    attempt_id = get_current_attempt_id(db, participation_id, round_task_id)
     if attempt_id is not None:
         attempt = load_attempt(db, attempt_id, now=now, for_update=True)
         if not attempt['is_completed']:
@@ -229,27 +251,3 @@ def get_latest_training_attempt_id(db, participation_id):
 def set_attempt_current(db, attempt_id, is_current=True):
     attempts = db.tables.attempts
     db.update_row(attempts, attempt_id, {'is_current': is_current})
-
-
-def create_attempt(db, participation, now, is_training=True):
-    participation_id = participation['id']
-    attempts = db.tables.attempts
-    # Find the greatest attempt ordinal for the team.
-    query = db.query(attempts) \
-        .where(attempts.participation_id == participation_id) \
-        .order_by(attempts.ordinal.desc()) \
-        .fields(attempts.ordinal)
-    row = db.first(query)
-    ordinal = 1 if row is None else (row[0] + 1)
-    attempt_id = db.insert_row(attempts, {
-        'participation_id': participation_id,
-        'ordinal': ordinal,
-        'created_at': now,
-        'started_at': None,   # set when task is accessed
-        'closes_at': None,
-        'is_current': True,
-        'is_training': is_training,
-        'is_unsolved': True
-    })
-    generate_access_codes(db, participation['team_id'], attempt_id)
-    return attempt_id
