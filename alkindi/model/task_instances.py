@@ -8,6 +8,8 @@ from alkindi.model.team_members import validate_team
 from alkindi.model.participations import load_participation
 from alkindi.model.attempts import load_attempt, get_user_current_attempt_id
 from alkindi.model.workspaces import create_attempt_workspace
+from alkindi.model.round_tasks import load_round_task
+from alkindi.model.tasks import load_task
 
 
 def load_task_instance(db, attempt_id, for_update=False):
@@ -41,7 +43,6 @@ def assign_task_instance(db, attempt_id, now):
     """ Assign a task to the attempt.
         The team performing the attempt must be valid, otherwise
         an exception is raised.
-        If this is a training attempt, the team is locked.
     """
     attempt = load_attempt(db, attempt_id, now=now)
     if attempt['started_at'] is not None:
@@ -52,46 +53,52 @@ def assign_task_instance(db, attempt_id, now):
     team_id = participation['team_id']
     round_id = participation['round_id']
     validate_team(db, team_id, round_id, now=now)
-    # TODO: check number of access codes entered
-    # Verify that the round is open for training (and implicily for
+    # Verify that the round is open for training (and implicitly for
     # timed attempts).
     round_ = load_round(db, round_id, now=now)
     if round_['status'] != 'open':
         raise ModelError('round not open')
     if now < round_['training_opens_at']:
         raise ModelError('training is not open')
-    duration = round_['duration']
+    # Load the round_task
+    round_task_id = attempt['round_task_id']
+    round_task = load_round_task(db, round_task_id)
+    # TODO: check round_task['have_training_attempt'] if next ordinal is 1
+    # TODO: check round_task['max_timed_attempts'] if next ordinal is >1
+
+    # TODO: contact backend_url to obtain task, full_task, url
+    task = load_task(db, round_task['task_id'])  # backend_url
+    backend_url = task['backend_url']
+    print("TODO: contact {}".format(backend_url))
+    full_data = {}
+    team_data = {}
+
+    # TODO: figure out where we store the frontend URL -- could be in task,
+    #       round_task, or returned by backend_url and stored in task_instance
+
     try:
         # Lock the task_instances table to prevent concurrent inserts.
         db.execute('LOCK TABLES task_instances WRITE, attempts READ').close()
-        # Load all task_dir field for all task_instances associated with the
-        # participation.
-        task_dirs = get_participation_task_dirs(db, participation_id)
-        # Allocate a task that the team has never had, and associate it
-        # with the attempt.
-        task = get_new_task(round_, task_dirs)
         attrs = {
             'attempt_id': attempt_id,
             'created_at': now,
-            'task_dir': task['task_dir'],
-            'score': task['score'],
-            'full_data': db.dump_json(task['full_data']),
-            'team_data': db.dump_json(task['team_data']),
+            'full_data': db.dump_json(full_data),
+            'team_data': db.dump_json(team_data)
         }
         task_instances = db.tables.task_instances
         db.insert_row(task_instances, attrs)
     finally:
         db.execute('UNLOCK TABLES').close()
+
+    # Update the attempt.
     attempt_attrs = {'started_at': now}
-    if attempt['is_training']:
-        # Lock the team.
-        teams = db.tables.teams
-        db.update_row(teams, team_id, {'is_locked': True})
-    elif duration is not None:
+    attempt_duration = round_task['attempt_duration']
+    if attempt_duration is not None:
         # Set the closing time on the attempt.
-        attempt_attrs['closes_at'] = now + timedelta(minutes=duration)
+        attempt_attrs['closes_at'] = now + timedelta(minutes=attempt_duration)
     attempts = db.tables.attempts
     db.update_row(attempts, attempt_id, attempt_attrs)
+
     # Create the team's workspace.
     create_attempt_workspace(db, attempt_id, now)
 

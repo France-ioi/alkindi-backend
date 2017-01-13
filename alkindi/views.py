@@ -35,12 +35,12 @@ AllowHtmlTags = [
 
 def view_requesting_user(
         db, user_id=None, participation_id=None, attempt_id=None,
-        task_id=None, is_admin=False):
+        is_admin=False):
 
     now = datetime.utcnow()
     view = {
         'now': now,
-        'is_admin': is_admin,
+        'is_admin': is_admin
     }
     if user_id is None:
         return view
@@ -51,6 +51,7 @@ def view_requesting_user(
     user = load_user(db, user_id)
     if user is None:
         return view
+    view['user_id'] = user_id
     view['user'] = view_user(user)
     team_id = user['team_id']
 
@@ -153,27 +154,33 @@ def view_requesting_user(
     # Load the participation attempts.
     attempts = load_participation_attempts(db, participation['id'], now)
     view_task_attempts(attempts, round_task_views)
+    print("attempts {} {}".format(attempt_id, attempts))
 
-    # Find the team's current attempt.
+    # Find the requested attempt.
     current_attempt = get_by_id(attempts, attempt_id)
     if current_attempt is None:
         return view
-    current_round_task = round_task_views[current_attempt['round_task_id']]
+    view['attempt_id'] = attempt_id
 
     # Focus on the current attempt.
+    current_round_task = round_task_views[str(current_attempt['round_task_id'])]
     current_attempt_view = None
     for attempt_view in current_round_task['attempts']:
         if attempt_id == attempt_view.get('id'):
             current_attempt_view = attempt_view
-    view['current_attempt_id'] = attempt_id
-    members_view = view['team']['members']
-    access_codes = load_unlocked_access_codes(db, attempt_id)
-    add_members_access_codes(members_view, access_codes)
-    if current_attempt['is_training']:
-        needs_codes = not have_one_code(members_view)
-    else:
-        needs_codes = not have_code_majority(members_view)
-    current_attempt_view['needs_codes'] = needs_codes
+    view['attempt'] = current_attempt_view
+    view['round_task'] = current_round_task  # XXX duplicates attempts :(
+
+    if False:  # Access codes are disabled
+        members_view = view['team']['members']
+        access_codes = load_unlocked_access_codes(db, attempt_id)
+        add_members_access_codes(members_view, access_codes)
+        if current_attempt['is_training']:
+            needs_codes = not have_one_code(members_view)
+        else:
+            needs_codes = not have_code_majority(members_view)
+        current_attempt_view['needs_codes'] = needs_codes
+
     # Add task instance data, if available.
     try:
         # XXX Previously load_task_instance_team_data which did not parse

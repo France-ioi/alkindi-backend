@@ -40,7 +40,7 @@ def get_user_current_attempt_id(db, user_id):
 
 def load_attempt(db, attempt_id, now=None, for_update=False):
     keys = [
-        'id', 'participation_id', 'ordinal',
+        'id', 'participation_id', 'round_task_id', 'ordinal',
         'created_at', 'started_at', 'closes_at',
         'is_current', 'is_training', 'is_unsolved', 'is_fully_solved'
     ]

@@ -11,7 +11,7 @@ from ua_parser import user_agent_parser
 from alkindi.auth import (
     reset_user_principals)
 from alkindi.contexts import (
-    ApiContext, UserApiContext, TeamApiContext, UserAttemptApiContext,
+    ApiContext, UserApiContext, TeamApiContext, AttemptApiContext,
     ParticipationRoundTaskApiContext)
 from alkindi.errors import ApiError, ApplicationError
 import alkindi.views as views
@@ -25,11 +25,9 @@ from alkindi.model.team_members import (
 from alkindi.model.rounds import find_round_ids_with_badges, load_round
 from alkindi.model.participations import (
     create_participation,
-    get_user_latest_participation_id,
     get_team_latest_participation_id)
 from alkindi.model.attempts import (
-    get_current_attempt_id,
-    create_attempt, cancel_attempt, reset_to_training_attempt)
+    create_attempt, reset_to_training_attempt)
 from alkindi.model.workspace_revisions import (
     store_revision)
 from alkindi.model.task_instances import (
@@ -53,7 +51,9 @@ def includeme(config):
     config.add_view(
         start_view, route_name='start', renderer='templates/start.mako')
 
-    api_post(config, UserApiContext, '', refresh_action)
+    api_post(
+        config, ApiContext, 'refresh', refresh_action, permission='access')
+
     api_post(config, UserApiContext, 'create_team', create_team_action)
     api_post(config, UserApiContext, 'join_team', join_team_action)
     api_post(config, UserApiContext, 'leave_team', leave_team_action)
@@ -62,11 +62,12 @@ def includeme(config):
     api_post(
         config, ParticipationRoundTaskApiContext, 'create_attempt',
         create_attempt_action, permission='create_attempt')
-    api_post(config, UserApiContext, 'cancel_attempt', cancel_attempt_action)
-    api_post(config, UserApiContext, 'access_code', enter_access_code_action)
     api_post(
-        config, UserApiContext,
-        'assign_attempt_task', assign_attempt_task_action)
+        config, AttemptApiContext, 'start',
+        start_attempt_action, permission='start')
+
+    # api_post(config, UserApiContext, 'cancel_attempt', cancel_attempt_action)
+    # api_post(config, UserApiContext, 'access_code', enter_access_code_action)
     api_post(config, UserApiContext, 'get_hint', get_hint_action)
     api_post(config, UserApiContext, 'reset_hints', reset_hints_action)
     api_post(config, UserApiContext, 'store_revision', store_revision_action)
@@ -74,8 +75,8 @@ def includeme(config):
         config, TeamApiContext,
         'reset_to_training', reset_team_to_training_action)
     api_post(
-        config, UserAttemptApiContext,
-        'answers', submit_user_attempt_answer_action)
+        config, AttemptApiContext,
+        'answer', submit_user_attempt_answer_action)
 
     # Deprecated routes and views -- frontend stuff is planned to be
     # completely separated from the backend.
@@ -84,11 +85,6 @@ def includeme(config):
     config.add_view(
         ancient_browser_view, route_name='ancient_browser',
         renderer='templates/ancient_browser.mako')
-    # XXX playfair
-    config.add_view(
-        user_task_view, context=UserApiContext, name='task.html',
-        request_method='GET', permission='read',
-        renderer='templates/playfair.mako')
 
 
 def not_found_view(error, request):
@@ -112,6 +108,7 @@ def api_post(config, context, name, view, permission='change'):
 
 def application_error_view(error, request):
     # This view handles alkindi.errors.ApplicationError.
+    request.db.rollback()
     return {'success': False, 'error': str(error), 'source': 'model'}
 
 
@@ -130,14 +127,12 @@ def start_view(request):
     # Prepare the frontend's config for injection as JSON in a script tag.
     csrf_token = request.session.get_csrf_token()
     frontend_config = {
-        'nocdn': 'nocdn' in request.params,
         'csrf_token': csrf_token,
         'api_url': request.resource_url(get_api(request)),
         'login_url': request.route_url('login'),
         'logout_url': request.route_url('logout')
     }
-    kwargs = get_user_context(
-        request, request.authenticated_userid, request.params)
+    kwargs = get_user_context(request, request.params)
     # Add info about the logged-in user (if any) to the frontend config.
     try:
         frontend_config['seed'] = views.view_requesting_user(request.db, **kwargs)
@@ -151,10 +146,8 @@ def start_view(request):
 
 
 def refresh_action(request):
-    user_id = request.context.user_id
     json_request = request.json_body
-    kwargs = get_user_context(
-        request, request.context.user_id, json_request.get('override', {}))
+    kwargs = get_user_context(request, json_request)
     view = views.view_requesting_user(request.db, **kwargs)
     # print("\033[91mrequest\033[0m {}".format(json_request))
     attempt_id = view.get('current_attempt_id')
@@ -162,7 +155,7 @@ def refresh_action(request):
         # TODO: if json_request.get('attempt_id') != attempt_id: ...
         # Access code request.
         if json_request.get('access_code'):
-            access_code = get_access_code(request.db, attempt_id, user_id)
+            access_code = get_access_code(request.db, attempt_id, view.get(user_id))
             for attempt in view['attempts']:
                 if attempt.get('id') == attempt_id:
                     attempt['access_code'] = access_code
@@ -176,7 +169,8 @@ def refresh_action(request):
     return view
 
 
-def get_user_context(request, user_id, params):
+def get_user_context(request, params):
+    user_id = request.authenticated_userid
     result = {
         'user_id': user_id
     }
@@ -187,24 +181,12 @@ def get_user_context(request, user_id, params):
                 request.db, params['user'])
         if 'user_id' in params:
             result['user_id'] = int(params['user_id'])
-        if 'participation_id' in params:
-            result['participation_id'] = \
-                int(params['participation_id'])
-        if 'attempt_id' in params:
-            result['attempt_id'] = int(params['attempt_id'])
+    if 'participation_id' in params:
+        result['participation_id'] = \
+            int(params['participation_id'])
+    if 'attempt_id' in params:
+        result['attempt_id'] = int(params['attempt_id'])
     return result
-
-
-def user_task_view(request):
-    request.response.cache_control = 'max-age=0, private'
-    user_id = request.context.user_id
-    return views.view_user_task_instance(request.db, user_id)
-
-
-def user_view(request):
-    request.response.cache_control = 'max-age=0, private'
-    user_id = request.context.user_id
-    return views.view_user_seed(user_id)
 
 
 def reset_team_to_training_action(request):
@@ -315,45 +297,43 @@ def create_attempt_action(request):
     return {'success': True}
 
 
-def cancel_attempt_action(request):
-    user_id = request.context.user_id
-    team_id = get_user_team_id(request.db, user_id)
-    participation_id = get_team_latest_participation_id(request.db, team_id)
-    if participation_id is None:
-        raise ApiError('no current participation')
-    attempt_id = get_current_attempt_id(request.db, participation_id)
-    if attempt_id is None:
-        raise ApiError('no current attempt')
-    cancel_attempt(request.db, attempt_id)
-    reset_to_training_attempt(
-        request.db, participation_id, now=datetime.utcnow())
-    return {'success': True}
+# Disabled:
+#
+# def cancel_attempt_action(request):
+#     user_id = request.context.user_id
+#     team_id = get_user_team_id(request.db, user_id)
+#     participation_id = get_team_latest_participation_id(request.db, team_id)
+#     if participation_id is None:
+#         raise ApiError('no current participation')
+#     attempt_id = get_current_attempt_id(request.db, participation_id)
+#     if attempt_id is None:
+#         raise ApiError('no current attempt')
+#     cancel_attempt(request.db, attempt_id)
+#     reset_to_training_attempt(
+#         request.db, participation_id, now=datetime.utcnow())
+#     return {'success': True}
 
 
-def enter_access_code_action(request):
-    data = request.json_body
-    code = data['code']
-    user_id = request.context.user_id
-    participation_id = get_user_latest_participation_id(request.db, user_id)
-    if participation_id is None:
-        raise ApiError('no current participation')
-    attempt_id = get_current_attempt_id(request.db, participation_id)
-    if attempt_id is None:
-        raise ApiError('no current attempt')
-    success = unlock_access_code(request.db, attempt_id, user_id, code)
-    if not success:
-        raise ApiError('unknown access code')
-    return {'success': success}
+# Disabled:
+#
+# def enter_access_code_action(request):
+#     data = request.json_body
+#     code = data['code']
+#     user_id = request.context.user_id
+#     participation_id = get_user_latest_participation_id(request.db, user_id)
+#     if participation_id is None:
+#         raise ApiError('no current participation')
+#     attempt_id = get_current_attempt_id(request.db, participation_id)
+#     if attempt_id is None:
+#         raise ApiError('no current attempt')
+#     success = unlock_access_code(request.db, attempt_id, user_id, code)
+#     if not success:
+#         raise ApiError('unknown access code')
+#     return {'success': success}
 
 
-def assign_attempt_task_action(request):
-    user_id = request.context.user_id
-    participation_id = get_user_latest_participation_id(request.db, user_id)
-    if participation_id is None:
-        raise ApiError('no current pariciption')
-    attempt_id = get_current_attempt_id(request.db, participation_id)
-    if attempt_id is None:
-        raise ApiError('no current attempt')
+def start_attempt_action(request):
+    attempt_id = request.context.attempt_id
     # This will fail if the team is invalid.
     assign_task_instance(request.db, attempt_id, now=datetime.utcnow())
     return {'success': True}

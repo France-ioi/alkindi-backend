@@ -2,7 +2,8 @@
 def load_round_task(db, round_task_id, for_update=False):
     cols = [
         'id', 'round_id', 'task_id', 'have_training_attempt',
-        'max_timed_attempts'
+        'max_timed_attempts', 'hide_scores', 'attempt_duration',
+        'max_attempt_answers', 'max_score'
     ]
     row = db.load_row(
         db.tables.round_tasks, round_task_id, cols,

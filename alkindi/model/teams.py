@@ -74,3 +74,9 @@ def count_teams_in_round_region(db, round_id, region_id):
         .where(participations.round_id == round_id) \
         .where(teams.region_id == region_id)
     return db.count(query.fields(teams.id))
+
+
+def lock_team(db, team_id):
+    # Lock the team.
+    teams = db.tables.teams
+    db.update_row(teams, team_id, {'is_locked': True})

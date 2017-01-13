@@ -1,5 +1,5 @@
 
-from pyramid.security import Allow
+from pyramid.security import Allow, Authenticated
 
 from alkindi.auth import ADMIN_GROUP
 from alkindi.model.users import get_user_team_id
@@ -202,8 +202,8 @@ class AttemptApiContext(ApiContextBase):
     @property
     def __acl__(self):
         return [
-            (Allow, ADMIN_GROUP, ['read', 'change']),
-            (Allow, 't:{}'.format(self.team_id), ['read', 'change'])
+            (Allow, ADMIN_GROUP, ['read', 'start']),
+            (Allow, 't:{}'.format(self.team_id), ['read', 'start'])
         ]
 
 
@@ -271,6 +271,10 @@ class ApiContext(ApiContextBase):
 
     def __init__(self, parent):
         self.__parent__ = parent
+
+    @property
+    def __acl__(self):
+        return [(Allow, Authenticated, ['access'])]
 
     FACTORIES = {
         'users': UsersApiContext,
