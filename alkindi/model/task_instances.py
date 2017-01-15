@@ -33,8 +33,10 @@ def load_user_task_instance(db, attempt_id):
     """
     keys = ['created_at', 'updated_at', 'team_data']
     task_instances = db.tables.task_instances
-    return db.load_row(
+    row = db.load_row(
         task_instances, {'attempt_id': attempt_id}, keys)
+    row['team_data'] = json.loads(row['team_data'])
+    return row
 
 
 def assign_task_instance(db, attempt_id, now):

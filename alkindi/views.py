@@ -187,18 +187,18 @@ def view_requesting_user(
         # /!\ task contains sensitive data
         # XXX If the round is closed, load and pass full_data?
         task_instance = load_user_task_instance(db, attempt_id)
-        print("task_instance {}".format(task_instance))
     except ModelError:
-        task_instance = None
-    if task_instance is not None:
-        view['task'] = task_instance['team_data']
-        view['task_front'] = "XXX"  # pull from task
-        # Give the user the id of their latest revision for the
-        # current attempt, to be loaded into the crypto tab on
-        # first access.
-        revision_id = load_user_latest_revision_id(
-            db, user_id, attempt_id)
-        view['my_latest_revision_id'] = revision_id
+        return view
+
+    view['team_data'] = task_instance['team_data']
+
+    # Give the user the id of their latest revision for the
+    # current attempt, to be loaded into the crypto tab on
+    # first access.
+    revision_id = load_user_latest_revision_id(
+        db, user_id, attempt_id)
+    view['my_latest_revision_id'] = revision_id
+
     return view
 
 
@@ -351,9 +351,10 @@ def view_round_task(round_task):
         'attempts': []
     }
     fields = [
-        'id', 'title', 'task_id',
+        'id', 'task_id', 'title', 'frontend_url',
         'have_training_attempt', 'max_timed_attempts', 'hide_scores',
-        'attempt_duration', 'max_attempt_answers', 'max_score']
+        'attempt_duration', 'max_attempt_answers', 'max_score',
+    ]
     for key in fields:
         view[key] = round_task[key]
     return view

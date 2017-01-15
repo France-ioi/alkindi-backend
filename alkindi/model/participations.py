@@ -51,17 +51,13 @@ def load_team_participations(db, team_id):
         ('score', participations.score),
         ('score_90min', participations.score_90min),
         ('first_equal_90min', participations.first_equal_90min),
-        ('is_qualified', participations.is_qualified)
+        ('is_qualified', participations.is_qualified, 'bool')
     ]
     query = db.query(participations) \
         .fields([col[1] for col in cols]) \
         .where(participations.team_id == team_id) \
         .order_by(participations.created_at)
-    rows = db.all_rows(query, cols)
-    for row in rows:
-        for key in ['is_qualified']:
-            row[key] = db.load_bool(row[key])
-    return rows
+    return db.all_rows(query, cols)
 
 
 def update_participation(db, participation_id, attrs):
