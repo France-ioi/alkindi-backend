@@ -176,21 +176,31 @@ class MysqlAdapter:
 
     def first_row(self, query, cols):
         rows = self.all_rows(query[:1], cols)
-        return rows[0] if len(rows) > 0 else None
+        if len(rows) == 0:
+            return None
+        row = rows[0]
+        self.decode_row(row, cols)
+        return row
 
     def all_rows(self, query, cols):
         query = query.fields([col[1] for col in cols])
         rows = [{col[0]: row[i] for i, col in enumerate(cols)}
                 for row in self.all(query)]
-        for row in rows:
-            for col in cols:
-                if len(col) == 3:
-                    key = col[0]
-                    if col[2] == 'bool':
-                        row[key] = self.load_bool(row[key])
-                    elif col[2] == 'json':
-                        row[key] = self.load_json(row[key])
+        self.decode_rows(rows, cols)
         return rows
+
+    def decode_rows(self, rows, cols):
+        for row in rows:
+            self.decode_row(row, cols)
+
+    def decode_row(self, row, cols):
+        for col in cols:
+            key = col[0]
+            if len(col) == 3:
+                if col[2] == 'bool':
+                    row[key] = self.load_bool(row[key])
+                elif col[2] == 'json':
+                    row[key] = self.load_json(row[key])
 
     def log_error(self, error):
         self.insert_row(self.tables.errors, error)
