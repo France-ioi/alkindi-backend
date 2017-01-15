@@ -84,13 +84,14 @@ def join_team(db, user_id, team_id, now):
     add_team_member(db, team_id, user_id, now=now, is_qualified=is_qualified)
     # Update the user's team_id.
     set_user_team_id(db, user_id, team_id)
-    # If the team has a current attempt, generate a code for the new
-    # member.
-    from alkindi.model.attempts import get_current_attempt_id
-    attempt_id = get_current_attempt_id(db, participation_id)
-    if attempt_id is not None:
-        from alkindi.model.access_codes import generate_user_access_code
-        generate_user_access_code(db, attempt_id, user_id)
+    # DISABLED: access codes need to be generated for every round_task.
+    ## If the team has a current attempt, generate a code for the new
+    ## member.
+    #from alkindi.model.attempts import get_current_attempt_id
+    #attempt_id = get_current_attempt_id(db, participation_id)
+    #if attempt_id is not None:
+    #    from alkindi.model.access_codes import generate_user_access_code
+    #    generate_user_access_code(db, attempt_id, user_id)
 
 
 def leave_team(db, user_id, team_id, now):
