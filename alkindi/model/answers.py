@@ -7,8 +7,7 @@ from alkindi.model.attempts import load_attempt, update_attempt_with_grading
 from alkindi.model.participations import (
     load_participation, update_participation)
 from alkindi.model.rounds import load_round
-from alkindi.model.task_instances import (
-    load_task_instance, get_attempt_task_module)
+from alkindi.model.task_instances import load_task_instance
 
 
 def grade_answer(db, attempt_id, submitter_id, data, now):
@@ -38,9 +37,8 @@ def grade_answer(db, attempt_id, submitter_id, data, now):
             raise ModelError('too soon')
     ordinal = prev_ordinal + 1
     # Perform grading.
-    task = load_task(db, attempt_id)
-    task_module = get_attempt_task_module(db, attempt_id)
-    grading = task_module.grade(task, data)
+    task_instance = load_task_instance(db, attempt_id)
+    grading = None  # XXX TODO task_module.grade(task, data)
     if grading is None:
         raise ModelError('invalid input')
     update_attempt_with_grading(db, attempt_id, grading)

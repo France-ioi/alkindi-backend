@@ -5,7 +5,7 @@
     mainElement.innerHTML = '';
     errorElement.style.display = 'initial';
   }
-  if (typeof System !== 'object' || typeof System.import !== 'function') {
+  if (typeof Alkindi !== 'object' || typeof Alkindi.run !== 'function') {
     // Redirect to ?nocdn, if not already there.
     if (window.location.search === "") {
       window.location.search = '?nocdn';
@@ -14,12 +14,12 @@
     }
     return;
   }
-  System.import('alkindi-frontend').then(function (Frontend) {
-    Frontend.run(${h.to_json(frontend_config)}, mainElement);
-  }).catch(function (ex) {
+  try {
+    Alkindi.run(${h.to_json(frontend_config)}, mainElement);
+  } catch (ex) {
     if (typeof console.log === 'function') {
       console.log(ex);
     }
     loadError();
-  });
+  }
 }();

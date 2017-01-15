@@ -595,3 +595,11 @@ CREATE UNIQUE INDEX ix_attempts__participation_id_round_task_id_ordinal
     USING BTREE ON attempts (participation_id, round_task_id, ordinal);
 ALTER TABLE attempts ADD CONSTRAINT fk_attempts__participation_id
   FOREIGN KEY (participation_id) REFERENCES participations(id) ON DELETE CASCADE;
+
+-- 8< --
+ALTER TABLE `tasks` ADD COLUMN `backend_auth` TEXT NULL;
+ALTER TABLE `tasks` ADD COLUMN `frontend_url` TEXT NOT NULL;
+ALTER TABLE `round_tasks` ADD COLUMN `generate_params` TEXT NOT NULL;
+UPDATE `round_tasks` SET `generate_params` = "{}";
+UPDATE tasks SET frontend_url = "https://alkindi.home.epixode.fr/wrist-bubble-sweep-noon/" WHERE id = 1;
+ALTER TABLE `task_instances` ADD COLUMN `updated_at` datetime NOT NULL;

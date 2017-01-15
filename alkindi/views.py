@@ -14,8 +14,7 @@ from alkindi.model.participations import load_team_participations
 from alkindi.model.attempts import (
     load_participation_attempts, get_user_current_attempt_id)
 from alkindi.model.access_codes import load_unlocked_access_codes
-from alkindi.model.task_instances import (
-    load_task_instance, load_task_instance_team_data)
+from alkindi.model.task_instances import load_user_task_instance
 from alkindi.model.answers import load_limited_attempt_answers
 from alkindi.model.workspace_revisions import (
     load_user_latest_revision_id, load_attempt_revisions)
@@ -186,24 +185,20 @@ def view_requesting_user(
         # XXX Previously load_task_instance_team_data which did not parse
         #     full_data.
         # /!\ task contains sensitive data
-        task_instance = load_task_instance(db, attempt_id)
+        # XXX If the round is closed, load and pass full_data?
+        task_instance = load_user_task_instance(db, attempt_id)
+        print("task_instance {}".format(task_instance))
     except ModelError:
         task_instance = None
     if task_instance is not None:
         view['task'] = task_instance['team_data']
-        view['task']['score'] = task_instance['score']
-        view['task']['front'] = round_['task_front']
-        current_attempt_view['has_task'] = True
+        view['task_front'] = "XXX"  # pull from task
         # Give the user the id of their latest revision for the
         # current attempt, to be loaded into the crypto tab on
         # first access.
         revision_id = load_user_latest_revision_id(
             db, user_id, attempt_id)
         view['my_latest_revision_id'] = revision_id
-        # If the round is closed, add expectedAnswer.
-        if round_['status'] == 'closed':
-            view['task']['expectedAnswer'] = \
-                task_instance['full_data'].get('answer')
     return view
 
 
