@@ -1,5 +1,6 @@
 
 from sqlbuilder.smartsql import func
+from datetime import timedelta
 
 from alkindi.errors import ModelError
 from alkindi.model.rounds import load_round
@@ -98,6 +99,17 @@ def get_attempt_team_id(db, attempt_id):
     return db.scalar(query)
 
 
+def have_attempt_after(db, participation_id, round_task_id, when):
+    attempts = db.tables.attempts
+    query = db.query(attempts)
+    query = query \
+        .fields(attempts.id) \
+        .where(attempts.participation_id == participation_id) \
+        .where(attempts.round_task_id == round_task_id) \
+        .where(attempts.created_at >= when)
+    return db.count(query) > 0
+
+
 def create_attempt(db, participation_id, round_task_id, now):
     # Load the participation and round_task, check consistency.
     participation = load_participation(db, participation_id)
@@ -128,8 +140,10 @@ def create_attempt(db, participation_id, round_task_id, now):
         else:
             # Timed attempts allow starting the next attempt immediately
             # only if completed.
-            if not attempt['is_completed']:
-                raise ModelError('timed attempt in progress')
+            # if not attempt['is_completed']:
+            most_recent_allowed = now - timedelta(minutes=5)
+            if have_attempt_after(db, participation_id, round_task_id, most_recent_allowed):
+                raise ModelError('attempt too soon')
         # Optionally limit the number of timed attempts.
         if round_task['max_timed_attempts'] is not None:
             n_attempts = count_timed_attempts(db, participation_id)
