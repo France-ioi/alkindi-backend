@@ -41,17 +41,22 @@ def get_task_instance_hint(db, attempt_id, query, now):
     result = task_grant_hint(backend_url, full_data, team_data, query, auth)
     # result: {success, task, full_task}
     print('grantHint result {}'.format(result))
+    team_data = result.get('task', team_data)
+    full_data = result.get('full_task', full_data)
 
     # If successful, update the task instance.
     # 'full_data' is also updated in case the task needs to store extra private
     # information there.
     if result['success']:
-        task_instances = db.tables.task_instances
-        db.update_row(task_instances, {'attempt_id': attempt_id}, {
-            'full_data': db.dump_json(task['full_task']),
-            'team_data': db.dump_json(task['task']),
-            'updated_at': now
-        })
+        attrs = {}
+        if team_data is not task_instance['team_data']:
+            attrs['team_data'] = db.dump_json(team_data)
+        if full_data is not task_instance['full_data']:
+            attrs['full_data'] = db.dump_json(full_data)
+        if len(attrs) != 0:
+            attrs['updated_at'] = now
+            task_instances = db.tables.task_instances
+            db.update_row(task_instances, {'attempt_id': attempt_id}, attrs)
 
     return result['success']
 
