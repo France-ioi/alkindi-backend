@@ -417,7 +417,8 @@ def submit_user_attempt_answer_action(request):
     return {
         'success': True,
         'answer_id': answer['id'],
-        'feedback': feedback
+        'feedback': feedback,
+        'score': answer['score']
     }
 
 
