@@ -7,15 +7,21 @@ from alkindi.model.attempts import load_attempt, update_attempt_with_grading
 from alkindi.model.participations import (
     load_participation, update_participation)
 from alkindi.model.rounds import load_round
+from alkindi.model.round_tasks import load_round_task
+from alkindi.model.tasks import load_task
 from alkindi.model.task_instances import load_task_instance
+
+from alkindi.tasks import task_grade_answer
 
 
 def grade_answer(db, attempt_id, submitter_id, data, now):
     attempt = load_attempt(db, attempt_id, now)
+    is_training = attempt['is_training']
     participation_id = attempt['participation_id']
     participation = load_participation(
         db, participation_id, for_update=True)
-    is_training = attempt['is_training']
+    round_task = load_round_task(db, attempt['round_task_id'])
+    task = load_task(db, round_task['task_id'])  # backend_url
     # Fail if the attempt is closed.
     if attempt['is_closed']:
         raise ModelError('attempt is closed')
@@ -27,7 +33,7 @@ def grade_answer(db, attempt_id, submitter_id, data, now):
     round_ = load_round(db, participation['round_id'], now)
     if round_['status'] != 'open':
         raise ModelError('round not open')
-    max_answers = round_['max_answers']
+    max_answers = round_task['max_attempt_answers']
     if (not is_training and max_answers is not None and
             prev_ordinal >= max_answers):
         raise ModelError('too many answers')
@@ -36,13 +42,20 @@ def grade_answer(db, attempt_id, submitter_id, data, now):
         if now < nth_submitted_at + timedelta(minutes=1):
             raise ModelError('too soon')
     ordinal = prev_ordinal + 1
+
     # Perform grading.
+    backend_url = task['backend_url']
+    auth = task['backend_auth']
     task_instance = load_task_instance(db, attempt_id)
-    grading = None  # XXX TODO task_module.grade(task, data)
-    if grading is None:
-        raise ModelError('invalid input')
+    full_data = task_instance['full_data']
+    team_data = task_instance['team_data']
+    grading = task_grade_answer(backend_url, full_data, team_data, data, auth)
+    # grading: {feedback, score, is_solution, is_full_solution}
+
+    # Update the attempt to indicate if solved, fully solved.
     update_attempt_with_grading(db, attempt_id, grading)
-    # Store the answer.
+
+    # Store the answer and grading.
     answers = db.tables.answers
     answer = {
         'attempt_id': attempt_id,
@@ -51,7 +64,7 @@ def grade_answer(db, attempt_id, submitter_id, data, now):
         'created_at': now,
         'answer': db.dump_json(data),
         'grading': db.dump_json(grading),
-        'score': grading['actual_score'],
+        'score': grading['score'],
         'is_solution': grading['is_solution'],
         'is_full_solution': grading['is_full_solution']
     }
@@ -62,7 +75,7 @@ def grade_answer(db, attempt_id, submitter_id, data, now):
                             new_score > participation['score']):
         update_participation(
             db, participation_id, {'score': new_score})
-    return answer
+    return (answer, grading.get('feedback'))
 
 
 def get_attempt_latest_answer_infos(db, attempt_id, nth=2):

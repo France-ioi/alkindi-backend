@@ -13,7 +13,7 @@ from alkindi.auth import (
     get_user_profile, get_oauth2_token, reset_user_principals)
 from alkindi.contexts import (
     ApiContext, UserApiContext, TeamApiContext, AttemptApiContext,
-    ParticipationRoundTaskApiContext)
+    UserAttemptApiContext, ParticipationRoundTaskApiContext)
 from alkindi.errors import ApiError, ApplicationError
 import alkindi.views as views
 from alkindi.globals import app
@@ -78,7 +78,7 @@ def includeme(config):
         config, TeamApiContext,
         'reset_to_training', reset_team_to_training_action)
     api_post(
-        config, AttemptApiContext,
+        config, UserAttemptApiContext,
         'answer', submit_user_attempt_answer_action)
 
     # Deprecated routes and views -- frontend stuff is planned to be
@@ -411,12 +411,13 @@ def store_revision_action(request):
 def submit_user_attempt_answer_action(request):
     attempt_id = request.context.attempt_id
     submitter_id = request.context.user_id
-    answer = grade_answer(
+    answer, feedback = grade_answer(
         request.db, attempt_id, submitter_id, request.json_body,
         now=datetime.utcnow())
     return {
-        'success': True, 'answer_id': answer['id'],
-        'feedback': json.loads(answer['grading'])['feedback']
+        'success': True,
+        'answer_id': answer['id'],
+        'feedback': feedback
     }
 
 
