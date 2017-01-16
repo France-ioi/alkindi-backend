@@ -603,3 +603,4 @@ ALTER TABLE `round_tasks` ADD COLUMN `generate_params` TEXT NOT NULL;
 UPDATE `round_tasks` SET `generate_params` = "{}";
 UPDATE tasks SET frontend_url = "https://alkindi.home.epixode.fr/wrist-bubble-sweep-noon/" WHERE id = 1;
 ALTER TABLE `task_instances` ADD COLUMN `updated_at` datetime NOT NULL;
+ALTER TABLE `round_tasks` ADD COLUMN `title` TEXT NOT NULL;

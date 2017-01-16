@@ -4,6 +4,7 @@ def round_task_columns(db):
     tasks = db.tables.tasks
     return [
         ('id', round_tasks.id),
+        ('title', round_tasks.title),
         ('round_id', round_tasks.round_id),
         ('ordinal', round_tasks.ordinal),
         ('attempt_duration', round_tasks.attempt_duration),
@@ -14,7 +15,6 @@ def round_task_columns(db):
         ('max_score', round_tasks.max_score),
         ('generate_params', round_tasks.generate_params, 'json'),
         ('task_id', tasks.id),
-        ('title', tasks.title),
         ('frontend_url', tasks.frontend_url)
     ]
 
