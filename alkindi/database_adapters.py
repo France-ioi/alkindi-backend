@@ -178,9 +178,7 @@ class MysqlAdapter:
         rows = self.all_rows(query[:1], cols)
         if len(rows) == 0:
             return None
-        row = rows[0]
-        self.decode_row(row, cols)
-        return row
+        return rows[0]
 
     def all_rows(self, query, cols):
         query = query.fields([col[1] for col in cols])
