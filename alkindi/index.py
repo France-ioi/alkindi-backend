@@ -32,10 +32,9 @@ from alkindi.model.attempts import (
     create_attempt, reset_to_training_attempt)
 from alkindi.model.workspace_revisions import (
     store_revision)
-from alkindi.model.task_instances import (
-    assign_task_instance,
-    get_user_task_instance_hint,
-    reset_user_task_instance_hints)
+from alkindi.model.task_instances import assign_task_instance
+from alkindi.model.hints import (
+    get_task_instance_hint, reset_task_instance_hints)
 from alkindi.model.access_codes import (
     get_access_code, clear_access_codes, unlock_access_code)
 from alkindi.model.answers import (
@@ -56,30 +55,44 @@ def includeme(config):
     api_post(
         config, ApiContext, 'refresh', refresh_action, permission='access')
 
+    # Team (permission='change')
     api_post(config, UserApiContext, 'add_badge', add_badge_action)
     api_post(config, UserApiContext, 'create_team', create_team_action)
     api_post(config, UserApiContext, 'join_team', join_team_action)
     api_post(config, UserApiContext, 'leave_team', leave_team_action)
     api_post(config, UserApiContext, 'update_team', update_team_action)
 
+    # Attempts
     api_post(
         config, ParticipationRoundTaskApiContext, 'create_attempt',
         create_attempt_action, permission='create_attempt')
     api_post(
         config, AttemptApiContext, 'start',
         start_attempt_action, permission='start')
+    api_post(
+        config, AttemptApiContext,
+        'reset_to_training', reset_team_to_training_action)
 
     # api_post(config, UserApiContext, 'cancel_attempt', cancel_attempt_action)
     # api_post(config, UserApiContext, 'access_code', enter_access_code_action)
-    api_post(config, UserApiContext, 'get_hint', get_hint_action)
-    api_post(config, UserApiContext, 'reset_hints', reset_hints_action)
-    api_post(config, UserApiContext, 'store_revision', store_revision_action)
+
+    # Hints
     api_post(
-        config, TeamApiContext,
-        'reset_to_training', reset_team_to_training_action)
+        config, AttemptApiContext,
+        'get_hint', get_hint_action, permission='get_hint')
+    api_post(
+        config, AttemptApiContext,
+        'reset_hints', reset_hints_action, permission='reset_hints')
+
+    # Answers
     api_post(
         config, UserAttemptApiContext,
-        'answer', submit_user_attempt_answer_action)
+        'answer', submit_user_attempt_answer_action, permission='answer')
+
+    # Revisions
+    api_post(
+        config, UserAttemptApiContext,
+        'store_revision', store_revision_action, permission='store_revision')
 
     # Deprecated routes and views -- frontend stuff is planned to be
     # completely separated from the backend.
@@ -383,15 +396,16 @@ def start_attempt_action(request):
 
 
 def get_hint_action(request):
-    user_id = request.context.user_id
+    now = datetime.utcnow()
+    attempt_id = request.context.attempt_id
     query = request.json_body
-    success = get_user_task_instance_hint(request.db, user_id, query)
+    success = get_task_instance_hint(request.db, attempt_id, query, now=now)
     return {'success': success}
 
 
 def reset_hints_action(request):
-    user_id = request.context.user_id
-    reset_user_task_instance_hints(request.db, user_id)
+    attempt_id = request.context.attempt_id
+    reset_task_instance_hints(request.db, attempt_id)
     return {'success': True}
 
 

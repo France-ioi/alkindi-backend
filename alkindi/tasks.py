@@ -46,5 +46,21 @@ def task_grade_answer(backend_url, full_task, task, answer, auth=None):
     return req.json()
 
 
-def task_get_hint(backend_url, full_task, query, auth=None):
-    pass
+def task_grant_hint(backend_url, full_task, task, query, auth=None):
+    submit_answer_url = urllib.parse.urljoin(backend_url, 'grantHint')
+    headers = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+    }
+    if auth is not None:
+        headers['Authorization'] = auth
+    body = {
+        'full_task': full_task,
+        'task': task,
+        'query': query
+    }
+    req = requests.post(
+        submit_answer_url, headers=headers, data=json.dumps(body),
+        verify='/etc/ssl/certs/ca-certificates.crt')
+    req.raise_for_status()
+    return req.json()

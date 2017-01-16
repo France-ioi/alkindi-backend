@@ -8,6 +8,15 @@ from alkindi.model.workspace_revisions import get_workspace_revision_ownership
 from alkindi.model.participations import load_participation
 from alkindi.model.round_tasks import load_round_task
 
+#
+# Principals:  (see get_user_principals in model.users for details)
+#
+# u:user_id  - user
+# t:team_id  - team member
+# ts:team_id - team member & qualified
+# tc:team_id - team member & team creator
+#
+
 
 def includeme(config):
     config.set_root_factory(RootContext)
@@ -63,7 +72,7 @@ class ParticipationRoundTaskApiContext(ApiContextBase):
     def __acl__(self):
         team_id = self.participation['team_id']
         return [
-            (Allow, ADMIN_GROUP, ['read', 'change']),
+            (Allow, ADMIN_GROUP, ['read', 'create_attempt']),
             (Allow, 't:{}'.format(team_id), ['read', 'create_attempt'])
         ]
 
@@ -76,9 +85,10 @@ class UserAttemptApiContext(ApiContextBase):
 
     @property
     def __acl__(self):
+        ps = ['read', 'answer', 'store_revision']
         return [
-            (Allow, ADMIN_GROUP, ['read', 'change']),
-            (Allow, 'u:{}'.format(self.user_id), ['read', 'change'])
+            (Allow, ADMIN_GROUP, ps),
+            (Allow, 'u:{}'.format(self.user_id), ps)
         ]
 
 
@@ -125,10 +135,8 @@ class ParticipationTasksApiContext(ApiContextBase):
             self.__class__.__name__, self.participation_id)
 
     def __getitem__(self, path_element):
-        print("ParticipationTasksApiContext")
         round_task_id = int(path_element)
         round_task = load_round_task(self.db, round_task_id)
-        print("participation {} round_task {}".format(self.participation, round_task))
         if round_task is None:
             raise KeyError()
         if self.participation['round_id'] != round_task['round_id']:
@@ -202,8 +210,8 @@ class AttemptApiContext(ApiContextBase):
     @property
     def __acl__(self):
         return [
-            (Allow, ADMIN_GROUP, ['read', 'start']),
-            (Allow, 't:{}'.format(self.team_id), ['read', 'start'])
+            (Allow, ADMIN_GROUP, ['read', 'start', 'get_hint', 'reset_hints']),
+            (Allow, 't:{}'.format(self.team_id), ['read', 'start', 'get_hint'])
         ]
 
 
