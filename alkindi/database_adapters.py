@@ -14,6 +14,8 @@ class MysqlAdapter:
         self.db = mysql.connect(**kwargs)
         self.result = Result(mysql_compile)
         self.log = True
+        self.connected = False
+
 
     def start_transaction(self):
         self.db.start_transaction(
@@ -98,17 +100,21 @@ class MysqlAdapter:
     def ensure_connected(self):
         try:
             self.db.ping(reconnect=True, attempts=5, delay=2)
+            self.connected = True
         except mysql.InterfaceError:
             raise ModelError('database is unavailable')
 
     def rollback(self):
-        self.db.rollback()
+        if self.connected:
+            self.db.rollback()
 
     def commit(self):
         self.db.commit()
 
     def close(self):
-        self.db.close()
+        if self.connected:
+            self.db.close()
+            self.connected = False
 
     def load_bool(self, value):
         return value != 0
