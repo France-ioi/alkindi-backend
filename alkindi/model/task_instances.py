@@ -69,7 +69,7 @@ def assign_task_instance(db, attempt_id, now):
     task = load_task(db, round_task['task_id'])  # backend_url
     backend_url = task['backend_url']
     auth = task['backend_auth']
-    task_params = json.loads(round_task['generate_params'])
+    task_params = round_task['generate_params']
     seed = str(attempt_id)  # TODO add a participation-specific key to the seed
     team_data, full_data = task_generate(backend_url, task_params, seed, auth)
 
