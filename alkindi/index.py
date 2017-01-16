@@ -2,6 +2,7 @@
 
 from datetime import datetime
 import json
+import requests
 
 from pyramid.exceptions import PredicateMismatch
 from pyramid.httpexceptions import HTTPFound, HTTPForbidden, HTTPNotFound
@@ -9,15 +10,16 @@ from pyramid.session import check_csrf_token
 from ua_parser import user_agent_parser
 
 from alkindi.auth import (
-    reset_user_principals)
+    get_user_profile, get_oauth2_token, reset_user_principals)
 from alkindi.contexts import (
     ApiContext, UserApiContext, TeamApiContext, AttemptApiContext,
     ParticipationRoundTaskApiContext)
 from alkindi.errors import ApiError, ApplicationError
 import alkindi.views as views
+from alkindi.globals import app
 
 from alkindi.model.users import (
-    load_user, get_user_team_id, find_user_by_username)
+    load_user, update_user, get_user_team_id, find_user_by_username)
 from alkindi.model.teams import (
     find_team_by_code, update_team)
 from alkindi.model.team_members import (
@@ -54,6 +56,7 @@ def includeme(config):
     api_post(
         config, ApiContext, 'refresh', refresh_action, permission='access')
 
+    api_post(config, UserApiContext, 'add_badge', add_badge_action)
     api_post(config, UserApiContext, 'create_team', create_team_action)
     api_post(config, UserApiContext, 'join_team', join_team_action)
     api_post(config, UserApiContext, 'leave_team', leave_team_action)
@@ -197,6 +200,46 @@ def reset_team_to_training_action(request):
     reset_to_training_attempt(
         request.db, participation_id, round_task_id, now=datetime.utcnow())
     return {'success': True}
+
+
+def add_badge_action(request):
+    data = request.json_body
+    user_id = request.context.user_id
+    user = load_user(request.db, user_id)
+    foreign_id = user['foreign_id']
+    access_token = get_oauth2_token(request, refresh=True)
+    params = {
+        'badgeUrl': app['requested_badge'],
+        'idUser': foreign_id,
+        'qualCode': data.get('code')
+    }
+    headers = {
+        'Accept': 'application/json',
+        'Authorization': 'Bearer {}'.format(access_token)
+    }
+    req = requests.post(
+        app['add_badge_uri'],
+        headers=headers, data=params,
+        verify='/etc/ssl/certs/ca-certificates.crt')
+    req.raise_for_status()
+    result = req.json()
+    print("\033[91mresult\033[0m {}".format(result))
+    success = result.get('success')
+    if not success:
+        return {
+            'success': False,
+            'profileUpdated': False,
+            'error': result.get('error', 'undefined')
+        }
+    profileUpdated = False
+    profile = get_user_profile(request, foreign_id)
+    if profile is not None:
+        update_user(request.db, user['id'], profile)
+        profileUpdated = True
+    return {
+        'success': True,
+        'profileUpdated': profileUpdated
+    }
 
 
 def create_team_action(request):
