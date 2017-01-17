@@ -192,6 +192,9 @@ def view_requesting_user(
 
     view['team_data'] = task_instance['team_data']
 
+    # Add a list of the workspace revisions for this attempt.
+    add_revisions(db, view, attempt_id)
+
     # Give the user the id of their latest revision for the
     # current attempt, to be loaded into the crypto tab on
     # first access.
