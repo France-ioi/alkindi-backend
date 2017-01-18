@@ -97,5 +97,5 @@ def assign_task_instance(db, attempt_id, now):
     attempts = db.tables.attempts
     db.update_row(attempts, attempt_id, attempt_attrs)
 
-    # Create the team's workspace.
+    # Create an initial workspace for the attempt.
     create_attempt_workspace(db, attempt_id, now)
