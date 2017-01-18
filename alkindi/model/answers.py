@@ -14,7 +14,7 @@ from alkindi.model.task_instances import load_task_instance
 from alkindi.tasks import task_grade_answer
 
 
-def grade_answer(db, attempt_id, submitter_id, data, now):
+def grade_answer(db, attempt_id, submitter_id, revision_id, data, now):
     attempt = load_attempt(db, attempt_id, now)
     is_training = attempt['is_training']
     participation_id = attempt['participation_id']
@@ -66,7 +66,8 @@ def grade_answer(db, attempt_id, submitter_id, data, now):
         'grading': db.dump_json(grading),
         'score': grading['score'],
         'is_solution': grading['is_solution'],
-        'is_full_solution': grading['is_full_solution']
+        'is_full_solution': grading['is_full_solution'],
+        'revision_id': revision_id
     }
     answer['id'] = db.insert_row(answers, answer)
     # Best score for the participation?

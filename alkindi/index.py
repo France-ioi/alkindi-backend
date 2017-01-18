@@ -412,21 +412,22 @@ def store_revision_action(request):
     user_id = request.context.user_id
     attempt_id = request.context.attempt_id
     query = request.json_body
-    state = query['state']
-    title = getStr(query.get('title'))
-    workspace_id = getStr(query.get('workspace_id'))
-    parent_id = getInt(query.get('parent_id'))
-    revision_id = store_revision(
-        request.db, user_id, attempt_id, workspace_id, parent_id, title, state,
-        now=datetime.utcnow())
+    revision_id = store_revision_query(request.db, user_id, attempt_id, query)
     return {'success': True, 'revision_id': revision_id}
 
 
 def submit_user_attempt_answer_action(request):
     attempt_id = request.context.attempt_id
     submitter_id = request.context.user_id
+    query = request.json_body
+    answer = query['answer']
+    revision_id = None
+    if 'data' in query:
+        revision = query['data']
+        revision_id = store_revision_query(
+            request.db, submitter_id, attempt_id, revision)
     answer, feedback = grade_answer(
-        request.db, attempt_id, submitter_id, request.json_body,
+        request.db, attempt_id, submitter_id, revision_id, answer,
         now=datetime.utcnow())
     return {
         'success': True,
@@ -434,6 +435,16 @@ def submit_user_attempt_answer_action(request):
         'feedback': feedback,
         'score': answer['score']
     }
+
+
+def store_revision_query(db, user_id, attempt_id, query):
+    workspace_id = getStr(query.get('workspace_id'))
+    parent_id = getInt(query.get('parent_id'))
+    title = getStr(query.get('title'))
+    state = query['state']
+    return store_revision(
+        db, user_id, attempt_id,
+        workspace_id, parent_id, title, state, now=datetime.utcnow())
 
 
 def getInt(input, defaultValue=None):

@@ -604,3 +604,12 @@ UPDATE `round_tasks` SET `generate_params` = "{}";
 UPDATE tasks SET frontend_url = "https://alkindi.home.epixode.fr/wrist-bubble-sweep-noon/" WHERE id = 1;
 ALTER TABLE `task_instances` ADD COLUMN `updated_at` datetime NOT NULL;
 ALTER TABLE `round_tasks` ADD COLUMN `title` TEXT NOT NULL;
+
+insert into tasks (created_at, updated_at, title, backend_url, frontend_url, backend_auth) values (NOW(), NOW(), "2017-FR-AL-01-reused-key", "http://127.0.0.1:8011", "https://suite.concours-alkindi.fr/wrist-bubble-sweep-noon/", NULL);
+insert into round_tasks (round_id, task_id, ordinal, max_score, generate_params, title) values (6, 1, 1, 150, '{"version":1}', "A.1 Réutilisation de clés : masque jetable 1 (avec mot)");
+insert into round_tasks (round_id, task_id, ordinal, max_score, generate_params, title) values (6, 1, 2, 150, '{"version":2}', "A.2 Réutilisation de clés : masque jetable 2 (sans mot)");
+
+ALTER TABLE `answers` ADD COLUMN `revision_id` bigint(20) DEFAULT NULL;
+CREATE INDEX `ix_answers__revision_id` USING btree ON `answers` (`revision_id`);
+ALTER TABLE `answers` ADD CONSTRAINT fk_answers__revision_id
+  FOREIGN KEY (revision_id) REFERENCES workspace_revisions(id) ON DELETE CASCADE;
