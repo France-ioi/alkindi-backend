@@ -1,7 +1,7 @@
 
 from alkindi.errors import ModelError
-from alkindi.model.attempts import get_user_current_attempt_id
-from alkindi.model.workspaces import get_attempt_workspace_id
+from alkindi.model.workspaces import (
+    load_workspace, get_attempt_default_workspace_id)
 
 
 def load_workspace_revision(db, workspace_revision_id):
@@ -33,9 +33,10 @@ def load_attempt_revisions(db, attempt_id):
         (revisions, 'is_active'),
         (revisions, 'workspace_id')
     ]
-    query = db.query(revisions & workspaces) \
+    query = db.query(
+        revisions &
+        workspaces.on(revisions.workspace_id == workspaces.id)) \
         .where(workspaces.attempt_id == attempt_id) \
-        .where(revisions.workspace_id == workspaces.id) \
         .order_by(revisions.created_at.desc())
     query = query.fields(*[getattr(t, c) for (t, c) in cols])
     results = []
@@ -44,19 +45,21 @@ def load_attempt_revisions(db, attempt_id):
         for key in ['is_active', 'is_precious']:
             result[key] = db.load_bool(result[key])
         results.append(result)
+    print('revisions {} {}'.format(attempt_id, results))
     return results
 
 
-def store_revision(db, user_id, parent_id, title, state, now,
-                   workspace_id=None):
-    # Default to the user's current attempt's workspace.
+def store_revision(db, user_id, attempt_id, workspace_id, parent_id, title, state, now):
     if workspace_id is None:
-        attempt_id = get_user_current_attempt_id(db, user_id)
-        if attempt_id is None:
-            raise ModelError('no current attempt')
-        workspace_id = get_attempt_workspace_id(db, attempt_id)
-        if workspace_id is None:
-            raise ModelError('attempt has no workspace')
+        # Use the attempt's default workspace.
+        workspace_id = get_attempt_default_workspace_id(db, attempt_id)
+    else:
+        # Verify that the workspace is attached to the attempt.
+        # XXX actually, probably safe to verify that the workspace is
+        # attached to an attempt belonging to the same participation.
+        workspace = load_workspace(db, workspace_id)
+        if workspace['attempt_id'] != attempt_id:
+            raise ModelError('invalid workspace for attempt')
     # The parent revision, if set, must belong to the same workspace.
     if parent_id is not None:
         other_workspace_id = get_revision_workspace_id(db, parent_id)

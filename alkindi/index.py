@@ -1,7 +1,6 @@
 
 
 from datetime import datetime
-import json
 import requests
 
 from pyramid.exceptions import PredicateMismatch
@@ -411,14 +410,15 @@ def reset_hints_action(request):
 
 def store_revision_action(request):
     user_id = request.context.user_id
+    attempt_id = request.context.attempt_id
     query = request.json_body
     state = query['state']
     title = getStr(query.get('title'))
     workspace_id = getStr(query.get('workspace_id'))
     parent_id = getInt(query.get('parent_id'))
     revision_id = store_revision(
-        request.db, user_id, parent_id, title, state,
-        now=datetime.utcnow(), workspace_id=workspace_id)
+        request.db, user_id, attempt_id, workspace_id, parent_id, title, state,
+        now=datetime.utcnow())
     return {'success': True, 'revision_id': revision_id}
 
 
