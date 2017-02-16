@@ -432,6 +432,7 @@ def submit_user_attempt_answer_action(request):
     return {
         'success': True,
         'answer_id': answer['id'],
+        'revision_id': revision_id,
         'feedback': feedback,
         'score': answer['score']
     }
