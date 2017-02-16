@@ -22,31 +22,25 @@ def load_workspace_revision(db, workspace_revision_id):
 def load_attempt_revisions(db, attempt_id):
     # Load the revisions.
     workspaces = db.tables.workspaces
+    answers = db.tables.answers
     revisions = db.tables.workspace_revisions
     cols = [
-        (revisions, 'id'),
-        (revisions, 'title'),
-        (revisions, 'parent_id'),
-        (revisions, 'created_at'),
-        (revisions, 'creator_id'),
-        (revisions, 'is_precious'),
-        (revisions, 'is_active'),
-        (revisions, 'workspace_id')
+        ('id', revisions.id),
+        ('title', revisions.title),
+        ('parent_id', revisions.parent_id),
+        ('created_at', revisions.created_at),
+        ('creator_id', revisions.creator_id),
+        ('is_precious', revisions.is_precious, 'bool'),
+        ('is_active', revisions.is_active, 'bool'),
+        ('workspace_id', revisions.workspace_id),
+        ('score', answers.score)
     ]
-    query = db.query(
-        revisions &
-        workspaces.on(revisions.workspace_id == workspaces.id)) \
+    query = db.query(revisions & workspaces + answers) \
+        .on((revisions.workspace_id == workspaces.id) &
+            (revisions.id == answers.revision_id)) \
         .where(workspaces.attempt_id == attempt_id) \
         .order_by(revisions.created_at.desc())
-    query = query.fields(*[getattr(t, c) for (t, c) in cols])
-    results = []
-    for row in db.all(query):
-        result = {c: row[i] for i, (t, c) in enumerate(cols)}
-        for key in ['is_active', 'is_precious']:
-            result[key] = db.load_bool(result[key])
-        results.append(result)
-    print('revisions {} {}'.format(attempt_id, results))
-    return results
+    return db.all_rows(query, cols)
 
 
 def store_revision(db, user_id, attempt_id, workspace_id, parent_id, title, state, now):
