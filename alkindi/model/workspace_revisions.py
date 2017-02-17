@@ -35,9 +35,9 @@ def load_attempt_revisions(db, attempt_id):
         ('workspace_id', revisions.workspace_id),
         ('score', answers.score)
     ]
-    query = db.query(revisions & workspaces + answers) \
-        .on((revisions.workspace_id == workspaces.id) &
-            (revisions.id == answers.revision_id)) \
+    tables = revisions & workspaces.on(revisions.workspace_id == workspaces.id)
+    tables = tables + answers.on(revisions.id == answers.revision_id)
+    query = db.query(tables) \
         .where(workspaces.attempt_id == attempt_id) \
         .order_by(revisions.created_at.desc())
     return db.all_rows(query, cols)
