@@ -11,7 +11,8 @@ def as_int(s):
 
 
 def generate_code():
-    charsAllowed = "23456789abcdefghijkmnpqrstuvwxyz"
+    # TODO: prevent rn/m confusion
+    charsAllowed = "2346789abcdefghijkmnpqrtuvwxyz"
     code = ""
     for pos in range(0, 8):
         code += random.choice(charsAllowed)
