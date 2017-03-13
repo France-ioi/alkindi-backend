@@ -289,7 +289,8 @@ def view_team_participation(participation, round_):
         'id': participation['id'],
         'created_at': participation['created_at'],
         'round': view_round(round_),
-        'is_qualified': participation['is_qualified']
+        'is_qualified': participation['is_qualified'],
+        'score': participation['score']
     }
     return view
 
