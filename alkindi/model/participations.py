@@ -1,4 +1,6 @@
 
+from alkindi.utils import generate_code
+
 
 def create_participation(db, team_id, round_id, now):
     participation_id = db.insert_row(db.tables.participations, {
@@ -54,7 +56,6 @@ def load_team_participations(db, team_id):
         ('is_qualified', participations.is_qualified, 'bool')
     ]
     query = db.query(participations) \
-        .fields([col[1] for col in cols]) \
         .where(participations.team_id == team_id) \
         .order_by(participations.created_at)
     return db.all_rows(query, cols)
@@ -62,3 +63,25 @@ def load_team_participations(db, team_id):
 
 def update_participation(db, participation_id, attrs):
     db.update_row(db.tables.participations, participation_id, attrs)
+
+
+def advance_participations(db, round_id, next_round_id, now):
+    participations = db.tables.participations
+    gen_access_codes = True
+    cols = [
+        ('team_id', participations.team_id)
+    ]
+    query = db.query(participations) \
+        .where(
+            (participations.round_id == round_id) &
+            participations.is_qualified)
+    for row in db.all_rows(query, cols):
+        participation = {
+            'team_id': row['team_id'],
+            'round_id': next_round_id,
+            'created_at': now,
+            'updated_at': now
+        }
+        if gen_access_codes:
+            participation['access_code'] = generate_code()
+        db.insert_row(participations, participation)
