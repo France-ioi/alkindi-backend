@@ -613,3 +613,50 @@ ALTER TABLE `answers` ADD COLUMN `revision_id` bigint(20) DEFAULT NULL;
 CREATE INDEX `ix_answers__revision_id` USING btree ON `answers` (`revision_id`);
 ALTER TABLE `answers` ADD CONSTRAINT fk_answers__revision_id
   FOREIGN KEY (revision_id) REFERENCES workspace_revisions(id) ON DELETE CASCADE;
+
+insert into tasks (created_at, updated_at, title, backend_url, frontend_url, backend_auth) values (NOW(), NOW(), "2017-FR-AL-04-steganography", "http://127.0.0.1:8014", "https://suite.concours-alkindi.fr/bless-copy-ahead-comedy/", NULL);
+insert into round_tasks (round_id, task_id, ordinal, max_score, generate_params, title) values (6, 2, 3, 50, '{"version":1}', "A.3 Réutilisation de clés : stéganographie 1");
+insert into round_tasks (round_id, task_id, ordinal, max_score, generate_params, title) values (6, 2, 4, 50, '{"version":2}', "A.4 Réutilisation de clés : stéganographie 2");
+
+insert into tasks (created_at, updated_at, title, backend_url, frontend_url, backend_auth) values (NOW(), NOW(), "2017-FR-AL-02-substitution", "http://127.0.0.1:8012", "https://suite.concours-alkindi.fr/moment-dose-whom-tire/", NULL);
+insert into round_tasks (round_id, task_id, ordinal, max_score, generate_params, title) values (6, 3, 5, 150, '{"version":1}', "B.1 Substitutions : mono-alphabétique avec espaces");
+insert into round_tasks (round_id, task_id, ordinal, max_score, generate_params, title) values (6, 3, 6, 100, '{"version":2}', "B.2 Substitutions : mono-alphabétique sans espaces");
+
+insert into tasks (created_at, updated_at, title, backend_url, frontend_url, backend_auth) values (NOW(), NOW(), "2017-FR-AL-05-bigrams", "http://127.0.0.1:8015", "https://suite.concours-alkindi.fr/menu-melt-merit-risky/", NULL);
+insert into round_tasks (round_id, task_id, ordinal, max_score, generate_params, title) values (6, 4, 5, 200, '{"version":1,"hintCost":20}', "B.3 Substitutions : poly-alphabétique 1");
+insert into round_tasks (round_id, task_id, ordinal, max_score, generate_params, title) values (6, 4, 6, 150, '{"version":2,"hintCost":10}', "B.4 Substitutions : poly-alphabétique 2");
+
+---
+
+-- lock teams
+UPDATE teams INNER JOIN (
+    SELECT team_id
+    FROM participations
+    WHERE participations.round_id = 6
+) t ON t.team_id = teams.id
+    SET is_locked = 1 WHERE teams.id = t.team_id;
+
+ALTER TABLE `participations` ADD COLUMN access_code VARCHAR(16) NULL DEFAULT NULL;
+ALTER TABLE `participations` ADD COLUMN access_code_entered BOOLEAN NOT NULL DEFAULT 0;
+
+INSERT INTO rounds (
+  created_at, updated_at,
+  title,
+  min_team_size, max_team_size, min_team_ratio,
+  training_opens_at, registration_opens_at,
+  duration,
+  status
+) VALUES (
+  NOW(), NOW(),
+  'Concours Alkindi 2016-2017 tour 3',
+  1, 4, 0.5,
+  '2017-03-20 00:00:00', '2017-03-20 00:00:00',
+  90,
+  'open'
+);
+
+-- pshell config.ini
+-- from datetime import datetime
+-- from alkindi.model.participations import advance_participations
+-- advance_participations(request.db, 6, 7, datetime.utcnow())
+-- request.db.commit()
