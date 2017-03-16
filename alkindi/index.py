@@ -141,16 +141,17 @@ def start_view(request):
     #    raise HTTPFound(request.route_url('ancient_browser'))
     # Prepare the frontend's config for injection as JSON in a script tag.
     csrf_token = request.session.get_csrf_token()
+    override = get_user_context(request, request.params)
     frontend_config = {
         'csrf_token': csrf_token,
         'api_url': request.resource_url(get_api(request)),
         'login_url': request.route_url('login'),
-        'logout_url': request.route_url('logout')
+        'logout_url': request.route_url('logout'),
+        'override': override
     }
-    kwargs = get_user_context(request, request.params)
     # Add info about the logged-in user (if any) to the frontend config.
     try:
-        frontend_config['seed'] = views.view_requesting_user(request.db, **kwargs)
+        frontend_config['seed'] = views.view_requesting_user(request.db, **override)
     except ApplicationError as error:
         frontend_config['seed'] = {'error': str(error)}
     request.response.cache_control = 'max-age=0, private'
