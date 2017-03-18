@@ -192,10 +192,10 @@ def get_user_context(request, params):
     }
     if 'g:admin' in request.effective_principals:
         result['is_admin'] = True
-        if 'user' in params:
+        if params.get('user') is not None:
             result['user_id'] = find_user_by_username(
                 request.db, params['user'])
-        if 'user_id' in params:
+        if params.get('user_id') is not None:
             result['user_id'] = int(params['user_id'])
     if 'participation_id' in params:
         result['participation_id'] = \
