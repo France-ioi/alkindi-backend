@@ -85,3 +85,20 @@ def advance_participations(db, round_id, next_round_id, now):
         if gen_access_codes:
             participation['access_code'] = generate_code()
         db.insert_row(participations, participation)
+
+
+def find_participation_by_code(db, code):
+    participations = db.tables.participations
+    cols = [
+        ('team_id', participations.team_id)
+    ]
+    query = db.query(participations) \
+        .fields(participations.id) \
+        .where(participations.access_code == code)
+    row = db.first(query)
+    return None if row is None else row[0]
+
+
+def mark_participation_code_entered(db, participation_id, now):
+    attrs = {'access_code_entered': 1}
+    update_participation(db, participation_id, attrs)

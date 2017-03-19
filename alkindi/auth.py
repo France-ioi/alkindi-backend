@@ -14,6 +14,12 @@ from alkindi.globals import app
 from alkindi.model.users import (
     find_user_by_foreign_id, import_user, update_user,
     get_user_principals)
+from alkindi.model.team_members import (get_team_creator)
+from alkindi.model.participations import (
+    find_participation_by_code,
+    load_participation,
+    mark_participation_code_entered
+)
 
 
 ADMIN_GROUP = 'g:admin'
@@ -37,6 +43,13 @@ def includeme(config):
         oauth_callback_view, route_name='oauth_callback',
         renderer='templates/after_login.mako')
     config.add_request_method(get_by_admin, 'by_admin', reify=True)
+    config.add_route(
+        'participation_login', '/login/participation', request_method='POST')
+    config.add_view(
+        login_with_participation_code,
+        route_name='participation_login',
+        check_csrf=True,
+        renderer='json')
 
 
 def set_authorization_policy(config):
@@ -102,7 +115,8 @@ def logout_view(request):
     forget(request)
     request.session.clear()
     return {
-        'auth_provider_logout_uri': app['logout_uri']
+        'auth_provider_logout_uri': app['logout_uri'],
+        'csrf_token': request.session.get_csrf_token()
     }
 
 
@@ -294,3 +308,31 @@ def exchange_code_for_token(request, code, state, **kwargs):
         verify='/etc/ssl/certs/ca-certificates.crt')
     req.raise_for_status()
     return req.json()
+
+
+def login_with_participation_code(request):
+    # This view handles the outcome of authentication performed by the
+    # identity provider.
+    now = datetime.utcnow()
+    json_request = request.json_body
+    code = json_request.get('code')
+    if code is None:
+        return {'error': 'missing code'}
+    participation_id = find_participation_by_code(request.db, code)
+    if participation_id is None:
+        return {'error': 'no such participation'}
+    participation = load_participation(request.db, participation_id)
+    team_id = participation['team_id']
+    user_id = get_team_creator(request.db, team_id)
+    mark_participation_code_entered(request.db, participation_id, now)
+    request.db.commit()
+    # Clear the user's cached principals to force them to be refreshed.
+    reset_user_principals(request)
+    remember(request, str(user_id))
+    # The view template posts the result (encoded as JSON) to the parent
+    # window, causing the frontend to update its state.
+    return {
+        'success': True,
+        'user_id': user_id,
+        'csrf_token': request.session.get_csrf_token()
+    }
