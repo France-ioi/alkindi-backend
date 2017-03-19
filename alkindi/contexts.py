@@ -192,7 +192,7 @@ class ParticipationApiContext(ApiContextBase):
     def __acl__(self):
         return [
             (Allow, ADMIN_GROUP, ['read', 'change']),
-            (Allow, 't:{}'.format(self.participation['team_id']), ['read'])
+            (Allow, 't:{}'.format(self.participation['team_id']), ['read', 'access'])
         ]
 
     def __getitem__(self, path_element):

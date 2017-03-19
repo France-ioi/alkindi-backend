@@ -1,5 +1,4 @@
 
-
 from datetime import datetime
 import requests
 
@@ -12,7 +11,8 @@ from alkindi.auth import (
     get_user_profile, get_oauth2_token, reset_user_principals)
 from alkindi.contexts import (
     ApiContext, UserApiContext, TeamApiContext, AttemptApiContext,
-    UserAttemptApiContext, ParticipationRoundTaskApiContext)
+    UserAttemptApiContext, ParticipationRoundTaskApiContext,
+    ParticipationApiContext)
 from alkindi.errors import ApiError, ApplicationError
 import alkindi.views as views
 from alkindi.globals import app
@@ -26,7 +26,8 @@ from alkindi.model.team_members import (
 from alkindi.model.rounds import find_round_ids_with_badges, load_round
 from alkindi.model.participations import (
     create_participation,
-    get_team_latest_participation_id)
+    get_team_latest_participation_id,
+    mark_participation_code_entered)
 from alkindi.model.attempts import (
     create_attempt, reset_to_training_attempt)
 from alkindi.model.workspace_revisions import (
@@ -92,6 +93,12 @@ def includeme(config):
     api_post(
         config, UserAttemptApiContext,
         'store_revision', store_revision_action, permission='store_revision')
+
+    # Participations
+    api_post(
+        config, ParticipationApiContext,
+        'enter_code', enter_participation_code_action, permission='access')
+
 
     # Deprecated routes and views -- frontend stuff is planned to be
     # completely separated from the backend.
@@ -433,6 +440,20 @@ def submit_user_attempt_answer_action(request):
         'feedback': feedback,
         'score': answer['score']
     }
+
+
+def enter_participation_code_action(request):
+    now = datetime.utcnow()
+    participation = request.context.participation
+    query = request.json_body
+    code = query['code']
+    if code is None:
+        return {'error': 'missing participation code'}
+    if code != participation['access_code']:
+        return {'error': 'invalid participation code'}
+    mark_participation_code_entered(request.db, participation['id'], now)
+    request.db.commit()
+    return {'success': True,}
 
 
 def store_revision_query(db, user_id, attempt_id, query):

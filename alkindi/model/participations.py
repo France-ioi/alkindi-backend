@@ -2,6 +2,22 @@
 from alkindi.utils import generate_code
 
 
+def participations_columns(db):
+    participations = db.tables.participations
+    return [
+        ('id', participations.id),
+        ('team_id', participations.team_id),
+        ('round_id', participations.round_id),
+        ('created_at', participations.created_at),
+        ('score', participations.score),
+        ('score_90min', participations.score_90min),
+        ('first_equal_90min', participations.first_equal_90min),
+        ('is_qualified', participations.is_qualified, 'bool'),
+        ('access_code', participations.access_code),
+        ('access_code_entered', participations.access_code_entered, 'bool')
+    ]
+
+
 def create_participation(db, team_id, round_id, now):
     participation_id = db.insert_row(db.tables.participations, {
         'team_id': team_id,
@@ -35,26 +51,16 @@ def get_team_latest_participation_id(db, team_id):
 
 
 def load_participation(db, participation_id, for_update=False):
-    cols = ['id', 'created_at', 'team_id', 'round_id', 'score', 'is_qualified']
-    row = db.load_row(
-        db.tables.participations, participation_id, cols,
-        for_update=for_update)
-    for key in ['is_qualified']:
-        row[key] = db.load_bool(row[key])
-    return row
+    participations = db.tables.participations
+    cols = participations_columns(db)
+    query = db.query(participations) \
+        .where(participations.id == participation_id)
+    return db.first_row(query, cols)
 
 
 def load_team_participations(db, team_id):
     participations = db.tables.participations
-    cols = [
-        ('id', participations.id),
-        ('round_id', participations.round_id),
-        ('created_at', participations.created_at),
-        ('score', participations.score),
-        ('score_90min', participations.score_90min),
-        ('first_equal_90min', participations.first_equal_90min),
-        ('is_qualified', participations.is_qualified, 'bool')
-    ]
+    cols = participations_columns(db)
     query = db.query(participations) \
         .where(participations.team_id == team_id) \
         .order_by(participations.created_at)

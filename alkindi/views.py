@@ -292,6 +292,11 @@ def view_team_participation(participation, round_):
         'is_qualified': participation['is_qualified'],
         'score': participation['score']
     }
+    if participation['access_code'] is not None:
+        if participation['access_code_entered']:
+            view['access_code'] = 'provided'
+        else:
+            view['access_code'] = 'required'
     return view
 
 
