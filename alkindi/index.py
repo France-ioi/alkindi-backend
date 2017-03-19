@@ -110,10 +110,6 @@ def not_found_view(error, request):
     return error
 
 
-def get_api(request):
-    return ApiContext(request.root)
-
-
 def api_post(config, context, name, view, permission='change'):
     config.add_view(
         view, context=context, name=name,
@@ -144,7 +140,7 @@ def start_view(request):
     override = get_user_context(request, request.params)
     frontend_config = {
         'csrf_token': csrf_token,
-        'api_url': request.resource_url(get_api(request)),
+        'backend_url': request.resource_url(request.root),
         'login_url': request.route_url('login'),
         'logout_url': request.route_url('logout'),
         'override': override
