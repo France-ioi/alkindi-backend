@@ -1,5 +1,5 @@
 
-from datetime import datetime
+from datetime import datetime, timedelta
 import requests
 
 from pyramid.exceptions import PredicateMismatch
@@ -25,11 +25,11 @@ from alkindi.model.team_members import (
     create_user_team, join_team, leave_team, get_team_creator)
 from alkindi.model.rounds import find_round_ids_with_badges, load_round
 from alkindi.model.participations import (
-    create_participation,
+    load_participation, create_participation,
     get_team_latest_participation_id,
     mark_participation_code_entered)
 from alkindi.model.attempts import (
-    create_attempt, reset_to_training_attempt)
+    load_attempt, create_attempt, reset_to_training_attempt)
 from alkindi.model.workspace_revisions import (
     store_revision)
 from alkindi.model.task_instances import assign_task_instance
@@ -421,7 +421,18 @@ def store_revision_action(request):
 
 
 def submit_user_attempt_answer_action(request):
+    now = datetime.utcnow()
     attempt_id = request.context.attempt_id
+    attempt = load_attempt(request.db, attempt_id)
+    participation = load_participation(request.db, attempt['participation_id'])
+    round_ = load_round(request.db, participation['round_id'])
+    if round_['status'] != 'open':
+        return {'success': False, 'error': 'round not open'}
+    if participation['started_at'] is not None and round_['duration'] is not None:
+        duration = timedelta(minutes=round_['duration'])
+        deadline = participation['started_at'] + duration
+        if now > deadline:
+            return {'success': False, 'error': 'past deadline'}
     submitter_id = request.context.user_id
     query = request.json_body
     answer = query['answer']
@@ -431,8 +442,7 @@ def submit_user_attempt_answer_action(request):
         revision_id = store_revision_query(
             request.db, submitter_id, attempt_id, revision)
     answer, feedback = grade_answer(
-        request.db, attempt_id, submitter_id, revision_id, answer,
-        now=datetime.utcnow())
+        request.db, attempt_id, submitter_id, revision_id, answer, now=now)
     return {
         'success': True,
         'answer_id': answer['id'],
