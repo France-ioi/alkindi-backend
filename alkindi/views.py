@@ -1,5 +1,5 @@
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from alkindi.errors import ModelError
 from alkindi.model.rounds import (
@@ -189,6 +189,15 @@ def view_requesting_user(
         task_instance = load_user_task_instance(db, attempt_id)
     except ModelError:
         return view
+
+    # If the round has a time limit, return the countdown.
+    if round_['duration'] is not None:
+        started_at = participation['started_at']
+        duration = timedelta(minutes=round_['duration'])
+        countdown = started_at + duration
+        view['countdown'] = started_at + duration
+        if countdown < now:
+            return view
 
     view['team_data'] = task_instance['team_data']
 

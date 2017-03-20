@@ -8,7 +8,7 @@ def load_rounds(db, round_ids, now=None):
         'id', 'created_at', 'updated_at', 'title', 'status',
         'registration_opens_at', 'training_opens_at',
         'min_team_size', 'max_team_size', 'min_team_ratio',
-        'allow_team_changes'
+        'allow_team_changes', 'duration'
     ]
     bool_cols = ['allow_team_changes']
     rows = db.load_rows(db.tables.rounds, round_ids, cols)

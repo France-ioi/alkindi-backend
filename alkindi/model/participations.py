@@ -14,7 +14,8 @@ def participations_columns(db):
         ('first_equal_90min', participations.first_equal_90min),
         ('is_qualified', participations.is_qualified, 'bool'),
         ('access_code', participations.access_code),
-        ('access_code_entered', participations.access_code_entered, 'bool')
+        ('access_code_entered', participations.access_code_entered, 'bool'),
+        ('started_at', participations.started_at)
     ]
 
 
