@@ -193,11 +193,12 @@ def view_requesting_user(
     # If the round has a time limit, return the countdown.
     if round_['duration'] is not None:
         started_at = participation['started_at']
-        duration = timedelta(minutes=round_['duration'])
-        countdown = started_at + duration
-        view['countdown'] = started_at + duration
-        if countdown < now:
-            return view
+        if started_at is not None:
+            duration = timedelta(minutes=round_['duration'])
+            countdown = started_at + duration
+            view['countdown'] = started_at + duration
+            if countdown < now:
+                return view
 
     view['team_data'] = task_instance['team_data']
 
