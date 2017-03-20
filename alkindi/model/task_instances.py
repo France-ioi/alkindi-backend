@@ -5,7 +5,9 @@ import json
 from alkindi.errors import ModelError
 from alkindi.model.rounds import load_round
 from alkindi.model.team_members import validate_team
-from alkindi.model.participations import load_participation
+from alkindi.model.participations import (
+    load_participation, update_participation
+)
 from alkindi.model.attempts import load_attempt
 from alkindi.model.workspaces import create_attempt_workspace
 from alkindi.model.round_tasks import load_round_task
@@ -96,6 +98,10 @@ def assign_task_instance(db, attempt_id, now):
         attempt_attrs['closes_at'] = now + timedelta(minutes=attempt_duration)
     attempts = db.tables.attempts
     db.update_row(attempts, attempt_id, attempt_attrs)
+
+    # If starting the first timed attempt, set started_at on the participation.
+    if attempt['is_training'] == 0 and attempt['ordinal'] == 1:
+        update_participation(db, participation_id, {'started_at': now})
 
     # Create an initial workspace for the attempt.
     create_attempt_workspace(db, attempt_id, now)

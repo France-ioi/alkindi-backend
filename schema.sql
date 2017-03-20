@@ -638,6 +638,9 @@ UPDATE teams INNER JOIN (
 
 ALTER TABLE `participations` ADD COLUMN access_code VARCHAR(16) NULL DEFAULT NULL;
 ALTER TABLE `participations` ADD COLUMN access_code_entered BOOLEAN NOT NULL DEFAULT 0;
+UPDATE participations SET is_qualified = 1 WHERE round_id = 6 AND score >= 500;
+UPDATE participations SET is_qualified = 1 WHERE team_id = 6067;
+UPDATE rounds SET status = 'closed' WHERE id = 6;
 
 INSERT INTO rounds (
   created_at, updated_at,
@@ -654,6 +657,12 @@ INSERT INTO rounds (
   90,
   'open'
 );
+
+INSERT INTO tasks (created_at, updated_at, title, backend_url, frontend_url, backend_auth) VALUES (NOW(), NOW(), "2017-FR-AL-06-perm-subst", "http://127.0.0.1:8016", "https://alpp.epixode.fr/earn-wander-wing-south/", NULL);
+INSERT INTO tasks (created_at, updated_at, title, backend_url, frontend_url, backend_auth) VALUES (NOW(), NOW(), "2017-FR-AL-06-perm-subst", "http://127.0.0.1:8016", "https://suite.concours-alkindi.fr/earn-wander-wing-south/", NULL);
+INSERT INTO round_tasks (round_id, task_id, ordinal, max_score, generate_params, title) VALUES (7, 5, 1, 700, '{}', "Permutations d'une grille");
+
+ALTER TABLE participations ADD COLUMN started_at DATETIME NULL;
 
 -- pshell config.ini
 -- from datetime import datetime
