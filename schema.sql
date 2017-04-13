@@ -669,3 +669,62 @@ ALTER TABLE participations ADD COLUMN started_at DATETIME NULL;
 -- from alkindi.model.participations import advance_participations
 -- advance_participations(request.db, 6, 7, datetime.utcnow())
 -- request.db.commit()
+
+--
+-- Ranking
+--
+
+UPDATE teams t
+    INNER JOIN participations p ON p.team_id = t.id
+    LEFT OUTER JOIN regions r ON r.code = p.region
+    SET region_id = r.id
+    WHERE t.region_id IS NULL AND r.id IS NOT NULL;
+
+-- returns an empty set:
+SELECT p.id FROM participations p
+    INNER JOIN teams t ON p.team_id = t.id
+    WHERE p.region <> '' AND t.region_id IS NULL;
+
+ALTER TABLE participations DROP COLUMN region;
+
+ALTER TABLE regions ADD COLUMN big_region_code text NOT NULL DEFAULT '';
+
+UPDATE regions r LEFT JOIN (
+    SELECT DISTINCT r.code AS code, p.big_region AS big_region_code
+    FROM participations p, teams t, regions r
+    WHERE t.id = p.team_id AND r.id = t.region_id AND big_region IS NOT NULL) t
+    ON t.code = r.code
+    SET r.big_region_code = t.big_region_code;
+
+-- returns an empty set:
+SELECT * FROM participations p, teams t, regions r
+    WHERE p.team_id = t.id
+    AND t.region_id = r.id
+    AND (p.big_region IS NOT NULL AND p.big_region <> '')
+    AND p.big_region <> r.big_region_code;
+
+ALTER TABLE participations DROP COLUMN big_region;
+
+ALTER TABLE regions ADD COLUMN big_region_name text NOT NULL DEFAULT '';
+UPDATE regions SET big_region_code = "domtom" WHERE code = "mayotte";
+UPDATE regions SET big_region_code = "domtom" WHERE code = "noumea";
+UPDATE regions SET big_region_code = "domtom" WHERE code = "polynesie";
+UPDATE regions SET big_region_code = "domtom" WHERE code = "guadeloupe";
+UPDATE regions SET big_region_name = "Aix-Marseille, Nice" WHERE big_region_code = "aix-marseille_nice";
+UPDATE regions SET big_region_name = "Amiens, Lille" WHERE big_region_code = "amiens_lille";
+UPDATE regions SET big_region_name = "Besancon, Dijon" WHERE big_region_code = "besancon_dijon";
+UPDATE regions SET big_region_name = "Bordeaux, Limoges, Poitiers" WHERE big_region_code = "bordeaux_limoges_poitiers";
+UPDATE regions SET big_region_name = "Caen, Rouen" WHERE big_region_code = "caen_rouen";
+UPDATE regions SET big_region_name = "Clermont, Grenoble, Lyon" WHERE big_region_code = "clermont_grenoble_lyon";
+UPDATE regions SET big_region_name = "Corse" WHERE big_region_code = "corse";
+UPDATE regions SET big_region_name = "Paris, Créteil, Versailles" WHERE big_region_code = "creteil_paris_versailles";
+UPDATE regions SET big_region_name = "DOM-TOM" WHERE big_region_code = "domtom";
+UPDATE regions SET big_region_name = "étranger" WHERE big_region_code = "foreign";
+UPDATE regions SET big_region_name = "Montpellier, Toulouse" WHERE big_region_code = "montpellier_toulouse";
+UPDATE regions SET big_region_name = "Nancy-Metz, Reims, Strasbourg" WHERE big_region_code = "nancy-metz_reims_strasbourg";
+UPDATE regions SET big_region_name = "Nantes" WHERE big_region_code = "nantes";
+UPDATE regions SET big_region_name = "Orléans, Tours" WHERE big_region_code = "orleans-tours";
+UPDATE regions SET big_region_name = "Rennes" WHERE big_region_code = "rennes";
+
+ALTER TABLE teams DROP COLUMN rank;
+ALTER TABLE teams DROP COLUMN rank_region;

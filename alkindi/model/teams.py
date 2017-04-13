@@ -6,8 +6,7 @@ def load_team(db, team_id, for_update=False):
     if team_id is None:
         return None
     keys = [
-        'id', 'created_at', 'code', 'is_open', 'is_locked',
-        'region_id', 'rank', 'rank_region'
+        'id', 'created_at', 'code', 'is_open', 'is_locked', 'region_id'
     ]
     result = db.load_row(db.tables.teams, team_id, keys,
                          for_update=for_update)
@@ -62,7 +61,8 @@ def count_teams_in_round(db, round_id):
     participations = db.tables.participations
     query = db.query(teams & participations) \
         .where(participations.team_id == teams.id) \
-        .where(participations.round_id == round_id)
+        .where(participations.round_id == round_id) \
+        .where(participations.is_official)
     return db.count(query.fields(teams.id))
 
 
@@ -72,7 +72,21 @@ def count_teams_in_round_region(db, round_id, region_id):
     query = db.query(teams & participations) \
         .where(participations.team_id == teams.id) \
         .where(participations.round_id == round_id) \
-        .where(teams.region_id == region_id)
+        .where(teams.region_id == region_id) \
+        .where(participations.is_official)
+    return db.count(query.fields(teams.id))
+
+
+def count_teams_in_round_big_region(db, round_id, big_region_code):
+    teams = db.tables.teams
+    participations = db.tables.participations
+    regions = db.tables.regions
+    query = db.query(teams & participations & regions) \
+        .where(participations.team_id == teams.id) \
+        .where(teams.region_id == regions.id) \
+        .where(participations.round_id == round_id) \
+        .where(participations.is_official) \
+        .where(regions.big_region_code == big_region_code)
     return db.count(query.fields(teams.id))
 
 

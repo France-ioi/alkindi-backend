@@ -15,7 +15,10 @@ def participations_columns(db):
         ('is_qualified', participations.is_qualified, 'bool'),
         ('access_code', participations.access_code),
         ('access_code_entered', participations.access_code_entered, 'bool'),
-        ('started_at', participations.started_at)
+        ('started_at', participations.started_at),
+        ('rank_national', participations.rank_national),
+        ('rank_big_regional', participations.rank_big_regional),
+        ('rank_regional', participations.rank_regional)
     ]
 
 
