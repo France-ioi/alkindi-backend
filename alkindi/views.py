@@ -7,7 +7,10 @@ from alkindi.model.rounds import (
 from alkindi.model.round_tasks import load_round_tasks
 from alkindi.model.users import load_user, load_users
 from alkindi.model.teams import (
-    load_team, count_teams_in_round, count_teams_in_round_region)
+    load_team,
+    count_teams_in_round,
+    count_teams_in_round_region,
+    count_teams_in_round_big_region)
 from alkindi.model.team_members import load_team_members
 from alkindi.model.regions import load_region
 from alkindi.model.participations import load_team_participations
@@ -123,28 +126,36 @@ def view_requesting_user(
         str(rt['id']): view_round_task(rt) for rt in round_tasks
     }
 
-    if False:  # XXX disabled
-        # XXX Horrible constant initial_round_id, should be looked up in a
-        #     competition table.
-        initial_round_id = 2
-        # Add total number of teams for the competition, and total number
-        # of teams within the same region (if non-null).
-        if team_view['rank'] is not None:
-            team_view['n_teams'] = count_teams_in_round(db, initial_round_id)
+    region_id = team['region_id']
+
+    if round_['status'] == 'closed' and team['region_id'] is not None:
+        region = load_region(db, region_id)
+        national_count = count_teams_in_round(db, round_id)
+        big_region_count = count_teams_in_round_big_region(
+            db, round_id, region['big_region_code'])
+        region_count = count_teams_in_round_region(db, round_id, region_id)
+        view['ranking'] = {
+            'national': {
+                'rank': participation['rank_national'],
+                'count': national_count
+            },
+            'big_region': {
+                'name': region['big_region_name'],
+                'rank': participation['rank_big_regional'],
+                'count': big_region_count
+            },
+            'region': {
+                'name': region['name'],
+                'rank': participation['rank_regional'],
+                'count': region_count
+            }
+        }
 
     # XXX A team's validity should be checked against settings for a
     #     competition rather than a round.
     causes = validate_members_for_round(members, round_)
     team_view['round_access'] = list(causes.keys())
     team_view['is_invalid'] = len(causes) != 0
-
-    # Add the user's region to the view.
-    region = load_region(db, team['region_id'])
-    if region is not None:
-        team_view['region'] = view_region(region)
-        if team_view['rank_region'] is not None:
-            team_view['n_teams_region'] = count_teams_in_round_region(
-                db, initial_round_id, region['id'])
 
     # Do not return attempts if the team is invalid.
     if team_view['is_invalid']:
@@ -232,7 +243,7 @@ def view_user(user):
 def view_team(team, members):
     """ Return the user-view for a team.
     """
-    keys = ['id', 'code', 'is_open', 'is_locked', 'rank', 'rank_region']
+    keys = ['id', 'code', 'is_open', 'is_locked']
     result = {key: team[key] for key in keys}
     result['members'] = members
     creators = [m for m in members if m['is_creator']]
